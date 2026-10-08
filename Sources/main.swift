@@ -114,14 +114,14 @@ struct Sprite {
     var monX = 0, monY = 0, monW = 0, monH = 0   // мониторът (ако работи)
 }
 
-func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool) -> Sprite {
+func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, worn: [String] = []) -> Sprite {
     var g = Grid(repeating: Array(repeating: ".", count: canvasW), count: canvasH)
     let count = max(1, min(100, level))
     let cells = blobOrder.prefix(8 + count)
     let minCX = cells.map { $0.0 }.min()!, maxCX = cells.map { $0.0 }.max()!
     let minCY = cells.map { $0.1 }.min()!, maxCY = cells.map { $0.1 }.max()!
     let bw = (maxCX - minCX + 1) * cellSize, bh = (maxCY - minCY + 1) * cellSize
-    let limbs = true
+    let limbs = pose != .sleep      // като спи, си прибира ръцете и краката
     let leg = count < 30 ? 4 : 6
     let groundY = canvasH - 1
     let by0 = limbs ? groundY - leg - bh - 1 : groundY - bh
@@ -261,6 +261,53 @@ func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool) 
             else { put(&g, lx0 + 2, end, "K"); put(&g, lx0 + 3, end, "K") }
         }
     }
+
+    // облекло от магазина
+    let kk = bw >= 28 ? 2 : 1
+    func stampK(_ s: Grid, _ x: Int, _ y: Int) {
+        for (r, line) in s.enumerated() {
+            for (c, ch) in line.enumerated() where ch != "." {
+                for a in 0..<kk { for b in 0..<kk { put(&g, x + c * kk + a, y + r * kk + b, ch) } }
+            }
+        }
+    }
+    if worn.contains("headphones") {
+        let (l, r) = rowSpan(eyeY)
+        let a0 = cx - bw / 4, a1 = cx + bw / 4
+        for x in a0...max(a0, a1) { put(&g, x, topY - 3, "N") }
+        var x = a0, y = topY - 3
+        while x > l - 3 && y < eyeY - 3 { x -= 1; y += 1; put(&g, x, y, "N") }
+        x = a1; y = topY - 3
+        while x < r + 3 && y < eyeY - 3 { x += 1; y += 1; put(&g, x, y, "N") }
+        for yy in (eyeY - 3)..<(eyeY + 5) {
+            for xx in (l - 5)..<(l - 1) { put(&g, xx, yy, "C") }
+            for xx in (r + 2)..<(r + 6) { put(&g, xx, yy, "C") }
+            put(&g, l - 6, yy, "K"); put(&g, r + 6, yy, "K")
+        }
+    }
+    if worn.contains("glasses") || worn.contains("sunglasses") {
+        let sun = worn.contains("sunglasses")
+        for x0 in [lx, rx] {
+            for x in (x0 - 1)...(x0 + e) { put(&g, x, eyeY - 1, "K"); put(&g, x, eyeY + e, "K") }
+            for y in eyeY..<(eyeY + e) { put(&g, x0 - 1, y, "K"); put(&g, x0 + e, y, "K") }
+            if sun {
+                for x in x0..<(x0 + e) { for y in eyeY..<(eyeY + e) { put(&g, x, y, "S") } }
+                put(&g, x0, eyeY, "W")
+            }
+        }
+        if lx + e + 1 <= rx - 2 { for x in (lx + e + 1)...(rx - 2) { put(&g, x, eyeY, "K") } }
+    }
+    if worn.contains("bowtie") { stampK(neckBowtie, cx - 5 * kk / 2, mouthY + 2) }
+    if worn.contains("scarf") {
+        let y = mouthY + 3
+        let (l, r) = rowSpan(min(y, by0 + bh - 1))
+        for x in (l - 1)...(r + 1) { put(&g, x, y, "O"); put(&g, x, y + 1, "O") }
+        for dy in 2...4 { put(&g, r - 3, y + dy, "O"); put(&g, r - 2, y + dy, "O") }
+    }
+    for (id, hat) in [("party", hatParty), ("beanie", hatBeanie), ("crown", hatCrown)] where worn.contains(id) {
+        stampK(hat, cx - hat[0].count * kk / 2, topY - hat.count * kk + kk)
+    }
+    if worn.contains("bow") { stampK(hatBow, rowSpan(topY + 1).1 - 3 * kk, topY - 2 * kk) }
 
     var sp = Sprite(grid: g)
     sp.cx = cx
@@ -504,6 +551,10 @@ struct Pet: Codable {
     var videos = 0
     var level = 1
     var xp = 0
+    var coins = 0
+    var owned: [String] = []
+    var worn: [String] = []
+    var workCoinSeconds: Double = 0
     var asleep = false
     var dead = false
     var born = Date()
@@ -525,6 +576,10 @@ struct Pet: Codable {
         videos = try c.decodeIfPresent(Int.self, forKey: .videos) ?? videos
         level = try c.decodeIfPresent(Int.self, forKey: .level) ?? level
         xp = try c.decodeIfPresent(Int.self, forKey: .xp) ?? xp
+        coins = try c.decodeIfPresent(Int.self, forKey: .coins) ?? coins
+        owned = try c.decodeIfPresent([String].self, forKey: .owned) ?? owned
+        worn = try c.decodeIfPresent([String].self, forKey: .worn) ?? worn
+        workCoinSeconds = try c.decodeIfPresent(Double.self, forKey: .workCoinSeconds) ?? workCoinSeconds
         asleep = try c.decodeIfPresent(Bool.self, forKey: .asleep) ?? asleep
         dead = try c.decodeIfPresent(Bool.self, forKey: .dead) ?? dead
         born = try c.decodeIfPresent(Date.self, forKey: .born) ?? born
@@ -661,6 +716,8 @@ final class PetView: NSView {
     var hovering = false
     var spriteRect = NSRect.zero        // заетата част, в координатите на изгледа
     var monitorRect = NSRect.zero       // мониторът, докато работи
+    var feetY: CGFloat = PetView.top + CGFloat(canvasH) * PetView.scale   // къде стъпва (без подскачането)
+    var bodyX0: CGFloat = 120, bodyX1: CGFloat = 200
     private var downPoint = NSPoint.zero
     private var dragStart: NSPoint?
     private var windowStart = NSPoint.zero
@@ -721,7 +778,7 @@ final class PetView: NSView {
         else { pose = .idle }
 
         let sp = buildSprite(level: pet.level, face: game.currentFace(), pose: pose,
-                             frame: pose == .walk ? Int(t * 8) : frame, working: pet.working)
+                             frame: pose == .walk ? Int(t * 8) : frame, working: pet.working, worn: pet.worn)
 
         var dy: CGFloat = 0
         if pet.dead {
@@ -749,6 +806,9 @@ final class PetView: NSView {
         }
         let bodyW = CGFloat(sp.right - sp.left + 1) * s
         let centerX = (vx(sp.left) + vx(sp.right) + s) / 2
+        feetY = oy + CGFloat(sp.groundY + 1) * s
+        bodyX0 = centerX - bodyW / 2
+        bodyX1 = centerX + bodyW / 2
 
         // сянка
         if !pet.dead && !game.rolling {
@@ -775,6 +835,27 @@ final class PetView: NSView {
 
         let headTop = vy(sp.minY)
         let p = game.actionProgress
+
+        // тоалетна
+        if game.toiletPhase == .doing {
+            let tt = t - game.toiletStart
+            let bottomY = vy(sp.bottom) + s
+            if game.toiletPoop {
+                for i in 0..<4 {
+                    let ph = (tt * 1.2 + Double(i) * 0.25).truncatingRemainder(dividingBy: 1)
+                    let px = game.facingLeft ? centerX + bodyW / 3 : centerX - bodyW / 3
+                    NSColor(hex: 0x8b5a2b).setFill()
+                    NSRect(x: px - 3, y: bottomY + CGFloat(ph) * (feetY - bottomY), width: 6, height: 6).fill()
+                }
+            } else {
+                for i in 0..<10 {
+                    let ph = (tt * 2 + Double(i) * 0.1).truncatingRemainder(dividingBy: 1)
+                    let sx = centerX + (game.facingLeft ? -6 : 6) + CGFloat(ph) * (game.facingLeft ? -14 : 14)
+                    NSColor(hex: 0xffe066).setFill()
+                    NSRect(x: sx, y: bottomY + CGFloat(ph) * (feetY - bottomY), width: 3, height: 3).fill()
+                }
+            }
+        }
 
         // пиксели, които плават около него (повече с нивата)
         if !pet.dead {
@@ -1102,7 +1183,7 @@ final class RetroView: NSView {
 
     static let cell: CGFloat = 36
     static let pad: CGFloat = 12
-    static let width = pad * 2 + cell * 6
+    static let width = pad * 2 + cell * 8
     static let height: CGFloat = 158
 
     override var isFlipped: Bool { true }
@@ -1172,6 +1253,9 @@ final class RetroView: NSView {
         let lvl = "НИВО \(pet.level)" as NSString
         let lw = lvl.size(withAttributes: yellow).width
         lvl.draw(at: NSPoint(x: b.width - 14 - lw, y: 12), withAttributes: yellow)
+        let coins = "\(pet.coins) МОНЕТИ" as NSString
+        let cw = coins.size(withAttributes: yellow).width
+        coins.draw(at: NSPoint(x: (b.width - cw) / 2, y: 12), withAttributes: yellow)
 
         // XP черта на сегменти
         let segs = 20
@@ -1379,7 +1463,7 @@ final class CatchView: NSView {
         if let since = stuckSince {
             // гръмнал е и е залепнал за стъклото на екрана, после бавно се свлича
             let p = CGFloat(min(1, (time - since) / 2.8))
-            let sp = buildSprite(level: level, face: .angry, pose: .wave, frame: 0, working: false)
+            let sp = buildSprite(level: level, face: .angry, pose: .wave, frame: 0, working: false, worn: game.pet.worn)
             let s: CGFloat = max(5, 200 / CGFloat(sp.right - sp.left + 1))
             let ox = stuckAt.x - CGFloat(sp.cx) * s
             let oy = stuckAt.y - CGFloat(sp.top) * s + p * p * bounds.height * 0.5
@@ -1397,7 +1481,7 @@ final class CatchView: NSView {
                              width: CGFloat(sp.maxX - sp.minX + 1) * s, height: CGFloat(sp.maxY - sp.minY + 1) * s)
             drawGlitchy(sp.grid, x: ox, y: oy, s: s, palette: game.color, glitch: Int(time * 8) % 3 == 0, noiseRect: box)
         } else {
-            let sp = buildSprite(level: level, face: over ? .sad : .happy, pose: .wave, frame: Int(time * 4), working: false)
+            let sp = buildSprite(level: level, face: over ? .sad : .happy, pose: .wave, frame: Int(time * 4), working: false, worn: game.pet.worn)
             let s = petScale
             let ox = playerX - CGFloat(sp.cx) * s
             let oy = groundY - CGFloat(sp.groundY + 1) * s
@@ -1441,7 +1525,7 @@ final class AlertView: NSView {
         let t = game.time - started
         NSColor(hex: 0x0b0b14, alpha: min(0.75, t * 2)).setFill(); bounds.fill()
 
-        let sp = buildSprite(level: game.pet.level, face: .angry, pose: .wave, frame: Int(game.time * 4), working: false)
+        let sp = buildSprite(level: game.pet.level, face: .angry, pose: .wave, frame: Int(game.time * 4), working: false, worn: game.pet.worn)
         let s: CGFloat = min(14, 260 / CGFloat(sp.maxY - sp.minY + 1))
         let shake = CGFloat(Int.random(in: -3...3))
         let ox = bounds.midX - CGFloat(sp.cx) * s + shake
@@ -1475,6 +1559,10 @@ let clipTitles = [
     "МУЗИКАЛЕН КЛИП: ПИКСЕЛ ДИСКО",
     "ДОКУМЕНТАЛЕН: ДИВИ ПИКСЕЛИ",
     "ХОРЪР: ГЛИЧЪТ",
+    "СПОРТ: ПИКСЕЛ ФУТБОЛ",
+    "КОСМОС: ПИКСЧО НА ЛУНАТА",
+    "РЕКЛАМА: ПИКСЕЛ 3000",
+    "НОВИНИ: ИЗВЪНРЕДНО",
 ]
 
 final class ClipView: NSView {
@@ -1487,7 +1575,20 @@ final class ClipView: NSView {
 
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) { game?.closeClip() }
+    private var yesRect: NSRect { NSRect(x: bounds.midX - 110, y: 128, width: 100, height: 34) }
+    private var noRect: NSRect { NSRect(x: bounds.midX + 10, y: 128, width: 100, height: 34) }
+
+    override func mouseDown(with event: NSEvent) {
+        guard let game else { return }
+        let p = convert(event.locationInWindow, from: nil)
+        if game.time - started < ClipView.length {
+            started = game.time - ClipView.length     // прескача до въпроса
+        } else if yesRect.contains(p) {
+            game.clipAnswer(true)
+        } else if noRect.contains(p) {
+            game.clipAnswer(false)
+        }
+    }
 
     private func text(_ str: String, _ x: CGFloat, _ y: CGFloat, size: CGFloat, color: Int, center: Bool = false) {
         let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: size, weight: .heavy),
@@ -1500,7 +1601,7 @@ final class ClipView: NSView {
     /// Рисува Пиксчо с краката на дадена линия.
     private func pet(_ game: Game, face: Face, pose: Pose, frame: Int, x: CGFloat, ground: CGFloat,
                      height: CGFloat = 90, glitch: Bool = false) {
-        let sp = buildSprite(level: game.pet.level, face: face, pose: pose, frame: frame, working: false)
+        let sp = buildSprite(level: game.pet.level, face: face, pose: pose, frame: frame, working: false, worn: game.pet.worn)
         let s = min(3, height / CGFloat(sp.maxY - sp.minY + 1))
         let ox = x - CGFloat(sp.cx) * s
         let oy = ground - CGFloat(sp.groundY + 1) * s
@@ -1614,6 +1715,55 @@ final class ClipView: NSView {
             }
             pet(game, face: .focus, pose: .idle, frame: 0, x: x0 + 60, ground: ground, height: 70)
             text(t > 3 ? "РЯДЪК ЗЛАТЕН ПИКСЕЛ…" : "ДИВИТЕ ПИКСЕЛИ МИГРИРАТ", x0 + 8, y0 + 8, size: 9, color: 0x1b1b24)
+        case 6: // футбол
+            NSColor(hex: 0x52b788).setFill(); screen.fill()
+            NSColor(white: 1, alpha: 0.7).setFill()
+            NSRect(x: x0 + W / 2 - 1, y: y0, width: 2, height: H).fill()
+            NSRect(x: x0 + W - 30, y: ground - 60, width: 4, height: 60).fill()
+            NSRect(x: x0 + W - 30, y: ground - 60, width: 26, height: 4).fill()
+            let kick = min(1, max(0, (t - 2.5) / 1.5))
+            let bx = x0 + 110 + CGFloat(kick) * (W - 150)
+            let by = ground - 10 - CGFloat(sin(kick * .pi)) * 50
+            NSColor.white.setFill(); NSBezierPath(ovalIn: NSRect(x: bx, y: by, width: 12, height: 12)).fill()
+            NSColor(hex: 0x2b2b3a).setFill(); NSRect(x: bx + 4, y: by + 4, width: 4, height: 4).fill()
+            let px = x0 + 20 + CGFloat(min(t, 2.5) / 2.5) * 70
+            pet(game, face: t > 4 ? .happy : .focus, pose: t < 2.5 ? .walk : .wave, frame: Int(t * 8), x: px, ground: ground, height: 70)
+            if t > 4 { text("ГОООЛ!", x0 + W / 2, y0 + 12, size: 24, color: 0xffd166, center: true) }
+        case 7: // космос
+            NSColor(hex: 0x0b0b1e).setFill(); screen.fill()
+            for i in 0..<30 {
+                let sx = x0 + CGFloat((i * 97) % Int(W)), sy = y0 + CGFloat((i * 53) % Int(H - 30))
+                NSColor(white: 1, alpha: Int(t * 3 + Double(i)) % 4 == 0 ? 0.3 : 0.9).setFill()
+                NSRect(x: sx, y: sy, width: 2, height: 2).fill()
+            }
+            NSColor(hex: 0x1982c4).setFill(); NSBezierPath(ovalIn: NSRect(x: x0 + W - 70, y: y0 + 14, width: 40, height: 40)).fill()
+            NSColor(hex: 0x52b788).setFill(); NSRect(x: x0 + W - 60, y: y0 + 26, width: 14, height: 10).fill()
+            NSColor(hex: 0x8d99ae).setFill(); NSRect(x: x0, y: ground, width: W, height: 22).fill()
+            NSColor(hex: 0x6a6a80).setFill()
+            for i in 0..<5 { NSRect(x: x0 + 20 + CGFloat(i) * 60, y: ground + 6, width: 16, height: 6).fill() }
+            let float = CGFloat(sin(t * 1.5)) * 30 + 30
+            pet(game, face: .happy, pose: .wave, frame: Int(t * 2), x: x0 + W / 2 - 40, ground: ground - float, height: 70)
+            text("МАЛКА СТЪПКА ЗА ПИКСЕЛ…", x0 + 8, y0 + 8, size: 9, color: 0xffffff)
+        case 8: // реклама
+            for i in 0..<10 {
+                NSColor(hex: i % 2 == 0 ? 0xff8fab : 0xffc8dd).setFill()
+                NSRect(x: x0 + CGFloat(i) * W / 10, y: y0, width: W / 10 + 1, height: H).fill()
+            }
+            let pulse = 1 + CGFloat(sin(t * 6)) * 0.12
+            let gs = 5 * pulse
+            drawGrid(iconGold, x: x0 + W - 70 - 4 * gs, y: y0 + 40 - 4 * gs + 30, s: gs, palette: game.color)
+            pet(game, face: .happy, pose: .wave, frame: Int(t * 4), x: x0 + 70, ground: ground + 18, height: 80)
+            text("ПИКСЕЛ 3000!", x0 + W / 2 + 40, y0 + 10, size: 16, color: 0xe63946, center: true)
+            if t > 3 { text("САМО 9,99 МОНЕТИ!", x0 + W / 2 + 40, y0 + H - 34, size: 12, color: 0x1b1b24, center: true) }
+        case 9: // новини
+            NSColor(hex: 0x1d3557).setFill(); screen.fill()
+            NSColor(hex: 0x457b9d).setFill(); NSRect(x: x0, y: y0 + 20, width: W, height: 4).fill()
+            pet(game, face: Int(t * 3) % 5 == 0 ? .blink : .focus, pose: .idle, frame: 0, x: x0 + W / 2, ground: ground + 4, height: 80)
+            NSColor(hex: 0xa8dadc).setFill(); NSRect(x: x0 + 30, y: ground - 22, width: W - 60, height: 44).fill()
+            NSColor(hex: 0xe63946).setFill(); NSRect(x: x0, y: ground + 4, width: W, height: 18).fill()
+            let ticker = "ИЗВЪНРЕДНО: ПИКСЧО МОНТИРА 100 ВИДЕА ЗА ЕДИН ДЕН • КЛИЕНТЪТ ВСЕ ОЩЕ ИСКА ПО-ГОЛЯМО ЛОГО • "
+            text(ticker + ticker, x0 + W - CGFloat(t) * 90, ground + 7, size: 9, color: 0xffffff)
+            text("НОВИНИ", x0 + 8, y0 + 4, size: 11, color: 0xffffff)
         default: // хорър
             let flicker = Int(t * 12) % 7 == 0
             NSColor(hex: flicker ? 0x2b2b3a : 0x050508).setFill(); screen.fill()
@@ -1629,6 +1779,19 @@ final class ClipView: NSView {
         }
         NSGraphicsContext.current?.restoreGraphicsState()
 
+        // накрая пита дали ти харесва
+        if game.time - started >= ClipView.length {
+            NSColor(hex: 0x0b0b14, alpha: 0.8).setFill(); screen.fill()
+            text("ХАРЕСВА ЛИ ТИ?", b.midX, 80, size: 18, color: 0xffffff, center: true)
+            for (r, label, color) in [(yesRect, "ДА", 0x52b788), (noRect, "НЕ", 0xe63946)] {
+                NSColor(hex: color).setFill(); r.fill()
+                NSColor.white.setFill()
+                NSRect(x: r.minX, y: r.minY, width: r.width, height: 2).fill()
+                NSRect(x: r.minX, y: r.maxY - 2, width: r.width, height: 2).fill()
+                text(label, r.midX, r.minY + 8, size: 16, color: 0xffffff, center: true)
+            }
+        }
+
         // таймлайн отдолу, като в програма за монтаж
         let tl = NSRect(x: 8, y: 204, width: b.width - 16, height: 12)
         let segColors = [0x48cae4, 0xc77dff, 0xf4a261, 0x52b788]
@@ -1639,7 +1802,7 @@ final class ClipView: NSView {
         NSColor(hex: 0xe63946).setFill()
         NSRect(x: tl.minX + CGFloat(t / ClipView.length) * tl.width - 1, y: tl.minY - 3, width: 3, height: tl.height + 6).fill()
         text(clipTitles[clip], 10, 222, size: 9, color: 0xffffff)
-        text(String(format: "00:0%d / 00:06", Int(t)), b.width - 92, 222, size: 9, color: 0x8d99ae)
+        text(String(format: "00:0%d / 00:06", Int(min(t, 6))), b.width - 92, 222, size: 9, color: 0x8d99ae)
     }
 }
 
@@ -1703,7 +1866,33 @@ final class Game: NSObject, NSApplicationDelegate {
     var clipView: ClipView?
     var lastClip = -1
 
-    var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning }
+    // магазин, рисуване, желания, тоалетна
+    var shopPanel: NSPanel?
+    var drawPanel: NSPanel?
+    var drawView: DrawLayer?
+    var toolbarPanel: NSPanel?
+    var drawing = false
+    var drawTool = DrawTool.marker
+    var drawColor = 0x2b2b3a
+    var drawCells: [Int: Int] = [:]
+    var newCellsThisSession = 0
+    var fallSpeed: CGFloat = 0
+    var want: Want?
+    var wantSince: Double = 0
+    var lastWantNag: Double = 0
+    var nextWant: Double = 6 * 60
+    var nextIdleLine: Double = 3 * 60
+    var toiletPhase = ToiletPhase.off
+    var toiletTarget: CGFloat = 0
+    var toiletStart: Double = 0
+    var toiletPoop = false
+    var nextToilet: Double = 12 * 60
+    var messes: [MessPixel] = []
+
+    var videoLength: Double { pet.owned.contains("fastedit") ? 20 * 60 : 30 * 60 }
+    var coinMultiplier: Int { pet.owned.contains("monitor2") ? 2 : 1 }
+
+    var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off }
 
     // обновяване
     static let updateRepo = "vaskomontiorsundayhabit-dot/tamagotchi"
@@ -1732,6 +1921,8 @@ final class Game: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         load()
+        loadDrawing()
+        setUpDrawLayer()
 
         window = overlayPanel(NSRect(origin: .zero, size: PetView.size), key: false)
         window.level = .floating
@@ -1778,11 +1969,17 @@ final class Game: NSObject, NSApplicationDelegate {
         let step = min(dt, 0.5)
         time += step
 
-        while pet.workSeconds >= Pet.videoSeconds {
-            pet.workSeconds -= Pet.videoSeconds
+        while pet.workSeconds >= videoLength {
+            pet.workSeconds -= videoLength
             pet.videos += 1
-            say("Готово видео №\(pet.videos)! +40 опит", seconds: 4)
+            let coins = 25 * coinMultiplier
+            earnCoins(coins)
+            say("Готово видео №\(pet.videos)! +40 опит, +\(coins) монети", seconds: 4)
             addXP(40)
+        }
+        if pet.working {
+            pet.workCoinSeconds += step
+            while pet.workCoinSeconds >= 60 { pet.workCoinSeconds -= 60; earnCoins(coinMultiplier) }
         }
         if workingBefore && !pet.working && !pet.asleep && !pet.dead {
             say("Стига толкова, капнах…", seconds: 3)
@@ -1809,19 +2006,22 @@ final class Game: NSObject, NSApplicationDelegate {
         }
 
         if foodPixelsOn && time > nextFoodSpawn {
-            nextFoodSpawn = time + Double.random(in: 2 * 60...5 * 60)
-            if foods.count < 8 { spawnFood() }
+            nextFoodSpawn = time + (pet.owned.contains("magnet") ? Double.random(in: 60...150) : Double.random(in: 2 * 60...5 * 60))
+            if foods.count < 10 { spawnFood() }
         }
         for f in foods { f.view.needsDisplay = true }
 
         updateRoll(step)
         updateFetch(step)
         updateWalk(step)
+        updateLife(step)
+        applyGravity(step)
         updateMouse()
         updateRetro()
         alertView?.needsDisplay = true
         clipView?.needsDisplay = true
-        if let c = clipView, time - c.started > ClipView.length + 0.8 { closeClip() }
+        if let c = clipView, time - c.started > ClipView.length + 15 { closeClip() }
+        shopPanel?.contentView?.needsDisplay = true
         if let a = alertView, time - a.started > 6 { closeAlert() }
 
         if time - lastSave > 30 { save() }
@@ -1896,6 +2096,8 @@ final class Game: NSObject, NSApplicationDelegate {
         case "E": return NSColor(hex: 0x8d99ae)
         case "C": return NSColor(hex: 0x48cae4)
         case "M": return NSColor(hex: 0xc77dff)
+        case "Q": return NSColor(hex: 0x8b5a2b)
+        case "U": return NSColor(hex: 0x5c3a1e)
         default: return nil
         }
     }
@@ -1921,6 +2123,7 @@ final class Game: NSObject, NSApplicationDelegate {
         case .none: break
         }
         if isDragging || rolling || fetchPhase == .running { return .happy }
+        if toiletPhase == .doing { return .focus }
         if anger > 60 { return .angry }
         if pet.health < 40 { return .sick }
         if pet.working { return time < blinkUntil ? .blink : .focus }
@@ -1931,7 +2134,7 @@ final class Game: NSObject, NSApplicationDelegate {
     // --- движение ---
 
     func updateWalk(_ step: Double) {
-        guard wander, !busyMoving, !pet.dead, !pet.asleep, !pet.working, !isDragging, action == .none,
+        guard wander, !busyMoving, !drawing, !pet.dead, !pet.asleep, !pet.working, !isDragging, action == .none,
               let screen = window.screen ?? NSScreen.main else {
             if !busyMoving { walking = false }
             return
@@ -2074,20 +2277,24 @@ final class Game: NSObject, NSApplicationDelegate {
         anger = (anger - 3).clamped()
         start(.love, length: 1.6)
         say(pick(happyLines, avoiding: &lastLine), seconds: 1.8)
+        fulfill(.pet)
     }
 
-    func eat(color: Int) {
-        if pet.fullness > 92 {
-            pet.health = (pet.health - 3).clamped()
-            say("Преядох!", seconds: 2.5)
-        } else {
-            say(pick(eatLines, avoiding: &lastLine), seconds: 2)
+    @discardableResult
+    func eat(color: Int) -> Bool {
+        if pet.fullness >= 90 {
+            start(.angry, length: 1.2)
+            say(["Не мога повече! Преядох!", "Не! Пълен съм!", "Махни това, ще се пръсна!"].randomElement()!, seconds: 2.5)
+            return false
         }
+        say(pick(eatLines, avoiding: &lastLine), seconds: 2)
         pet.fullness = (pet.fullness + 15).clamped()
         anger = (anger - 10).clamped()
         lastFoodColor = color
         start(.eat, length: 1.6)
         addXP(5)
+        fulfill(.color(color))
+        return true
     }
 
     @objc func feed() {
@@ -2097,11 +2304,13 @@ final class Game: NSObject, NSApplicationDelegate {
 
     // пиксели по екрана
 
-    @objc func spawnFood() {
+    @objc func spawnFood() { spawnFood(color: foodColors.randomElement()!) }
+
+    func spawnFood(color: Int) {
         guard let vf = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
         let origin = NSPoint(x: CGFloat.random(in: (vf.minX + 40)...(vf.maxX - 70)),
                              y: CGFloat.random(in: (vf.minY + 40)...(vf.maxY - 70)))
-        foods.append(FoodPixel(color: foodColors.randomElement()!, at: origin, game: self))
+        foods.append(FoodPixel(color: color, at: origin, game: self))
     }
 
     func foodDropped(_ food: FoodPixel) {
@@ -2110,9 +2319,12 @@ final class Game: NSObject, NSApplicationDelegate {
         if window.isVisible && petScreenRect().insetBy(dx: -14, dy: -14).contains(center) {
             if pet.dead { say("…", seconds: 1.5); return }
             if pet.asleep { say("Zzz… (спи)", seconds: 2); return }
-            food.remove()
-            foods.removeAll { $0 === food }
-            eat(color: food.color)
+            if eat(color: food.color) {
+                food.remove()
+                foods.removeAll { $0 === food }
+            } else {
+                food.panel.setFrameOrigin(NSPoint(x: f.minX + (f.midX > petScreenRect().midX ? 70 : -70), y: f.minY + 30))
+            }
             return
         }
         if let vf = food.panel.screen?.visibleFrame ?? NSScreen.main?.visibleFrame {
@@ -2147,6 +2359,7 @@ final class Game: NSObject, NSApplicationDelegate {
             walkTarget = nil
             nextWorkLine = time + Double.random(in: 20...50)
             say("Отварям таймлайна…", seconds: 2.5)
+            fulfill(.work)
         }
         save()
     }
@@ -2190,7 +2403,9 @@ final class Game: NSObject, NSApplicationDelegate {
         anger = (anger - 20).clamped()
         start(.love, length: 1.6)
         say(record ? "Нов рекорд: \(best)! +\(v.score + 25) опит" : "\(v.score) точки! +\(v.score) опит", seconds: 3.5)
+        earnCoins(v.score / 2 + (record ? 10 : 0))
         addXP(v.score + (record ? 25 : 0))
+        fulfill(.play)
     }
 
     // игра: донеси
@@ -2264,6 +2479,8 @@ final class Game: NSObject, NSApplicationDelegate {
                 anger = (anger - 5).clamped()
                 start(.love, length: 1.2)
                 say(pick(fetchLines, avoiding: &lastLine) + " +3 опит", seconds: 2.5)
+                earnCoins(1)
+                fulfill(.play)
                 addXP(3)
             }
         }
@@ -2293,6 +2510,21 @@ final class Game: NSObject, NSApplicationDelegate {
         clipPanel = p
         clipView = v
         say("Виж какво монтирах!", seconds: 2)
+    }
+
+    func clipAnswer(_ liked: Bool) {
+        closeClip()
+        if liked {
+            earnCoins(3)
+            anger = (anger - 5).clamped()
+            start(.love, length: 1.6)
+            say(pick(clipLikeLines, avoiding: &lastLine) + " +3 монети", seconds: 3)
+        } else {
+            annoy(25)
+            start(.angry, length: 2.5)
+            glitchUntil = time + 0.7
+            say(pick(clipDislikeLines, avoiding: &lastLine), seconds: 3.5)
+        }
     }
 
     func closeClip() {
@@ -2349,6 +2581,8 @@ final class Game: NSObject, NSApplicationDelegate {
                             value: nil, action: asleep ? nil : #selector(toggleFetch)),
                 RetroButton(icon: asleep ? iconSun : iconMoon, label: asleep ? "Събуди" : "Приспи", value: nil, action: #selector(toggleSleep)),
                 RetroButton(icon: iconPill, label: "Лекарство", value: nil, action: asleep ? nil : #selector(medicine)),
+                RetroButton(icon: iconShop, label: "Магазин", value: nil, action: #selector(openShop)),
+                RetroButton(icon: iconPencil, label: "Рисувай платформи", value: nil, action: #selector(startDrawing)),
             ]
         }
         let pr = petScreenRect()
@@ -2437,6 +2671,12 @@ final class Game: NSObject, NSApplicationDelegate {
             menu.addItem(.separator())
         }
         item("\(pet.name) · ниво \(pet.level) · опит \(pet.xp)/\(pet.xpNeeded) · видеа \(pet.videos)", nil)
+        item("Монети: \(pet.coins)", nil)
+        if let w = want { item("Иска: \(wantText(w))", nil) }
+        menu.addItem(.separator())
+        item("Магазин…", #selector(openShop))
+        item(drawing ? "Спри рисуването" : "Рисувай с пиксели (платформи)", drawing ? #selector(stopDrawingAction) : #selector(startDrawing))
+        item("Изтрий всичко нарисувано", #selector(clearDrawingAction), enabled: !drawCells.isEmpty)
         menu.addItem(.separator())
         item(window.isVisible ? "Скрий" : "Покажи", #selector(toggleWindow))
         item("Повикай в ъгъла", #selector(callHome))
@@ -2460,6 +2700,8 @@ final class Game: NSObject, NSApplicationDelegate {
     }
 
     @objc func toggleWander() { wander.toggle(); walkTarget = nil }
+    @objc func stopDrawingAction() { stopDrawing() }
+    @objc func clearDrawingAction() { clearDrawing() }
 
     @objc func callHome() {
         guard let vf = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
