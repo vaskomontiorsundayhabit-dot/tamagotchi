@@ -2007,7 +2007,7 @@ final class Game: NSObject, NSApplicationDelegate {
 
         if foodPixelsOn && time > nextFoodSpawn {
             nextFoodSpawn = time + (pet.owned.contains("magnet") ? Double.random(in: 60...150) : Double.random(in: 2 * 60...5 * 60))
-            if foods.count < 10 { spawnFood() }
+            if foods.count < 10 { spawnFoodNow() }
         }
         for f in foods { f.view.needsDisplay = true }
 
@@ -2304,7 +2304,7 @@ final class Game: NSObject, NSApplicationDelegate {
 
     // пиксели по екрана
 
-    @objc func spawnFood() { spawnFood(color: foodColors.randomElement()!) }
+    @objc func spawnFoodNow() { spawnFood(color: foodColors.randomElement()!) }
 
     func spawnFood(color: Int) {
         guard let vf = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
@@ -2682,7 +2682,7 @@ final class Game: NSObject, NSApplicationDelegate {
         item("Повикай в ъгъла", #selector(callHome))
         item("Разхожда се", #selector(toggleWander), on: wander)
         item("Пиксели-храна по екрана", #selector(toggleFoodPixels), on: foodPixelsOn)
-        if foodPixelsOn { item("Пусни пиксел сега", #selector(spawnFood), enabled: foods.count < 12) }
+        if foodPixelsOn { item("Пусни пиксел сега", #selector(spawnFoodNow), enabled: foods.count < 12) }
         item("Смени името…", #selector(rename))
         if #available(macOS 13.0, *) {
             item("Пускай при включване", #selector(toggleLogin), on: SMAppService.mainApp.status == .enabled)
