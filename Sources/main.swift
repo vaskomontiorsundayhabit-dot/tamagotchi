@@ -1608,14 +1608,11 @@ final class Game: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDeleg
 
     @objc func installUpdate() {
         guard let url = availableURL, !updating else { return }
-        let target = Bundle.main.bundleURL
+        // Ако macOS пуска приложението от скрито временно копие (App Translocation),
+        // новата версия отива направо в Applications.
+        var target = Bundle.main.bundleURL
         if target.path.contains("/AppTranslocation/") {
-            NSApp.activate(ignoringOtherApps: true)
-            let alert = NSAlert()
-            alert.messageText = "Премести приложението в Applications"
-            alert.informativeText = "Оттам ще може да се обновява само."
-            alert.runModal()
-            return
+            target = URL(fileURLWithPath: "/Applications/Tamagotchi.app")
         }
         updating = true
         say("Обновявам се…", seconds: 60)
