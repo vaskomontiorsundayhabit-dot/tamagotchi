@@ -169,7 +169,7 @@ extension Game {
         if let deadline = pet.orderDeadline, Date() > deadline, let job = pet.orderText {
             pet.orderText = nil
             pet.orderDeadline = nil
-            nextOrder = time + Double.random(in: 40 * 60...90 * 60)
+            nextOrder = time + Double.random(in: 10 * 60...20 * 60)
             annoy(20, reason: "изтървах срока на клиента")
             start(.angry, length: 2)
             say("Клиентът е бесен! Изтървах срока за \(job)!", seconds: 4)
@@ -187,7 +187,7 @@ extension Game {
         say("Клиентът е доволен от „\(job)“! +\(pet.orderReward) монети", seconds: 4)
         pet.orderText = nil
         pet.orderDeadline = nil
-        nextOrder = time + Double.random(in: 40 * 60...90 * 60)
+        nextOrder = time + Double.random(in: 10 * 60...20 * 60)
     }
 
     var orderText: String? {
@@ -232,21 +232,52 @@ extension Game {
     func fileDropped(_ names: [String]) {
         let name = names.first ?? "файл"
         if pet.dead { return }
+        let ext = (name as NSString).pathExtension.lowercased()
+        let video = ["mp4", "mov", "m4v", "avi", "mkv"].contains(ext)
+        let audio = ["mp3", "wav", "m4a", "aac"].contains(ext)
         if pet.asleep {
             pet.asleep = false
             say("Сега ли?! Добре, добре… ставам.", seconds: 2.5)
         }
-        if isSick { say("Болен съм… но ще го погледна по-късно.", seconds: 3); return }
-        sfx("Pop")
-        if pet.working {
-            say("Добавям „\(name)“ в таймлайна!", seconds: 3)
+        // не е видео или музика: ядосва се
+        guard video || audio else {
+            annoy(10, reason: "ми даде грешен файл")
+            start(.angry, length: 2)
+            glitchUntil = time + 0.4
+            sfx("Funk", every: 1)
+            let lines: [String]
+            switch ext {
+            case "jpg", "jpeg", "png", "gif", "heic", "webp":
+                lines = ["Снимка?! Аз монтирам видео, не албуми!", "Една снимка не е клип! Дай ми .mp4!",
+                         "Това е за приятелката, тя е фотографът!"]
+            case "pdf", "doc", "docx", "txt", "pages", "rtf":
+                lines = ["Документ?! Аз съм монтажист, не счетоводител!", "Не чета, аз монтирам!", "Махни тоя .\(ext)!"]
+            case "xls", "xlsx", "csv", "numbers":
+                lines = ["Таблица?! Цифри не се монтират!", "Ще ми се завие свят от тия клетки!"]
+            case "zip", "rar", "7z", "dmg":
+                lines = ["Архив? Разопаковай го сам!", "Какво има вътре? Не искам да знам!"]
+            case "":
+                lines = ["Папка?! Аз искам файл с видео!", "Какво е това без разширение?!"]
+            default:
+                lines = ["„.\(ext)“?! Дай ми .mp4, .mov или .mp3!", "Това не е видео! ГРРР!", "С това не мога да монтирам!"]
+            }
+            say(lines.randomElement()!, seconds: 3.5)
             return
         }
-        toggleWork()
-        if goingToWork {
-            let line = Bool.random() ? "„\(name)“? " + fileDropLines.randomElement()! : fileDropLines.randomElement()!
-            say(line, seconds: 3)
+        if isSick { say("Болен съм… но ще го погледна по-късно.", seconds: 3); return }
+        start(.love, length: 1.5)
+        sfx("Pop")
+        anger = (anger - 5).clamped()
+        let happy = audio
+            ? ["Музика! Ще я сложа за фон!", "Ооо, какъв бийт! Монтирам по него!", "„\(name)“ ще звучи страхотно в клипа!"]
+            : (ext == "mov" ? ["О, .mov! Направо от камерата! Почвам!", "Качествен материал! Обичам .mov!"]
+                : ["Видео! Ура! Почвам!", "Ооо, нов материал! Почвам!", "Кой е снимал това? Добре, монтирам!"])
+        if pet.working {
+            say(audio ? "Слагам „\(name)“ за музика в таймлайна!" : "Добавям „\(name)“ в таймлайна!", seconds: 3)
+            return
         }
+        say(happy.randomElement()!, seconds: 3)
+        toggleWork()
     }
 
     // --- приятелка: фотограф (храни се, спи, работи, кръщава се) ---
@@ -294,11 +325,11 @@ extension Game {
             }
             if friendWorkSeconds >= 60 {
                 friendWorkSeconds -= 60
-                earnCoins(1)
                 friendShots += 1
-                if friendShots % 15 == 0 {
-                    earnCoins(15)
-                    friendSay("Готова фотосесия! +15 монети", 3.5)
+                let lens = pet.owned.contains("lens")
+                if friendShots % (lens ? 10 : 15) == 0 {
+                    earnCoins(lens ? 25 : 15)
+                    friendSay("Готова фотосесия! +\(lens ? 25 : 15) монети", 3.5)
                 }
             }
             if time > nextFriendLine && time > v.textUntil {

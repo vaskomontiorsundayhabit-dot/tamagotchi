@@ -3,6 +3,8 @@
 
 import AppKit
 
+enum RatGoal { case food(FoodPixel), pixel, ball }
+
 let ratAngryLines = ["Цик! Гладен съм! Забрави ме!", "Цик-цик! Къде ми е храната?!", "Сърдит съм ти, цик!",
                      "Никой не се грижи за мен… цик.", "ЦИК! Купичката е празна!"]
 let ratHappyLines = ["Цик!", "Цик-цик!", "Хи-цик!", "Мрън… цик.", "Обичам те, цик!"]
@@ -15,7 +17,10 @@ final class RatView: NSView {
     var text: String?
     var textUntil: Double = 0
     var heartsUntil: Double = 0
+    var loot = 0                     // 1 = открадната частица, 2 = топката
     static let size = NSSize(width: 170, height: 66)
+    /// Къде е върхът на опашката, докато виси (от долния край на прозорчето).
+    static let tailTop: CGFloat = 46
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { game?.ratClicked() }
@@ -42,7 +47,7 @@ final class RatView: NSView {
         let x = (bounds.width - w) / 2, y = bounds.height - h - 2
         let palette: (Character) -> NSColor? = { c in c == "R" ? NSColor(hex: 0xff8fab) : game.color(c) }
         if hanging {
-            // виси за опашката: главата надолу
+            // виси за опашката: опашката горе (в ръката), главата надолу
             let ctx = NSGraphicsContext.current
             ctx?.saveGraphicsState()
             let cy = bounds.height - w / 2 - 2
@@ -51,10 +56,21 @@ final class RatView: NSView {
             tr.rotate(byDegrees: -90)
             tr.translateX(by: -bounds.midX, yBy: -cy)
             tr.concat()
-            drawGrid(g, x: x, y: cy - h / 2, s: s, flip: true, palette: palette)
+            drawGrid(g, x: x, y: cy - h / 2, s: s, flip: false, palette: palette)
             ctx?.restoreGraphicsState()
+            // крачетата мърдат
+            if Int(game.time * 8) % 2 == 0 {
+                NSColor(hex: 0x2b2b3a).setFill()
+                NSRect(x: bounds.midX + h / 2 - 1, y: bounds.height - 14, width: 3, height: 3).fill()
+            }
         } else {
             drawGrid(g, x: x, y: y, s: s, flip: !facingLeft, palette: palette)
+            if loot == 1 {
+                // откраднат пиксел в устата
+                let mx = facingLeft ? x - 4 : x + w - 2
+                NSColor(hex: 0x2b2b3a).setFill(); NSRect(x: mx - 1, y: y + 9, width: 8, height: 8).fill()
+                (game.color("B") ?? .yellow).setFill(); NSRect(x: mx, y: y + 10, width: 6, height: 6).fill()
+            }
         }
         if game.ratAngry && !hanging {
             // сърдито знакче над главата
@@ -180,7 +196,8 @@ extension Game {
 
     var ratHungryMinutes: Double { Date().timeIntervalSince(ratFedAt) / 60 }
     var ratLonelyMinutes: Double { Date().timeIntervalSince(ratPlayedAt) / 60 }
-    var ratAngry: Bool { ratHungryMinutes > 60 || ratLonelyMinutes > 120 }
+    var ratHungerLimit: Double { pet.owned.contains("feeder") ? 120 : 60 }
+    var ratAngry: Bool { ratHungryMinutes > ratHungerLimit || ratLonelyMinutes > (pet.owned.contains("wheel") ? 240 : 120) }
     var hasRat: Bool { pet.owned.contains("rat") }
     var ratIsOut: Bool { hasRat && !ratInCage && ratPanel != nil }
 
@@ -194,6 +211,12 @@ extension Game {
         if ratInCage, let c = cagePanel { return NSPoint(x: c.frame.midX, y: c.frame.minY) }
         if let p = ratPanel { return NSPoint(x: p.frame.midX, y: p.frame.minY) }
         return NSPoint(x: petScreenRect().midX, y: feetScreenY)
+    }
+
+    /// Покривът на клетката (на него може да се стъпва).
+    var cageRoof: NSRect? {
+        guard let c = cagePanel, !carryingCage else { return nil }
+        return NSRect(x: c.frame.midX - 46, y: c.frame.maxY - 40, width: 92, height: 6)
     }
 
     func setUpCage() {
@@ -219,7 +242,7 @@ extension Game {
         let has = hasRat && window.isVisible
         if !has {
             ratPanel?.orderOut(nil); ratPanel = nil; ratView = nil; chasing = false; carryingRat = false
-            cagePanel?.orderOut(nil); cagePanel = nil; cageView = nil
+            cagePanel?.orderOut(nil); cagePanel = nil; cageView = nil; carryingCage = false
             return
         }
         setUpCage()
@@ -238,6 +261,7 @@ extension Game {
         v.needsDisplay = true
         cageView?.needsDisplay = true
         updateRatMood()
+        updateCarriedCage()
         // кликовете минават през празните части на прозорчетата
         let m = NSEvent.mouseLocation
         let ratHit = NSRect(x: p.frame.midX - 28, y: p.frame.minY, width: 56, height: 28).contains(m)
@@ -251,6 +275,7 @@ extension Game {
         if ratInCage && !carryingRat {
             if p.isVisible { p.orderOut(nil) }
             chasing = false
+            dropRatLoot(caught: false)
             return
         }
         if !p.isVisible { p.orderFrontRegardless() }
@@ -264,50 +289,53 @@ extension Game {
             ratSay("Уф! Цик!", 1.5)
         }
         if carryingRat {
-            // за опашката, в ръката му
+            // виси за опашката от ръката му
             v.hanging = true
             v.running = false
-            let hx = facingLeft ? pr.minX + 10 : pr.maxX - 10
-            p.setFrameOrigin(NSPoint(x: hx - half, y: pr.minY + pr.height * 0.3 - 16))
+            dropRatLoot(caught: false)
+            let hx = facingLeft ? pr.minX + 8 : pr.maxX - 8
+            let handY = pr.minY + pr.height * 0.42
+            p.setFrameOrigin(NSPoint(x: hx - half, y: handY - RatView.tailTop))
             return
         }
         v.hanging = false
+        v.loot = ratHasBall ? 2 : (ratHasPixel ? 1 : 0)
         let vf = screenAt(NSPoint(x: o.x + half, y: o.y + 10))?.visibleFrame ?? .zero
+        let lo = vf.minX - half + 30, hi = vf.maxX - half - 30
+        let petOnFloor = abs(feetScreenY - vf.minY) < 10
 
-        // краде пиксел от храната на Пиксчо
-        if let food = ratFood {
-            if !foods.contains(where: { $0 === food }) { ratFood = nil; return }
-            let f = food.panel.frame
-            let target = NSPoint(x: f.midX - half, y: f.minY - 4)
-            let dx = target.x - o.x, dy = target.y - o.y
-            let d = hypot(dx, dy)
-            let sp = CGFloat(260 * step)
+        // пада, ако е във въздуха
+        if o.y > vf.minY + 0.5 { o.y = max(vf.minY, o.y - CGFloat(520 * step)) } else { o.y = vf.minY }
+
+        // тича към нещо: пиксел на пода, паднал пиксел на Пиксчо или топката
+        if let goal = ratGoal {
+            let gx: CGFloat
+            switch goal {
+            case .food(let f):
+                guard foods.contains(where: { $0 === f }), f.onFloor else { ratGoal = nil; p.setFrameOrigin(o); return }
+                gx = f.panel.frame.midX - half
+            case .pixel:
+                guard isHyper, petOnFloor, !busyMoving || chasing else { ratGoal = nil; p.setFrameOrigin(o); return }
+                gx = pr.midX - half
+            case .ball:
+                guard let b = ball, fetchPhase == .waiting, !b.flying, !b.carried else { ratGoal = nil; p.setFrameOrigin(o); return }
+                gx = b.panel.frame.midX - half
+            }
+            let dx = gx - o.x
             v.running = true
             v.facingLeft = dx < 0
-            if d < sp {
-                food.remove()
-                foods.removeAll { $0 === food }
-                ratFood = nil
-                ratFedAt = Date()
-                v.heartsUntil = time + 1.5
-                ratSay("Ням! Цик!", 2)
-                sfx("Pop")
-                if !pet.asleep && window.isVisible {
-                    say(["Ей! \(ratLabel.capitalized) ми изяде пиксела!", "Това беше МОЯТ пиксел, \(ratLabel)!",
-                         "Добре де, яж… и без това беше гладен."].randomElement()!, seconds: 3)
-                }
+            let sp = CGFloat(230 * step)
+            if abs(dx) <= sp + 4 {
+                o.x = gx
+                ratGoal = nil
+                ratReached(goal)
             } else {
-                o.x += dx / d * sp
-                o.y += dy / d * sp
+                o.x += dx > 0 ? sp : -sp
             }
             p.setFrameOrigin(o)
             return
         }
 
-        // пада, ако е във въздуха
-        if o.y > vf.minY + 0.5 { o.y = max(vf.minY, o.y - CGFloat(520 * step)) } else { o.y = vf.minY }
-
-        let lo = vf.minX - half + 30, hi = vf.maxX - half - 30
         if chasing {
             // бяга от Пиксчо; при стената се обръща и минава покрай него (без да трепери)
             v.running = true
@@ -328,7 +356,12 @@ extension Game {
                 chasing = false
                 walking = false
                 ratPlayedAt = Date()
-                if caught {
+                if ratHasPixel || ratHasBall {
+                    say(caught ? (ratHasBall ? "Хванах те! Дай ми топката!" : "Хванах те! Върни ми пиксела!")
+                        : (ratHasBall ? "Избяга с топката ми! ГРРР!" : "Избяга с пиксела ми! ГРРР!"), seconds: 3)
+                    if !caught { annoy(8, reason: "плъхът ми открадна нещо") }
+                    dropRatLoot(caught: caught)
+                } else if caught {
                     start(.love, length: 2)
                     v.heartsUntil = time + 2
                     sfx("Purr")
@@ -338,52 +371,147 @@ extension Game {
                 }
                 saveWindowPosition()
             }
-        } else {
-            if ratTarget == nil || abs(ratTarget! - o.x) < 3 {
-                ratTarget = Double.random(in: 0..<1) < 0.02 ? CGFloat.random(in: lo...max(lo + 1, hi)) : nil
-            }
-            v.running = false
-            if let tx = ratTarget {
-                let dx = tx - o.x
-                v.facingLeft = dx < 0
-                v.running = true
-                o.x += (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(70 * step))
-            } else if ratAngry {
-                // сърдит: обръща гръб на Пиксчо
-                v.facingLeft = pr.midX > o.x + half
-            }
-            o.x = min(max(o.x, lo), hi)
-            // понякога гони Пиксчо сам (играят си)
-            let onFloor = abs(feetScreenY - vf.minY) < 6
-            if time > nextChase && onFloor && !pet.asleep && !pet.working && !busyMoving && !isDragging && hidePhase == .off
-                && !ratAngry && errands.isEmpty {
-                nextChase = time + Double.random(in: 180...420)
-                chasing = true
-                chaseUntil = time + 9
-                ratRunDir = o.x + half > pr.midX ? 1 : -1
-                say("\(ratLabel.capitalized)! Ела тук!", seconds: 2)
-                sfx("Pop")
-            }
-            // яде от пикселите на Пиксчо
-            if time > nextRatSnack, let food = foods.filter({ !$0.flying }).randomElement() {
-                nextRatSnack = time + (ratHungryMinutes > 40 ? Double.random(in: 3 * 60...6 * 60) : Double.random(in: 8 * 60...16 * 60))
-                ratFood = food
-                ratSay("Пиксел! Цик!", 1.5)
+            p.setFrameOrigin(o)
+            return
+        }
+
+        if ratTarget == nil || abs(ratTarget! - o.x) < 3 {
+            ratTarget = Double.random(in: 0..<1) < 0.02 ? CGFloat.random(in: lo...max(lo + 1, hi)) : nil
+        }
+        v.running = false
+        if let tx = ratTarget {
+            let dx = tx - o.x
+            v.facingLeft = dx < 0
+            v.running = true
+            o.x += (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(70 * step))
+        } else if ratAngry {
+            // сърдит: обръща гръб на Пиксчо
+            v.facingLeft = pr.midX > o.x + half
+        }
+        o.x = min(max(o.x, lo), hi)
+        p.setFrameOrigin(o)
+
+        let free = !pet.asleep && hidePhase == .off && !isDragging && errands.isEmpty
+        // понякога гони Пиксчо сам (играят си)
+        if time > nextChase && petOnFloor && free && !pet.working && !busyMoving && !ratAngry {
+            nextChase = time + Double.random(in: 180...420)
+            startRatChase()
+            say("\(ratLabel.capitalized)! Ела тук!", seconds: 2)
+            sfx("Pop")
+            return
+        }
+        // краде паднали пиксели от Пиксчо, когато е полудял
+        if isHyper && !lostPixels.isEmpty && petOnFloor && time > nextRatSteal && !chasing {
+            nextRatSteal = time + Double.random(in: 15...40)
+            ratGoal = .pixel
+            ratSay("Пиксел! Мой!", 1.5)
+            return
+        }
+        // краде топката, докато играят на „донеси“
+        if let b = ball, fetchPhase == .waiting, !b.flying, !b.carried, time > nextBallSteal {
+            nextBallSteal = time + Double.random(in: 40...120)
+            if Int.random(in: 0..<100) < 40 { ratGoal = .ball; ratSay("Топка! Цик!", 1.5); return }
+        }
+        // яде паднали на пода пиксели
+        if time > nextRatSnack {
+            let onFloorFoods = foods.filter { $0.onFloor && !$0.view.held }
+            if let food = onFloorFoods.min(by: { abs($0.panel.frame.midX - (o.x + half)) < abs($1.panel.frame.midX - (o.x + half)) }) {
+                nextRatSnack = time + (ratHungryMinutes > 40 ? Double.random(in: 40...90) : Double.random(in: 2 * 60...5 * 60))
+                ratGoal = .food(food)
+                ratSay("Пиксел на пода! Цик!", 1.5)
+            } else {
+                nextRatSnack = time + 20
             }
         }
-        p.setFrameOrigin(o)
+    }
+
+    func startRatChase() {
+        guard let p = ratPanel else { return }
+        chasing = true
+        chaseUntil = time + 10
+        ratRunDir = p.frame.midX > petScreenRect().midX ? 1 : -1
+    }
+
+    private func ratReached(_ goal: RatGoal) {
+        switch goal {
+        case .food(let food):
+            food.remove()
+            foods.removeAll { $0 === food }
+            ratFedAt = Date()
+            ratView?.heartsUntil = time + 1.5
+            ratSay("Ням! Цик!", 2)
+            sfx("Pop")
+            if !pet.asleep && window.isVisible && hidePhase == .off {
+                start(.angry, length: 1.5)
+                annoy(6, reason: "плъхът ми изяде пиксела")
+                say(["ЕЙ! \(ratLabel.capitalized) ми изяде пиксела!", "Това беше МОЯТ пиксел, \(ratLabel)!",
+                     "Не яж от пода… и от моята храна!"].randomElement()!, seconds: 3)
+            }
+        case .pixel:
+            if !lostPixels.isEmpty { lostPixels.removeFirst() }
+            ratHasPixel = true
+            sfx("Pop")
+            ratSay("Хи-хи! Цик!", 1.5)
+            start(.angry, length: 1.5)
+            say("ЕЙ! Открадна ми пиксел! ВЪРНИ ГО!", seconds: 2.5)
+            if !chasing && !busyMoving { startRatChase() }
+        case .ball:
+            guard let b = ball else { return }
+            b.carried = true
+            ratHasBall = true
+            sfx("Pop")
+            ratSay("Моя е! Цик!", 1.5)
+            say("Ей! \(ratLabel.capitalized) ми открадна топката!", seconds: 2.5)
+            if !chasing && !busyMoving { startRatChase() }
+        }
+    }
+
+    /// Плъхът пуска това, което е откраднал.
+    func dropRatLoot(caught: Bool) {
+        if ratHasBall {
+            ratHasBall = false
+            if let b = ball {
+                b.carried = false
+                b.launch(.zero, thrown: false)
+            }
+        }
+        if ratHasPixel {
+            ratHasPixel = false
+            if caught { start(.love, length: 1.2); say("Пикселът ми е пак мой!", seconds: 2) }
+        }
+    }
+
+    /// Топката лети с плъха, докато я държи.
+    func updateRatBall() {
+        guard ratHasBall, let b = ball, let p = ratPanel else { return }
+        let left = ratView?.facingLeft ?? false
+        b.panel.setFrameOrigin(NSPoint(x: left ? p.frame.midX - 34 : p.frame.midX + 12, y: p.frame.minY + 4))
+    }
+
+    /// При тревога носи и клетката.
+    func updateCarriedCage() {
+        guard let c = cagePanel else { return }
+        if carryingCage {
+            let pr = petScreenRect()
+            let x = facingLeft ? pr.maxX - 40 : pr.minX - c.frame.width + 40
+            c.setFrameOrigin(NSPoint(x: x, y: pr.minY + 6))
+            if hidePhase == .off && !jumping {
+                carryingCage = false
+                c.setFrameOrigin(cageHome)
+            }
+        }
     }
 
     /// Плъхът се сърди, когато е гладен или самотен.
     func updateRatMood() {
         guard ratAngry, time > nextRatComplain, !pet.dead, window.isVisible else { return }
         nextRatComplain = time + Double.random(in: 4 * 60...8 * 60)
-        ratSay(ratHungryMinutes > 60 ? pick(ratAngryLines, avoiding: &lastLine) : "Цик… никой не си играе с мен.", 3)
+        ratSay(ratHungryMinutes > ratHungerLimit ? pick(ratAngryLines, avoiding: &lastLine) : "Цик… никой не си играе с мен.", 3)
         sfx("Funk", every: 5)
         guard !pet.asleep, hidePhase == .off else { return }
-        say(ratHungryMinutes > 60 ? "Ох! Забравих да нахраня \(ratLabel)!" : "Ох… отдавна не съм си играл с \(ratLabel).", seconds: 3)
+        say(ratHungryMinutes > ratHungerLimit ? "Ох! Забравих да нахраня \(ratLabel)!" : "Ох… отдавна не съм си играл с \(ratLabel).", seconds: 3)
         if errands.isEmpty && !pet.working && !playingGame && Bool.random() {
-            runErrands([ratHungryMinutes > 60 ? .feedRat : .cuddleRat])
+            runErrands([ratHungryMinutes > ratHungerLimit ? .feedRat : .cuddleRat])
         }
     }
 
@@ -391,7 +519,9 @@ extension Game {
     func updateRatCare(_ idle: Bool) {
         guard hasRat, idle, errands.isEmpty, !busyMoving, !pet.working, !playingGame, questionPanel == nil,
               time > nextRatCare else { return }
-        nextRatCare = time + Double.random(in: 12 * 60...25 * 60)
+        nextRatCare = time + Double.random(in: 6 * 60...12 * 60)
+        // буден е, а плъхът е в клетката: пуска го да потича
+        if ratInCage && Int.random(in: 0..<100) < 70 { runErrands([.ratOut]); return }
         if Int.random(in: 0..<100) < 30 { return }   // забрави
         if ratHungryMinutes > 25 { runErrands([.feedRat]); return }
         var options: [Errand] = [.cuddleRat, .cuddleRat]
@@ -454,7 +584,7 @@ extension Game {
             say(wasAngry ? "Прости ми, \(ratLabel)! Забравих те… Ето ти храна." : "Ето ти пиксели, \(ratLabel)!", seconds: 3)
             addXP(2)
         case .cuddleRat:
-            if ratHungryMinutes > 60 {
+            if ratHungryMinutes > ratHungerLimit {
                 start(.angry, length: 1.5)
                 glitchUntil = time + 0.4
                 ratSay("ЦИК! (хап)", 2)
@@ -491,7 +621,7 @@ extension Game {
     func ratClicked() {
         sfx("Purr")
         if ratAngry {
-            ratSay(ratHungryMinutes > 60 ? "Цик! Гладен съм!" : "Цик… скучно ми е.", 2.5)
+            ratSay(ratHungryMinutes > ratHungerLimit ? "Цик! Гладен съм!" : "Цик… скучно ми е.", 2.5)
             if !pet.asleep { say("\(ratLabel.capitalized) ми се сърди… трябва да се погрижа за него.", seconds: 3) }
             return
         }
@@ -510,6 +640,24 @@ extension Game {
             ratSay("Свобода! Цик!", 2)
         } else if !pet.asleep && errands.isEmpty && !busyMoving && !pet.working {
             runErrands([.ratToCage])
+        }
+    }
+
+    /// Пикселите, които падат, стигат до пода; там плъхът може да ги изяде.
+    func updateFallingFood(_ step: Double) {
+        for f in foods where f.falls && !f.flying && !f.view.held {
+            let fr = f.panel.frame
+            let vf = screenAt(NSPoint(x: fr.midX, y: fr.midY))?.visibleFrame ?? .zero
+            let floorY = vf.minY - 8
+            if fr.minY > floorY + 0.5 {
+                f.onFloor = false
+                f.fallV += CGFloat(900 * step)
+                f.panel.setFrameOrigin(NSPoint(x: fr.minX, y: max(floorY, fr.minY - f.fallV * CGFloat(step))))
+            } else {
+                if !f.onFloor { sfx("Tink", every: 1) }
+                f.fallV = 0
+                f.onFloor = true
+            }
         }
     }
 

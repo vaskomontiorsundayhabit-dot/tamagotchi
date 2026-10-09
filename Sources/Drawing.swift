@@ -356,6 +356,10 @@ extension Game {
             let top = r.maxY
             if top <= feet + 3 && top > best { best = top; onWindow = r }
         }
+        // покривът на клетката на плъха
+        if let r = cageRoof, r.maxX > x0 + 4 && r.minX < x1 - 4 && r.maxY <= feet + 3 && r.maxY > best {
+            best = r.maxY; onWindow = nil
+        }
         let c0 = Int(floor(x0 / drawCell)), c1 = Int(floor(x1 / drawCell))
         for (k, _) in drawCells {
             let (cx, cy) = cellFromKey(k)
@@ -368,7 +372,7 @@ extension Game {
     }
 
     func applyGravity(_ step: Double) {
-        guard window.isVisible, !isDragging, !busyMoving else { fallSpeed = 0; return }
+        guard window.isVisible, !isDragging, !movingSelf else { fallSpeed = 0; return }
         let wf = window.frame
         let feet = wf.maxY - view.feetY
         let x0 = wf.minX + view.bodyX0, x1 = wf.minX + view.bodyX1

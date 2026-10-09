@@ -2,7 +2,7 @@
 
 import AppKit
 
-enum HidePhase { case off, grabRat, running, hidden, peeking }
+enum HidePhase { case off, grabRat, grabCage, running, hidden, peeking }
 
 let peekLines = ["Отиде ли си?", "Тихо ли е вече?", "Страх ме е…", "Някой още ли звъни?",
                  "Ще изляза само ако е чисто…", "Пссст… опасно ли е?", "Аз не съм тук.", "Чувам те, звънче!"]
@@ -238,6 +238,11 @@ extension Game {
                 .randomElement()!, seconds: 2)
             return
         }
+        if cagePanel != nil && !carryingCage {
+            hidePhase = .grabCage
+            say(["ТРЕВОГА! Взимам клетката!", "АААА! Клетката, бързо!"].randomElement()!, seconds: 2)
+            return
+        }
         beginHideRun()
         say(["ТРЕВОГА! Крия се!", "АААА! Бягам!", "Опасност! Не ме търсете!"].randomElement()!, seconds: 2)
     }
@@ -275,14 +280,25 @@ extension Game {
         case .off:
             return
         case .grabRat:
+            smashWhileRunning()
             guard ratIsOut, let rp = ratPanel else { beginHideRun(); return }
             if walkTo(feet: NSPoint(x: rp.frame.midX, y: rp.frame.minY), speed: 900, step) {
                 carryingRat = true
                 ratSay("ЦИИИК!", 1.5)
                 sfx("Pop")
+                if cagePanel != nil { hidePhase = .grabCage } else { beginHideRun() }
+            }
+        case .grabCage:
+            smashWhileRunning()
+            guard let c = cagePanel else { beginHideRun(); return }
+            if walkTo(feet: NSPoint(x: c.frame.midX, y: c.frame.minY), speed: 900, step) {
+                cageHome = c.frame.origin
+                carryingCage = true
+                sfx("Pop")
                 beginHideRun()
             }
         case .running:
+            smashWhileRunning()
             walking = true
             facingLeft = hideLeft
             if moveWindow(toward: NSPoint(x: hideX(peek: false), y: y), speed: CGFloat(700 * step)) {

@@ -76,6 +76,17 @@ final class QuestionView: NSView {
     var angry = false
 
     static let size = NSSize(width: 300, height: 96)
+    static let font = NSFont.monospacedSystemFont(ofSize: 11, weight: .heavy)
+
+    /// Височината на текста (въпросът може да е на няколко реда).
+    static func textHeight(_ text: String) -> CGFloat {
+        let a: [NSAttributedString.Key: Any] = [.font: font]
+        return ceil((text as NSString).boundingRect(with: NSSize(width: size.width - 24, height: 400),
+                                                    options: [.usesLineFragmentOrigin], attributes: a).height)
+    }
+
+    static func height(for q: Question) -> CGFloat { max(96, textHeight("ОТГОВОРИ МИ! " + q.text.uppercased()) + 66) }
+
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
@@ -83,7 +94,7 @@ final class QuestionView: NSView {
         let n = CGFloat(question?.answers.count ?? 2)
         let w: CGFloat = 96, gap: CGFloat = 10
         let x0 = (bounds.width - (n * w + (n - 1) * gap)) / 2
-        return (0..<Int(n)).map { NSRect(x: x0 + CGFloat($0) * (w + gap), y: 54, width: w, height: 28) }
+        return (0..<Int(n)).map { NSRect(x: x0 + CGFloat($0) * (w + gap), y: bounds.height - 42, width: w, height: 28) }
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -101,7 +112,7 @@ final class QuestionView: NSView {
         let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .heavy),
                                                 .foregroundColor: NSColor(hex: angry ? 0xff8fab : 0xffffff)]
         let text = (angry ? "ОТГОВОРИ МИ! " : "") + q.text.uppercased()
-        (text as NSString).draw(with: NSRect(x: 12, y: 10, width: b.width - 24, height: 40),
+        (text as NSString).draw(with: NSRect(x: 12, y: 10, width: b.width - 24, height: b.height - 56),
                                 options: [.usesLineFragmentOrigin], attributes: a)
         for (i, r) in buttonRects().enumerated() {
             NSColor(hex: i == 0 ? 0x52b788 : (i == 1 ? 0xe63946 : 0x48cae4)).setFill(); r.fill()
@@ -218,10 +229,11 @@ extension Game {
     func ask(_ q: Question, index: Int) {
         guard window.isVisible else { return }
         questionIndex = index
-        let v = QuestionView(frame: NSRect(origin: .zero, size: QuestionView.size))
+        let qs = NSSize(width: QuestionView.size.width, height: QuestionView.height(for: q))
+        let v = QuestionView(frame: NSRect(origin: .zero, size: qs))
         v.game = self
         v.question = q
-        let p = overlayPanel(NSRect(origin: .zero, size: QuestionView.size), key: false)
+        let p = overlayPanel(NSRect(origin: .zero, size: qs), key: false)
         p.contentView = v
         positionQuestion(p)
         p.orderFrontRegardless()
@@ -236,7 +248,7 @@ extension Game {
         let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
         var o = NSPoint(x: pr.midX - QuestionView.size.width / 2, y: pr.maxY + 8)
         o.x = min(max(o.x, vf.minX + 4), vf.maxX - QuestionView.size.width - 4)
-        o.y = min(max(o.y, vf.minY + 4), vf.maxY - QuestionView.size.height - 4)
+        o.y = min(max(o.y, vf.minY + 4), vf.maxY - p.frame.height - 4)
         if abs(p.frame.minX - o.x) > 0.5 || abs(p.frame.minY - o.y) > 0.5 { p.setFrameOrigin(o) }
     }
 
@@ -309,6 +321,10 @@ extension Game {
             if abs(px - cx) < 450 && abs(px - cx) > 30 && top - feet < 320 && feet - top < 500 && top > feet + 20 {
                 spots.append(NSPoint(x: px, y: top))
             }
+        }
+        // покривът на клетката
+        if let r = cageRoof, abs(r.midX - cx) > 30, r.maxY - feet < 320, feet - r.maxY < 500 {
+            spots += [NSPoint(x: r.midX, y: r.maxY), NSPoint(x: r.midX, y: r.maxY)]
         }
         // другият екран
         if NSScreen.screens.count > 1, Double.random(in: 0..<1) < 0.35,
@@ -397,7 +413,7 @@ extension Game {
             fulfill(w)
             let verdicts = ["Уау, точно \(what)! Благодаря!", "Хм… на \(what) ли прилича? Добре, приемам!",
                             "Най-хубавото \(what) на света!", "Ще го сложа в следващия си клип!"]
-            say(verdicts.randomElement()! + " +10 монети", seconds: 3.5)
+            say(verdicts.randomElement()!, seconds: 3.5)
         }
     }
 
@@ -482,10 +498,14 @@ extension Game {
             stopWork()
         }
         if !pet.working && !goingToWork { autoWorking = false }
-        guard idle, !pet.working, time > nextAutoWork, pet.energy > 40, toiletPhase == .off,
-              fetchPhase == .off, !jumping, questionPanel == nil, errands.isEmpty, !playingGame else { return }
+        // има поръчка или работата му е ниска: отива веднага (опитва на 3 минути)
+        let urgent = (pet.orderText != nil || pet.work < 25) && time > nextUrgentWork
+        guard idle, !pet.working, time > nextAutoWork || urgent, pet.energy > (urgent ? 20 : 40), toiletPhase == .off,
+              fetchPhase == .off, !jumping, questionPanel == nil, errands.isEmpty, !playingGame, !isSick,
+              seekPhase == .off else { return }
+        nextUrgentWork = time + 3 * 60
         nextAutoWork = time + Double.random(in: 20 * 60...40 * 60)
-        if pet.work < 60 || Bool.random() {
+        if urgent || pet.work < 60 || Bool.random() {
             toggleWork()
             if goingToWork {
                 autoWorking = true

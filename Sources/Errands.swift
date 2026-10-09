@@ -410,7 +410,7 @@ extension Game {
         if letterPanel == nil && time - l.arrived > 15 * 60 {
             closeLetter()
             letter = nil
-            nextOrder = time + Double.random(in: 20 * 60...40 * 60)
+            nextOrder = time + Double.random(in: 8 * 60...15 * 60)
             annoy(5, reason: "изпуснахме клиент")
             if !pet.asleep { say("Клиентът писа на друг монтажист… Изпуснахме поръчката.", seconds: 3.5) }
         }
@@ -448,7 +448,7 @@ extension Game {
             }
             save()
         } else {
-            nextOrder = time + Double.random(in: 20 * 60...40 * 60)
+            nextOrder = time + Double.random(in: 8 * 60...15 * 60)
             if !pet.asleep { say("Добре, ще чакаме по-добра поръчка.", seconds: 2.5) }
         }
     }

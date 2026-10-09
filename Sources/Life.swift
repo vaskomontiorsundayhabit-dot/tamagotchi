@@ -163,6 +163,7 @@ extension Game {
         if time - lastEnclosureCheck > 2 {
             lastEnclosureCheck = time
             checkEnclosure()
+            checkCrazySmash()
             if enclosed && time - lastScared > 20 {
                 lastScared = time
                 annoy(5, reason: "ме затвори")
@@ -227,6 +228,16 @@ extension Game {
         if foodPixelsOn && pet.fullness < 60 { options += [.color(foodColors.randomElement()!), .color(foodColors.randomElement()!)] }
         if !pet.working && pet.energy > 30 { options.append(.work) }
         let w = options.randomElement()!
+        if w == .work {
+            // иска да монтира: сам отива за монитора
+            nextWant = time + Double.random(in: 8 * 60...15 * 60)
+            if !pet.working && !goingToWork && pet.energy >= 15 && !isSick && errands.isEmpty && !playingGame {
+                say("Искам да монтирам! Отивам за монитора!", seconds: 3)
+                toggleWork()
+                if goingToWork { autoWorking = true; autoWorkStart = time }
+            }
+            return
+        }
         want = w
         wantSince = time
         lastWantNag = time
@@ -239,8 +250,7 @@ extension Game {
         want = nil
         nextWant = time + Double.random(in: 8 * 60...15 * 60)
         anger = (anger - 20).clamped()
-        earnCoins(10)
-        say("Благодаря! +10 монети", seconds: 3)
+        say("Благодаря! +10 опит", seconds: 3)
         start(.love, length: 1.6)
         addXP(10)
     }
@@ -297,7 +307,6 @@ extension Game {
     func cleanMess(_ m: MessPixel) {
         m.remove()
         messes.removeAll { $0 === m }
-        earnCoins(2)
-        say("Благодаря, че почисти! +2 монети", seconds: 2.5)
+        say("Благодаря, че почисти!", seconds: 2.5)
     }
 }

@@ -99,16 +99,45 @@ extension Game {
         }
         p.alphaValue = 1
         let dot = NSPoint(x: p.frame.midX, y: p.frame.midY)
-        let pr = petScreenRect()
-        let target = NSPoint(x: window.frame.minX + dot.x - pr.midX, y: window.frame.minY + dot.y - pr.midY)
-        walking = true
-        _ = moveWindow(toward: target, speed: CGFloat((240 + Double(laserHits) * 12) * step))
-        if petScreenRect().insetBy(dx: 12, dy: 12).contains(dot) {
+        chaseOnGround(dot, speed: 240 + Double(laserHits) * 12, step)
+        if petScreenRect().insetBy(dx: 10, dy: 10).contains(dot) {
             laserHits += 1
             laserPause = time + 1.4
             start(.love, length: 0.8)
             sfx("Pop", every: 0.1)
             say(["Хванах я! \(laserHits)", "Моя е! \(laserHits)", "Ха! \(laserHits)"].randomElement()!, seconds: 1.2)
+        }
+    }
+
+    /// Гони точка, като ходи по това, на което може да стъпи, и скача до по-високо или по-ниско място.
+    func chaseOnGround(_ goal: NSPoint, speed: Double, _ step: Double) {
+        guard !jumping else { return }
+        let pr = petScreenRect()
+        let feet = feetScreenY
+        // повърхността под точката
+        let surface = supportY(x0: goal.x - 20, x1: goal.x + 20, feet: goal.y)
+        _ = supportY(x0: window.frame.minX + view.bodyX0, x1: window.frame.minX + view.bodyX1, feet: feet)
+        if abs(surface - feet) > 24 && time > nextGameJump && goal.y - surface < 260 {
+            nextGameJump = time + 1.2
+            jump(toFeet: NSPoint(x: goal.x, y: surface))
+            return
+        }
+        let dx = goal.x - pr.midX
+        walking = abs(dx) > 6
+        if walking {
+            facingLeft = dx < 0
+            let sp = min(abs(dx), CGFloat(speed * step))
+            if bodyHitsDrawing(dx: dx < 0 ? -sp - 2 : sp + 2) {
+                if time > nextGameJump {
+                    // стена: прескача я
+                    nextGameJump = time + 1.2
+                    jump(toFeet: NSPoint(x: pr.midX + (dx < 0 ? -60 : 60), y: feet + 40))
+                }
+                return
+            }
+            var o = window.frame.origin
+            o.x += dx < 0 ? -sp : sp
+            window.setFrameOrigin(o)
         }
     }
 
@@ -118,13 +147,11 @@ extension Game {
         laserPanel = nil
         walking = false
         guard reward else { return }
-        landOnFloor()
         pet.fun = (pet.fun + min(35, 8 + Double(laserHits) * 3)).clamped()
         pet.energy = (pet.energy - min(12, Double(laserHits))).clamped()
         anger = (anger - 10).clamped()
-        earnCoins(laserHits * 2)
         addXP(laserHits * 2)
-        say(laserHits > 0 ? "Хванах я \(laserHits) пъти! +\(laserHits * 2) монети" : "Не я хванах нито веднъж… Пак!", seconds: 3)
+        say(laserHits > 0 ? "Хванах я \(laserHits) пъти! +\(laserHits * 2) опит" : "Не я хванах нито веднъж… Пак!", seconds: 3)
         fulfill(.play)
     }
 
@@ -180,9 +207,7 @@ extension Game {
         p.setFrameOrigin(o)
         // тича под балона
         let bx = o.x + p.frame.width / 2
-        let target = NSPoint(x: window.frame.minX + bx - pr.midX, y: window.frame.minY)
-        walking = abs(bx - pr.midX) > 6
-        if walking { _ = moveWindow(toward: target, speed: CGFloat(230 * step)) }
+        chaseOnGround(NSPoint(x: bx, y: min(o.y, feetScreenY + 10)), speed: 230, step)
         // удря го с глава
         if balloonVel.dy < 0 && o.y < pr.maxY + 6 && o.y > pr.maxY - 40 && abs(bx - pr.midX) < pr.width / 2 {
             balloonVel = CGVector(dx: CGFloat.random(in: -90...90), dy: CGFloat.random(in: 200...280))
@@ -208,10 +233,9 @@ extension Game {
         pet.fun = (pet.fun + min(35, 8 + Double(n) * 2)).clamped()
         pet.energy = (pet.energy - min(10, Double(n) / 2)).clamped()
         anger = (anger - 10).clamped()
-        earnCoins(n)
         addXP(n * 2)
         start(.love, length: 1.5)
-        if bubbleText == nil { say("\(n) удара! +\(n) монети", seconds: 3) }
+        if bubbleText == nil { say("\(n) удара! +\(n * 2) опит", seconds: 3) }
         fulfill(.play)
     }
 
@@ -257,11 +281,12 @@ extension Game {
         func put(feetX: CGFloat, feetY: CGFloat) {
             window.setFrameOrigin(NSPoint(x: feetX - bodyCenterOffset, y: feetY - lift))
         }
+        let putAt: (CGFloat, CGFloat) -> Void = { x, y in put(feetX: x, feetY: y) }
 
         var options: [Int] = [0, 0]                       // ръбът на екрана
         let big = windowRects.indices.filter { windowRects[$0].width > 200 && windowRects[$0].height > 150 }
         if !big.isEmpty { options += [1, 1, 1] }
-        if big.count >= 2 { options += [2, 2] }
+        if big.count >= 2 { options += [2, 2, 2] }
         if cagePanel != nil { options += [3, 3] }
         if friendPanel != nil { options.append(4) }
         options.append(5)                                  // под горната лента
@@ -269,14 +294,17 @@ extension Game {
 
         window.level = .floating
         switch options.randomElement()! {
-        case 1, 2:
-            // зад програма; при 2 е между два прозореца (над единия, под другия)
-            let i = big.randomElement()!
-            let r = windowRects[i]
-            let leftSide = Bool.random()
-            put(feetX: leftSide ? r.minX + bodyW * 0.25 : r.maxX - bodyW * 0.25, feetY: max(vf.minY, r.minY + 6))
-            window.level = .normal
-            if i < windowNumbers.count { window.order(.below, relativeTo: windowNumbers[i]) }
+        case 2:
+            // между два прозореца: зад предния, но пред задния
+            if let spot = seekBetweenSpot(big, bodyW: bodyW, floorY: vf.minY) {
+                put(feetX: spot.2, feetY: spot.3)
+                window.level = .normal
+                window.order(.above, relativeTo: windowNumbers[spot.1])
+            } else {
+                hideBehindWindow(big, bodyW: bodyW, floorY: vf.minY, put: putAt)
+            }
+        case 1:
+            hideBehindWindow(big, bodyW: bodyW, floorY: vf.minY, put: putAt)
         case 3:
             if let c = cagePanel {
                 put(feetX: c.frame.midX + (Bool.random() ? -1 : 1) * c.frame.width * 0.2, feetY: c.frame.minY)
@@ -306,14 +334,43 @@ extension Game {
         seekStart = time
     }
 
+    /// Зад програма: отчасти се подава отстрани.
+    private func hideBehindWindow(_ big: [Int], bodyW: CGFloat, floorY: CGFloat, put: (CGFloat, CGFloat) -> Void) {
+        guard let i = big.randomElement() else { return }
+        let r = windowRects[i]
+        let leftSide = Bool.random()
+        put(leftSide ? r.minX + bodyW * 0.25 : r.maxX - bodyW * 0.25, max(floorY, r.minY + 6))
+        window.level = .normal
+        if i < windowNumbers.count { window.order(.below, relativeTo: windowNumbers[i]) }
+    }
+
+    /// Намира два застъпени прозореца (i е пред j) и място на ръба на предния, над задния.
+    private func seekBetweenSpot(_ big: [Int], bodyW: CGFloat, floorY: CGFloat) -> (Int, Int, CGFloat, CGFloat)? {
+        var found: [(Int, Int, CGFloat, CGFloat)] = []
+        for i in big {
+            for j in big where j > i && j < windowNumbers.count {
+                let a = windowRects[i], b = windowRects[j]
+                let y0 = max(a.minY, b.minY, floorY), y1 = min(a.maxY, b.maxY)
+                guard y1 - y0 > 120 else { continue }
+                // левият или десният ръб на предния прозорец, ако зад него има заден
+                if a.minX - bodyW * 0.6 > b.minX && a.minX < b.maxX {
+                    found.append((i, j, a.minX + bodyW * 0.15, y0 + 10))
+                }
+                if a.maxX + bodyW * 0.6 < b.maxX && a.maxX > b.minX {
+                    found.append((i, j, a.maxX - bodyW * 0.15, y0 + 10))
+                }
+            }
+        }
+        return found.randomElement()
+    }
+
     func foundInSeek() {
         let secs = Int(time - seekStart)
         endSeek()
-        earnCoins(10)
         addXP(8)
         start(.love, length: 2)
         sfx("Hero")
-        say("Намери ме за \(secs) секунди! Браво! +10 монети", seconds: 3)
+        say("Намери ме за \(secs) секунди! Браво! +8 опит", seconds: 3)
         fulfill(.play)
         jump(toOrigin: seekHome)
     }

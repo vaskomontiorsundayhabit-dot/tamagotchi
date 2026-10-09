@@ -44,6 +44,130 @@ let hatCap = grid([
     ".RRWRRRR..",
     "RRRRRRRRRR",
 ])
+let hatCowboy = grid([
+    "....UUUU....",
+    "...UUUUUU...",
+    "...UQQQQU...",
+    "UUUUUUUUUUUU",
+    ".UUUUUUUUUU.",
+])
+let neckTie = grid([
+    "RR",
+    "RR",
+    ".R",
+    "RR",
+    "RR",
+])
+let iconPirate = grid([
+    "KKKKKKKK",
+    "........",
+    ".KKK....",
+    ".KKK....",
+    ".KKK....",
+    "........",
+    "........",
+    "........",
+])
+let iconDonut = grid([
+    "..PPPP..",
+    ".PPWPPP.",
+    "PPOOOOPP",
+    "PO....OP",
+    "PO....OP",
+    "OOOOOOOO",
+    ".OOOOOO.",
+    "........",
+])
+let iconIceCream = grid([
+    "..PPPP..",
+    ".PWPPPP.",
+    ".PPPPPP.",
+    "..OOOO..",
+    "..OOOO..",
+    "...OO...",
+    "...OO...",
+    "........",
+])
+let iconSmoothie = grid([
+    ".....W..",
+    "....W...",
+    ".KKKKKK.",
+    ".KGGGGK.",
+    ".KGGGGK.",
+    ".KGGGGK.",
+    "..KKKK..",
+    "........",
+])
+let iconPopcorn = grid([
+    ".WYWWY..",
+    "WWWYWWW.",
+    "RWRWRWR.",
+    "RWRWRWR.",
+    ".RWRWR..",
+    ".RWRWR..",
+    "........",
+    "........",
+])
+let iconCheese = grid([
+    "........",
+    "......YY",
+    "....YYYY",
+    "..YYOYYY",
+    "YYYYYYOY",
+    "YOYYYYYY",
+    "YYYYOYYY",
+    "........",
+])
+let iconToy = grid([
+    "........",
+    "..MMMM..",
+    ".MMWMMM.",
+    ".MMMMMM.",
+    ".MMMMMM.",
+    "..MMMM..",
+    "...EE...",
+    "....EE..",
+])
+let iconWheel = grid([
+    "..EEEE..",
+    ".E.EE.E.",
+    "E..EE..E",
+    "EEEEEEEE",
+    "E..EE..E",
+    ".E.EE.E.",
+    "..EEEE..",
+    ".KK..KK.",
+])
+let iconFeeder = grid([
+    "..EEEE..",
+    "..ECCE..",
+    "..ECCE..",
+    "..EYYE..",
+    "...EE...",
+    ".EEEEEE.",
+    ".EYYYYE.",
+    ".EEEEEE.",
+])
+let iconLens = grid([
+    "........",
+    ".KKKKKK.",
+    "KSSSSSSK",
+    "KSCCCCSK",
+    "KSCWCCSK",
+    "KSCCCCSK",
+    "KSSSSSSK",
+    ".KKKKKK.",
+])
+let iconLamp = grid([
+    "..YYYY..",
+    ".YYYYYY.",
+    "YYYYYYYY",
+    "...EE...",
+    "...EE...",
+    "...EE...",
+    ".EEEEEE.",
+    "........",
+])
 let hatChef = grid([
     ".WW.WW.",
     "WWWWWWW",
@@ -333,6 +457,12 @@ let shopItems: [ShopItem] = [
     ShopItem(id: "energy", name: "Енергийна напитка", price: 35, kind: .use, slot: "", info: "+50 енергия, но се напива за 5 мин", icon: iconEnergyDrink),
     ShopItem(id: "vitamins", name: "Витамини", price: 25, kind: .use, slot: "", info: "+20 здраве, лекува по-бързо", icon: iconVitamins),
     ShopItem(id: "gold", name: "Златен пиксел", price: 60, kind: .use, slot: "", info: "+40 опит", icon: iconGold),
+    ShopItem(id: "donut", name: "Поничка", price: 12, kind: .use, slot: "", info: "+20 ситост, +5 радост", icon: iconDonut),
+    ShopItem(id: "icecream", name: "Сладолед", price: 14, kind: .use, slot: "", info: "+15 радост, +10 ситост", icon: iconIceCream),
+    ShopItem(id: "smoothie", name: "Смути", price: 18, kind: .use, slot: "", info: "+10 енергия, +10 здраве", icon: iconSmoothie),
+    ShopItem(id: "popcorn", name: "Пуканки", price: 10, kind: .use, slot: "", info: "+20 радост, пуска клип", icon: iconPopcorn),
+    ShopItem(id: "cheese", name: "Сирене за плъха", price: 10, kind: .use, slot: "", info: "плъхът е сит и доволен", icon: iconCheese),
+    ShopItem(id: "toy", name: "Играчка за плъха", price: 15, kind: .use, slot: "", info: "плъхът не е самотен", icon: iconToy),
     ShopItem(id: "party", name: "Парти шапка", price: 40, kind: .wear, slot: "hat", info: "за купон", icon: hatParty),
     ShopItem(id: "beanie", name: "Зимна шапка", price: 60, kind: .wear, slot: "hat", info: "топло е", icon: hatBeanie),
     ShopItem(id: "bow", name: "Панделка", price: 30, kind: .wear, slot: "hat", info: "сладко", icon: hatBow),
@@ -341,19 +471,26 @@ let shopItems: [ShopItem] = [
     ShopItem(id: "catears", name: "Котешки уши", price: 70, kind: .wear, slot: "hat", info: "мяу", icon: hatCatEars),
     ShopItem(id: "halo", name: "Ореол", price: 150, kind: .wear, slot: "hat", info: "ангелче (уж)", icon: hatHalo),
     ShopItem(id: "crown", name: "Корона", price: 300, kind: .wear, slot: "hat", info: "кралят на монтажа", icon: hatCrown),
+    ShopItem(id: "cowboy", name: "Каубойска шапка", price: 90, kind: .wear, slot: "hat", info: "йи-хаа", icon: hatCowboy),
     ShopItem(id: "glasses", name: "Очила", price: 50, kind: .wear, slot: "face", info: "умен вид", icon: iconGlasses),
     ShopItem(id: "sunglasses", name: "Слънчеви очила", price: 80, kind: .wear, slot: "face", info: "супер готин", icon: iconSunglasses),
     ShopItem(id: "headphones", name: "Слушалки", price: 120, kind: .wear, slot: "ears", info: "за монтаж на звук", icon: iconHeadphones),
     ShopItem(id: "mustache", name: "Мустаци", price: 40, kind: .wear, slot: "lip", info: "сериозен монтажист", icon: lipMustache),
+    ShopItem(id: "pirate", name: "Пиратска превръзка", price: 60, kind: .wear, slot: "face", info: "арр!", icon: iconPirate),
+    ShopItem(id: "tie", name: "Вратовръзка", price: 45, kind: .wear, slot: "neck", info: "за срещи с клиенти", icon: neckTie),
     ShopItem(id: "bowtie", name: "Папийонка", price: 40, kind: .wear, slot: "neck", info: "официално", icon: neckBowtie),
     ShopItem(id: "scarf", name: "Шал", price: 50, kind: .wear, slot: "neck", info: "уютно", icon: iconScarf),
     ShopItem(id: "monitor2", name: "Още един монитор", price: 250, kind: .stack, slot: "", info: "още един монитор над другите (до 4); всеки дава още монети от работа", icon: iconMonitor),
     ShopItem(id: "monitorup", name: "Подобри монитора", price: 150, kind: .levelup, slot: "", info: "по-хубав монитор (до ниво 3); всяко ниво: видео с 10% по-бързо", icon: iconMonitorUp),
-    ShopItem(id: "friend", name: "Приятел", price: 400, kind: .upgrade, slot: "", info: "Пиксчочка: говорят си, карат се, краде му храна", icon: iconFriend),
-    ShopItem(id: "rat", name: "Пиксел плъх", price: 120, kind: .upgrade, slot: "", info: "домашен любимец, когото Пиксчо гони", icon: iconRat),
+    ShopItem(id: "friend", name: "Приятелка", price: 400, kind: .upgrade, slot: "", info: "приятелка фотограф: снима, носи монети, краде му храна", icon: iconFriend),
+    ShopItem(id: "rat", name: "Пиксел плъх", price: 120, kind: .upgrade, slot: "", info: "домашен любимец с клетка; трябва да се храни и гушка", icon: iconRat),
     ShopItem(id: "chair", name: "Удобен стол", price: 180, kind: .upgrade, slot: "", info: "работата го изморява с 30% по-малко", icon: iconChair),
     ShopItem(id: "piggy", name: "Касичка", price: 220, kind: .upgrade, slot: "", info: "+25% монети от всичко", icon: iconPiggy),
     ShopItem(id: "fastedit", name: "Бърз монтаж", price: 200, kind: .upgrade, slot: "", info: "видео за 20 минути вместо 30", icon: iconEnergy),
+    ShopItem(id: "wheel", name: "Колело за плъха", price: 100, kind: .upgrade, slot: "", info: "плъхът по-рядко скучае", icon: iconWheel),
+    ShopItem(id: "feeder", name: "Автохранилка", price: 140, kind: .upgrade, slot: "", info: "плъхът огладнява 2 пъти по-бавно", icon: iconFeeder),
+    ShopItem(id: "lens", name: "Обектив за приятелката", price: 160, kind: .upgrade, slot: "", info: "по-чести и по-скъпи фотосесии", icon: iconLens),
+    ShopItem(id: "lamp", name: "Нощна лампа", price: 90, kind: .upgrade, slot: "", info: "наспива се по-бързо", icon: iconLamp),
     ShopItem(id: "magnet", name: "Пикселен магнит", price: 150, kind: .upgrade, slot: "", info: "пикселите-храна идват по-често", icon: iconMagnet),
 ]
 
@@ -363,7 +500,7 @@ final class ShopView: NSView {
     weak var game: Game?
     var hover: Int?
 
-    static let cols = 6
+    static let cols = 7
     static let tileW: CGFloat = 112
     static let tileH: CGFloat = 94
     static let pad: CGFloat = 14
@@ -585,6 +722,37 @@ extension Game {
             case "gold":
                 say("Златен пиксел! +40 опит", seconds: 3)
                 addXP(40)
+            case "donut":
+                if pet.fullness >= 90 { pet.overfull = min(100, pet.overfull + 20) }
+                pet.fullness = (pet.fullness + 20).clamped()
+                pet.fun = (pet.fun + 5).clamped()
+                lastFoodColor = 0xff8fab
+                start(.eat, length: 1.4)
+                say("Поничка! С глазура!", seconds: 2.5)
+            case "icecream":
+                pet.fun = (pet.fun + 15).clamped()
+                pet.fullness = (pet.fullness + 10).clamped()
+                lastFoodColor = 0xffffff
+                start(.eat, length: 1.4)
+                say("Брр, студено! Ама вкусно!", seconds: 2.5)
+            case "smoothie":
+                pet.energy = (pet.energy + 10).clamped()
+                pet.health = (pet.health + 10).clamped()
+                say("Зелено и полезно. Бляк. Ама полезно!", seconds: 2.5)
+            case "popcorn":
+                pet.fun = (pet.fun + 20).clamped()
+                say("Пуканки! Да гледаме клип!", seconds: 2.5)
+                playClip()
+            case "cheese":
+                ratFedAt = Date()
+                ratView?.heartsUntil = time + 2
+                ratSay("Сирене! Цик-цик-цик!", 2.5)
+                say(hasRat ? "\(ratLabel.capitalized) обожава сирене!" : "Сирене… ама нямаме плъх. Ще го изям аз!", seconds: 2.5)
+            case "toy":
+                ratPlayedAt = Date()
+                ratView?.heartsUntil = time + 2
+                ratSay("Играчка! Цик!", 2.5)
+                say(hasRat ? "Нова играчка за \(ratLabel)!" : "Играчка за плъх… ама нямаме плъх.", seconds: 2.5)
             default: break
             }
         }
