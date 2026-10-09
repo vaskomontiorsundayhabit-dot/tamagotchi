@@ -2,7 +2,7 @@
 
 import AppKit
 
-enum ShopKind { case wear, use, upgrade }
+enum ShopKind { case wear, use, upgrade, stack, levelup }
 
 struct ShopItem {
     let id: String
@@ -135,6 +135,16 @@ let iconBag = grid([
     "OYYYYYYO",
     "OYYYYYYO",
     "OOOOOOOO",
+])
+let iconMonitorUp = grid([
+    "...Y....",
+    "..YYY...",
+    ".YYYYY..",
+    "EEEEEEEE",
+    "ESSSSSSE",
+    "ESCCSMSE",
+    "EEEEEEEE",
+    "..EEEE..",
 ])
 let neckBowtie = grid([
     "RR.RR",
@@ -277,7 +287,8 @@ let shopItems: [ShopItem] = [
     ShopItem(id: "mustache", name: "Мустаци", price: 40, kind: .wear, slot: "lip", info: "сериозен монтажист", icon: lipMustache),
     ShopItem(id: "bowtie", name: "Папийонка", price: 40, kind: .wear, slot: "neck", info: "официално", icon: neckBowtie),
     ShopItem(id: "scarf", name: "Шал", price: 50, kind: .wear, slot: "neck", info: "уютно", icon: iconScarf),
-    ShopItem(id: "monitor2", name: "Втори монитор", price: 250, kind: .upgrade, slot: "", info: "още един монитор на бюрото; двойно монети от работа", icon: iconMonitor),
+    ShopItem(id: "monitor2", name: "Още един монитор", price: 250, kind: .stack, slot: "", info: "още един монитор над другите (до 4); всеки дава още монети от работа", icon: iconMonitor),
+    ShopItem(id: "monitorup", name: "Подобри монитора", price: 150, kind: .levelup, slot: "", info: "по-хубав монитор (до ниво 3); всяко ниво: видео с 10% по-бързо", icon: iconMonitorUp),
     ShopItem(id: "chair", name: "Удобен стол", price: 180, kind: .upgrade, slot: "", info: "работата го изморява с 30% по-малко", icon: iconChair),
     ShopItem(id: "piggy", name: "Касичка", price: 220, kind: .upgrade, slot: "", info: "+25% монети от всичко", icon: iconPiggy),
     ShopItem(id: "fastedit", name: "Бърз монтаж", price: 200, kind: .upgrade, slot: "", info: "видео за 20 минути вместо 30", icon: iconEnergy),
@@ -333,7 +344,7 @@ final class ShopView: NSView {
         if closeRect.contains(p) { game?.closeShop(); return }
         if let i = hit(p) {
             let item = shopItems[i]
-            if p.y > tileRect(i).minY + 70, item.kind != .use, game?.pet.owned.contains(item.id) == true {
+            if p.y > tileRect(i).minY + 70, game?.canSell(item) == true {
                 game?.sell(item)
             } else {
                 game?.shopAction(item)
@@ -347,7 +358,15 @@ final class ShopView: NSView {
     }
 
     private func label(_ item: ShopItem, _ pet: Pet) -> (String, Int) {
+        let price = game?.priceOf(item) ?? item.price
+        let can = pet.coins >= price ? 0xffd166 : 0x6a6a80
         switch item.kind {
+        case .stack:
+            if pet.extraMonitors >= 3 { return ("МАКС (4)", 0x52b788) }
+            return (pet.extraMonitors == 0 ? "КУПИ \(price)" : "КУПИ ОЩЕ \(price)", can)
+        case .levelup:
+            if pet.monitorLevel >= 3 { return ("МАКС НИВО", 0x52b788) }
+            return ("НИВО \(pet.monitorLevel + 1): \(price)", can)
         case .use: return ("КУПИ \(item.price)", pet.coins >= item.price ? 0xffd166 : 0x6a6a80)
         case .upgrade:
             if pet.owned.contains(item.id) { return ("ИМАШ", 0x52b788) }
@@ -390,10 +409,10 @@ final class ShopView: NSView {
             text(item.name.uppercased(), r.midX, r.minY + 40, 9, 0xffffff, center: true)
             let (l, c) = label(item, pet)
             text(l, r.midX, r.minY + 54, 10, c, center: true)
-            if item.kind != .use && pet.owned.contains(item.id) {
+            if game.canSell(item) {
                 NSColor(hex: 0x3a2a3a).setFill()
                 NSRect(x: r.minX + 6, y: r.minY + 70, width: r.width - 12, height: 14).fill()
-                text("ПРОДАЙ \(item.price / 2)", r.midX, r.minY + 71, 9, 0xff8fab, center: true)
+                text("ПРОДАЙ \(game.sellPrice(item))", r.midX, r.minY + 71, 9, 0xff8fab, center: true)
             }
         }
 
@@ -447,6 +466,16 @@ extension Game {
             guard pay(item) else { return }
             pet.owned.append(item.id)
             say("Ново: \(item.name.lowercased())!", seconds: 3)
+        case .stack:
+            if pet.extraMonitors >= 3 { say("Няма място за повече монитори!", seconds: 2.5); return }
+            guard pay(item) else { return }
+            pet.extraMonitors += 1
+            say("Още един монитор! Вече имам \(monitorCount)!", seconds: 3)
+        case .levelup:
+            if pet.monitorLevel >= 3 { say("Мониторът ми е най-добрият!", seconds: 2.5); return }
+            guard pay(item) else { return }
+            pet.monitorLevel += 1
+            say("Мониторът ми е ниво \(pet.monitorLevel)! Монтирам по-бързо!", seconds: 3)
         case .use:
             if pet.dead { return }
             if item.id == "cake" && pet.overfull >= 100 { say("Не! Ще се пръсна!", seconds: 2.5); return }
@@ -454,7 +483,6 @@ extension Game {
             switch item.id {
             case "coffee":
                 pet.energy = (pet.energy + 30).clamped()
-                say("Кафеее! Сега мога да монтирам цяла нощ!", seconds: 3)
                 fulfill(.coffee)
                 drankCoffee()
             case "tea":
@@ -503,12 +531,39 @@ extension Game {
         save()
     }
 
+    /// Цената сега: всеки следващ монитор и всяко ниво струват повече.
+    func priceOf(_ item: ShopItem) -> Int {
+        switch item.kind {
+        case .stack: return item.price * (pet.extraMonitors + 1)
+        case .levelup: return item.price * pet.monitorLevel
+        default: return item.price
+        }
+    }
+
+    func canSell(_ item: ShopItem) -> Bool {
+        switch item.kind {
+        case .use: return false
+        case .stack: return pet.extraMonitors > 0
+        case .levelup: return pet.monitorLevel > 1
+        default: return pet.owned.contains(item.id)
+        }
+    }
+
+    func sellPrice(_ item: ShopItem) -> Int {
+        switch item.kind {
+        case .stack: return item.price * pet.extraMonitors / 2
+        case .levelup: return item.price * (pet.monitorLevel - 1) / 2
+        default: return item.price / 2
+        }
+    }
+
     private func pay(_ item: ShopItem) -> Bool {
-        if pet.coins < item.price {
-            say("Нямаме пари… трябват \(item.price) монети.", seconds: 3)
+        let price = priceOf(item)
+        if pet.coins < price {
+            say("Нямаме пари… трябват \(price) монети.", seconds: 3)
             return false
         }
-        pet.coins -= item.price
+        pet.coins -= price
         return true
     }
 
@@ -524,12 +579,18 @@ extension Game {
     }
 
     func sell(_ item: ShopItem) {
-        guard pet.owned.contains(item.id) else { return }
-        pet.owned.removeAll { $0 == item.id }
-        pet.worn.removeAll { $0 == item.id }
-        pet.coins += item.price / 2
+        guard canSell(item) else { return }
+        let money = sellPrice(item)
+        switch item.kind {
+        case .stack: pet.extraMonitors -= 1
+        case .levelup: pet.monitorLevel -= 1
+        default:
+            pet.owned.removeAll { $0 == item.id }
+            pet.worn.removeAll { $0 == item.id }
+        }
+        pet.coins += money
         pet.fun = (pet.fun - 5).clamped()
-        say("Продадохме \(item.name.lowercased()) за \(item.price / 2) монети. Сниф…", seconds: 3)
+        say("Продадохме \(item.name.lowercased()) за \(money) монети. Сниф…", seconds: 3)
         save()
     }
 }

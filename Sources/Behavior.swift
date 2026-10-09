@@ -178,7 +178,7 @@ extension Game {
                 v.needsDisplay = true
                 if questionNags >= 3 {
                     closeQuestion()
-                    unansweredQuestion = questionIndex
+                    unansweredQuestion = questionIndex >= 0 ? questionIndex : nil
                     annoy(15)
                     say("Добре, не ми говори! Сърдит съм!", seconds: 3)
                     nextQuestion = time + Double.random(in: 10 * 60...20 * 60)
@@ -398,6 +398,22 @@ extension Game {
         lastDragYell = 0
     }
 
+    /// Хванал си монитора: той остава при Пиксчо, докато го местиш.
+    func monitorGrabbed() {
+        dragStarted()
+        guard let p = monitorPanel else { return }
+        monitorGrabOffset = NSPoint(x: p.frame.minX - window.frame.minX, y: p.frame.minY - window.frame.minY)
+        say(["Ей! Къде ми носиш монитора?!", "Монитореее!", "Внимавай, там е проектът ми!"].randomElement()!, seconds: 2)
+    }
+
+    /// Пусна монитора: Пиксчо скача до новото място.
+    func monitorDropped() {
+        guard let p = monitorPanel else { return }
+        deskOrigin = NSPoint(x: p.frame.minX - monitorGrabOffset.x, y: p.frame.minY - monitorGrabOffset.y)
+        returnToDesk()
+        say("Идвам, идвам!", seconds: 2)
+    }
+
     func updateDragYell() {
         guard isDragging, monitorDetached, time - lastDragYell > 1.6 else { return }
         lastDragYell = time
@@ -454,7 +470,8 @@ final class MonitorView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let sp = buildSprite(level: game.bodyCells, face: .focus, pose: .type, frame: Int(game.time * 2), working: true,
-                             worn: game.pet.owned.filter { $0 == "monitor2" }, variant: game.bodyVariant)
+                             variant: game.bodyVariant,
+                             monitors: game.monitorCount, monitorLevel: game.pet.monitorLevel)
         let s = PetView.scale
         for y in sp.monY..<(sp.monY + sp.monH) {
             for x in sp.monX..<(sp.monX + sp.monW) {

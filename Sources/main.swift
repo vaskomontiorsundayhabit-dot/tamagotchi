@@ -97,7 +97,7 @@ let blobOrder = makeBlobOrder(8 + 250 + 6)
 
 // MARK: - Спрайт
 
-enum Face { case normal, blink, happy, sad, angry, sleep, eatOpen, eatShut, sick, dead, focus }
+enum Face { case normal, blink, happy, sad, angry, sleep, eatOpen, eatShut, sick, dead, focus, crazy }
 enum Pose { case idle, wave, walk, type, sleep }
 
 let canvasW = 132
@@ -114,7 +114,8 @@ struct Sprite {
     var monX = 0, monY = 0, monW = 0, monH = 0   // мониторът (ако работи)
 }
 
-func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, worn: [String] = [], variant: Int = 0) -> Sprite {
+func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, worn: [String] = [], variant: Int = 0,
+                 monitors: Int = 1, monitorLevel: Int = 1, redEyes: Bool = false) -> Sprite {
     var g = Grid(repeating: Array(repeating: ".", count: canvasW), count: canvasH)
     let count = max(1, min(256, level))
     let cells = shapeOrder(variant: variant).prefix(8 + count)
@@ -200,10 +201,28 @@ func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, 
             put(&g, lx - 1, eyeY - 3, "K"); put(&g, lx, eyeY - 2, "K"); put(&g, lx + e - 1, eyeY - 1, "K")
             put(&g, rx + e, eyeY - 3, "K"); put(&g, rx + e - 1, eyeY - 2, "K"); put(&g, rx, eyeY - 1, "K")
         }
+        // луди, ококорени очи (от много кафе)
+        func eyeCrazy(_ x0: Int) {
+            let E = e + 2
+            for dx in -1..<(E - 1) { for dy in -1..<(E - 1) { put(&g, x0 + dx, eyeY + dy, "W") } }
+            for dx in -2...(E - 1) { put(&g, x0 + dx, eyeY - 2, "K"); put(&g, x0 + dx, eyeY + E - 1, "K") }
+            for dy in -2...(E - 1) { put(&g, x0 - 2, eyeY + dy, "K"); put(&g, x0 + E - 1, eyeY + dy, "K") }
+            let px = x0 - 1 + (frame * 7 + x0) % max(1, E - 1), py = eyeY - 1 + (frame * 3) % max(1, E - 1)
+            put(&g, px, py, "K"); put(&g, px + 1, py, "K"); put(&g, px, py + 1, "K"); put(&g, px + 1, py + 1, "K")
+            put(&g, x0 - 1, eyeY + E - 2, "R"); put(&g, x0 + E - 2, eyeY - 1, "R")
+        }
         switch face {
         case .normal, .sad, .angry, .sick, .focus: eyeOpen(lx); eyeOpen(rx)
         case .blink, .sleep, .dead: eyeClosed(lx); eyeClosed(rx)
         case .happy, .eatOpen, .eatShut: eyeHappy(lx); eyeHappy(rx)
+        case .crazy: eyeCrazy(lx); eyeCrazy(rx)
+        }
+        // червени очи от недоспиване
+        if redEyes && face != .crazy && face != .blink && face != .sleep && face != .dead {
+            for x0 in [lx, rx] {
+                put(&g, x0, eyeY, "R")
+                for dx in -1...e { put(&g, x0 + dx, eyeY + e, "R") }
+            }
         }
         if face == .angry { brows() }
         if face == .sad { put(&g, lx, eyeY + e, "T"); put(&g, lx, eyeY + e + 1, "T") }
@@ -214,7 +233,7 @@ func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, 
             switch face {
             case .normal, .blink:
                 line(mw); put(&g, mx - 1, mouthY - 1, "K"); put(&g, mx + mw, mouthY - 1, "K")
-            case .happy, .eatOpen:
+            case .happy, .eatOpen, .crazy:
                 line(mw); for dx in 0..<mw { put(&g, mx + dx, mouthY + 1, "R") }
                 put(&g, mx - 1, mouthY - 1, "K"); put(&g, mx + mw, mouthY - 1, "K")
             case .sad, .angry:
@@ -318,37 +337,56 @@ func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, 
     sp.mouthX = cx; sp.mouthY = mouthY
     sp.groundY = groundY
 
-    // монитор с таймлайн, докато монтира
+    // монитори, докато монтира (първият с таймлайн, другите над него)
     if working {
         let (_, r) = rowSpan(by0 + bh / 2)
         let m0 = min(canvasW - 30, r + 11)
+        let fc: Character = monitorLevel >= 3 ? "Y" : (monitorLevel == 2 ? "C" : "E")
         let top = groundY - 23
-        for x in m0..<(m0 + 28) { put(&g, x, top, "E"); put(&g, x, top + 18, "E") }
-        for y in top...(top + 18) { put(&g, m0, y, "E"); put(&g, m0 + 27, y, "E") }
-        for y in (top + 1)..<(top + 18) { for x in (m0 + 1)..<(m0 + 27) { put(&g, x, y, "S") } }
-        let tracks: [(Int, Int, Int, Character)] = [
-            (3, 2, 12, "C"), (3, 15, 24, "M"), (7, 3, 20, "O"), (11, 2, 8, "G"), (11, 10, 25, "Y"), (14, 5, 18, "P"),
-        ]
-        for (row, a, b, c) in tracks { for x in (m0 + a)...(m0 + b) { put(&g, x, top + row, c); put(&g, x, top + row + 1, c) } }
-        let head = m0 + 2 + (frame * 2) % 23
-        for y in (top + 1)..<(top + 18) { put(&g, head, y, "R") }
-        for y in (top + 19)...(top + 21) { put(&g, m0 + 12, y, "E"); put(&g, m0 + 15, y, "E") }
-        for x in (m0 + 8)...(m0 + 19) { put(&g, x, groundY, "E") }
-        sp.monX = m0; sp.monY = top; sp.monW = 28; sp.monH = 23
-        if worn.contains("monitor2") {
-            // втори монитор над първия
-            let t2 = top - 21
-            for x in m0..<(m0 + 28) { put(&g, x, t2, "E"); put(&g, x, t2 + 18, "E") }
-            for y in t2...(t2 + 18) { put(&g, m0, y, "E"); put(&g, m0 + 27, y, "E") }
-            for y in (t2 + 1)..<(t2 + 18) { for x in (m0 + 1)..<(m0 + 27) { put(&g, x, y, "S") } }
-            // на него: цветна графика (скоупове)
-            for i in 0..<12 {
-                let h = 3 + (i * 7 + frame) % 11
-                for y in (t2 + 17 - h)...(t2 + 16) { put(&g, m0 + 2 + i * 2, y, i % 3 == 0 ? "G" : (i % 3 == 1 ? "C" : "Y")) }
+        func screen(_ t: Int, kind: Int) {
+            for x in m0..<(m0 + 28) { put(&g, x, t, fc); put(&g, x, t + 18, fc) }
+            for y in t...(t + 18) { put(&g, m0, y, fc); put(&g, m0 + 27, y, fc) }
+            for y in (t + 1)..<(t + 18) { for x in (m0 + 1)..<(m0 + 27) { put(&g, x, y, "S") } }
+            switch kind {
+            case 0:
+                var tracks: [(Int, Int, Int, Character)] = [
+                    (3, 2, 12, "C"), (3, 15, 24, "M"), (7, 3, 20, "O"), (11, 2, 8, "G"), (11, 10, 25, "Y"), (14, 5, 18, "P"),
+                ]
+                if monitorLevel >= 2 { tracks += [(5, 6, 16, "W"), (9, 12, 23, "R")] }
+                if monitorLevel >= 3 { tracks += [(13, 20, 25, "C"), (15, 2, 4, "Y")] }
+                for (row, a, b, c) in tracks { for x in (m0 + a)...(m0 + b) { put(&g, x, t + row, c); put(&g, x, t + row + 1, c) } }
+                let head = m0 + 2 + (frame * 2) % 23
+                for y in (t + 1)..<(t + 18) { put(&g, head, y, "R") }
+            case 1:
+                for i in 0..<12 {
+                    let h = 3 + (i * 7 + frame) % 11
+                    for y in (t + 17 - h)...(t + 16) { put(&g, m0 + 2 + i * 2, y, i % 3 == 0 ? "G" : (i % 3 == 1 ? "C" : "Y")) }
+                }
+            case 2:
+                for x in 0..<25 {
+                    let yy = t + 9 + Int((sin(Double(x + frame * 2) * 0.6) * 5).rounded())
+                    put(&g, m0 + 1 + x, yy, "G"); put(&g, m0 + 1 + x, yy + 1, "G")
+                }
+            default:
+                let cols: [Character] = ["R", "O", "Y", "G", "C", "M"]
+                for (i, c) in cols.enumerated() {
+                    for y in (t + 3)...(t + 14) { for x in 0..<3 { put(&g, m0 + 3 + i * 4 + x, y, c) } }
+                }
+                put(&g, m0 + 3 + (frame % 6) * 4, t + 2, "W")
             }
-            put(&g, m0 + 13, t2 + 19, "E"); put(&g, m0 + 14, t2 + 19, "E")
-            sp.monY = t2; sp.monH = 23 + 21
         }
+        screen(top, kind: 0)
+        for y in (top + 19)...(top + 21) { put(&g, m0 + 12, y, fc); put(&g, m0 + 15, y, fc) }
+        for x in (m0 + 8)...(m0 + 19) { put(&g, x, groundY, fc) }
+        var tTop = top
+        for i in 1..<max(1, min(4, monitors)) {
+            tTop -= 21
+            screen(tTop, kind: i)
+            put(&g, m0 + 13, tTop + 19, fc); put(&g, m0 + 14, tTop + 19, fc)
+            put(&g, m0 + 13, tTop + 20, fc); put(&g, m0 + 14, tTop + 20, fc)
+        }
+        // целият монитор заедно с крачето отдолу (иначе едно парче остава да се клати)
+        sp.monX = m0; sp.monY = tTop; sp.monW = 28; sp.monH = groundY - tTop + 1
     }
 
     sp.grid = g
@@ -573,6 +611,9 @@ struct Pet: Codable {
     var worn: [String] = []
     var workCoinSeconds: Double = 0
     var overfull: Double = 0           // преяждане 0…100 (коремчето)
+    var tired: Double = 0              // часове без сън (червени очи над 3)
+    var extraMonitors = 0              // допълнителни монитори (до 3)
+    var monitorLevel = 1               // ниво на монитора (1…3)
     var sickUntil: Date?
     var badToday = 0                   // изядени развалени пиксели днес
     var badDay = ""
@@ -602,6 +643,9 @@ struct Pet: Codable {
         worn = try c.decodeIfPresent([String].self, forKey: .worn) ?? worn
         workCoinSeconds = try c.decodeIfPresent(Double.self, forKey: .workCoinSeconds) ?? workCoinSeconds
         overfull = try c.decodeIfPresent(Double.self, forKey: .overfull) ?? overfull
+        tired = try c.decodeIfPresent(Double.self, forKey: .tired) ?? tired
+        extraMonitors = try c.decodeIfPresent(Int.self, forKey: .extraMonitors) ?? extraMonitors
+        monitorLevel = try c.decodeIfPresent(Int.self, forKey: .monitorLevel) ?? monitorLevel
         sickUntil = try c.decodeIfPresent(Date.self, forKey: .sickUntil) ?? sickUntil
         badToday = try c.decodeIfPresent(Int.self, forKey: .badToday) ?? badToday
         badDay = try c.decodeIfPresent(String.self, forKey: .badDay) ?? badDay
@@ -621,6 +665,7 @@ struct Pet: Codable {
     mutating func tick(_ dt: Double, offline: Bool = false) {
         guard !dead, dt > 0 else { return }
         let m = dt / 60
+        tired = asleep ? max(0, tired - dt / 3600 * 4) : tired + dt / 3600
         if asleep {
             working = false
             fullness -= 0.25 * m * (1 + Double(level) / 100)
@@ -756,23 +801,39 @@ final class PetView: NSView {
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    private var grabbingMonitor = false
+    private var monitorStart = NSPoint.zero
+
     override func mouseDown(with event: NSEvent) {
         dragStart = NSEvent.mouseLocation
         windowStart = window?.frame.origin ?? .zero
         downPoint = convert(event.locationInWindow, from: nil)
         dragged = false
+        grabbingMonitor = game?.pet.working == true && game?.monitorDetached == false && monitorRect.contains(downPoint)
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard let start = dragStart, let window, game?.busyMoving != true else { return }
         let p = NSEvent.mouseLocation
         let dx = p.x - start.x, dy = p.y - start.y
+        if grabbingMonitor {
+            // мести се само мониторът; Пиксчо после сам отива до него
+            if abs(dx) + abs(dy) > 3 && !dragged {
+                dragged = true
+                game?.monitorGrabbed()
+                monitorStart = game?.monitorPanel?.frame.origin ?? .zero
+            }
+            if dragged { game?.monitorPanel?.setFrameOrigin(NSPoint(x: monitorStart.x + dx, y: monitorStart.y + dy)) }
+            return
+        }
         if abs(dx) + abs(dy) > 3 && !dragged { dragged = true; game?.isDragging = true; game?.dragStarted() }
         if dragged { window.setFrameOrigin(NSPoint(x: windowStart.x + dx, y: windowStart.y + dy)) }
     }
 
     override func mouseUp(with event: NSEvent) {
-        if dragged {
+        if dragged && grabbingMonitor {
+            game?.monitorDropped()
+        } else if dragged {
             game?.finishedDrag()
         } else if game?.pet.working == true && monitorRect.contains(downPoint) {
             game?.playClip()
@@ -781,6 +842,7 @@ final class PetView: NSView {
         }
         dragStart = nil
         dragged = false
+        grabbingMonitor = false
         game?.isDragging = false
     }
 
@@ -806,7 +868,8 @@ final class PetView: NSView {
 
         let sp = buildSprite(level: game.bodyCells, face: game.currentFace(), pose: pose,
                              frame: pose == .walk || game.isDragging ? Int(t * 8) : frame, working: atDesk,
-                             worn: pet.worn + pet.owned.filter { $0 == "monitor2" }, variant: game.bodyVariant)
+                             worn: pet.worn, variant: game.bodyVariant, monitors: game.monitorCount,
+                             monitorLevel: pet.monitorLevel, redEyes: game.redEyes)
 
         var dy: CGFloat = 0
         if pet.dead {
@@ -846,6 +909,24 @@ final class PetView: NSView {
         }
 
         let ctx = NSGraphicsContext.current
+        // „по-близо до екрана“: става голям
+        let closeUp = t < game.closeUpUntil
+        if closeUp {
+            ctx?.saveGraphicsState()
+            let k = 1 + 0.7 * CGFloat(min(1, (game.closeUpUntil - t), (t - (game.closeUpUntil - 5)) * 2))
+            let tr = NSAffineTransform()
+            tr.translateX(by: centerX, yBy: feetY)
+            tr.scale(by: k)
+            tr.translateX(by: -centerX, yBy: -feetY)
+            tr.concat()
+        }
+        if game.isHyper {
+            // пикселите полудяват
+            ctx?.saveGraphicsState()
+            let tr = NSAffineTransform()
+            tr.translateX(by: CGFloat(Int.random(in: -3...3)), yBy: CGFloat(Int.random(in: -2...2)))
+            tr.concat()
+        }
         if game.rolling {
             // търкаля се: завърта се около средата на тялото
             ctx?.saveGraphicsState()
@@ -878,9 +959,23 @@ final class PetView: NSView {
             monGrid = mg
         }
         drawGlitchy(petGrid, x: ox, y: oy + dy, s: s, flip: flip, palette: game.color,
-                    glitch: game.glitching, noiseRect: box)
+                    glitch: game.glitching || (game.isHyper && Int(t * 10) % 3 != 0), noiseRect: box)
         if game.rolling || sway { ctx?.restoreGraphicsState() }
+        if game.isHyper { ctx?.restoreGraphicsState() }
+        if closeUp { ctx?.restoreGraphicsState() }
         if let mg = monGrid { drawGrid(mg, x: ox, y: oy + dy, s: s, flip: flip, palette: game.color) }
+
+        // конфети от пиксели
+        if t - game.confettiStart < 2.5 {
+            let ph = CGFloat((t - game.confettiStart) / 2.5)
+            for i in 0..<24 {
+                let a = Double(i) * 0.9
+                let r = 20 + ph * 110
+                NSColor(hex: foodColors[i % foodColors.count], alpha: 1 - ph).setFill()
+                NSRect(x: centerX + CGFloat(cos(a)) * r, y: vy(sp.top) + CGFloat(sin(a)) * r * 0.7 + ph * ph * 60,
+                       width: 5, height: 5).fill()
+            }
+        }
 
         // колко още ще е „пиян“ или болен
         var timers: [String] = []
@@ -1438,7 +1533,7 @@ final class RetroView: NSView {
         if let h = hover {
             if h.0 == 2 {
                 let item = inventory[h.1]
-                label = item.name.uppercased() + (item.kind == .upgrade ? "  (ПОДОБРЕНИЕ)"
+                label = item.name.uppercased() + (item.kind != .wear ? "  (ПОДОБРЕНИЕ)"
                     : (pet.worn.contains(item.id) ? "  (СВАЛИ)" : "  (СЛОЖИ)"))
             } else {
                 let item = h.0 == 0 ? stats[h.1] : actions[h.1]
@@ -2141,8 +2236,20 @@ final class Game: NSObject, NSApplicationDelegate {
     var autoWorkStart: Double = 0
     var nextAutoWork: Double = 15 * 60
 
-    var videoLength: Double { pet.owned.contains("fastedit") ? 20 * 60 : 30 * 60 }
-    var coinMultiplier: Int { pet.owned.contains("monitor2") ? 2 : 1 }
+    var videoLength: Double {
+        (pet.owned.contains("fastedit") ? 20 * 60 : 30 * 60) * (1 - 0.1 * Double(pet.monitorLevel - 1))
+    }
+    var coinMultiplier: Int { 1 + pet.extraMonitors }
+    var monitorCount: Int { 1 + pet.extraMonitors }
+    var recentCoffees: Int { coffeeTimes.filter { time - $0 < 60 * 60 }.count }
+    var isHyper: Bool { isDrunk && recentCoffees >= 3 }
+    var redEyes: Bool { pet.tired > 3 || isHyper }
+
+    var nextDrunkAct: Double = 0
+    var closeUpUntil: Double = 0
+    var zoomiesUntil: Double = 0
+    var confettiStart: Double = -10
+    var monitorGrabOffset = NSPoint.zero
 
     var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off || jumping }
 
@@ -2219,7 +2326,12 @@ final class Game: NSObject, NSApplicationDelegate {
 
         let workingBefore = pet.working
         // Мак-ът е спал → броим го като „офлайн“ време
+        let wasAsleep = pet.asleep
         if dt > 30 { pet.tick(min(dt, 8 * 3600) * 0.3, offline: true) } else { pet.tick(dt) }
+        if isDrunk && pet.asleep && !wasAsleep {
+            pet.asleep = false
+            say("Искам да спя, ама кафето не ме оставя!", seconds: 3)
+        }
         if dt > 30 * 60 && !pet.dead { greet(); start(.love, length: 3) }
         let step = min(dt, 0.5)
         time += step
@@ -2384,6 +2496,7 @@ final class Game: NSObject, NSApplicationDelegate {
         case .none: break
         }
         if isSick { return .sick }
+        if isHyper { return .crazy }
         if isDrunk { return Int(time * 3) % 4 == 0 ? .blink : .happy }
         if isDragging && monitorDetached { return .angry }
         if isDragging || rolling || fetchPhase == .running { return .happy }
@@ -2398,7 +2511,7 @@ final class Game: NSObject, NSApplicationDelegate {
     // --- движение ---
 
     func updateWalk(_ step: Double) {
-        guard wander, !busyMoving, !drawing, !pet.dead, !pet.asleep, !pet.working, !isDragging, action == .none,
+        guard wander || time < zoomiesUntil, !busyMoving, !drawing, !pet.dead, !pet.asleep, !pet.working, !isDragging, action == .none,
               let screen = window.screen ?? NSScreen.main else {
             if !busyMoving { walking = false }
             return
@@ -2407,17 +2520,23 @@ final class Game: NSObject, NSApplicationDelegate {
         var origin = window.frame.origin
         guard let target = walkTarget else {
             walking = false
-            if Double.random(in: 0..<1) < 0.06 * step {
-                if Double.random(in: 0..<1) < 0.4 && tryJump() { return }
+            if time < zoomiesUntil || Double.random(in: 0..<1) < 0.06 * step {
+                if time >= zoomiesUntil && Double.random(in: 0..<1) < 0.4 && tryJump() { return }
                 let t = origin.x + CGFloat.random(in: -220...220)
                 let r = xRange(vf)
                 walkTarget = min(max(t, r.lowerBound), r.upperBound)
             }
             return
         }
-        let speed = CGFloat(18 * step)
+        let zoom = time < zoomiesUntil
+        let speed = CGFloat((zoom ? 320 : 18) * step)
         if abs(target - origin.x) <= speed {
             walkTarget = nil
+            if zoom {
+                let r = xRange(vf)
+                walkTarget = CGFloat.random(in: r.lowerBound...max(r.lowerBound + 1, r.upperBound))
+                return
+            }
             walking = false
             saveWindowPosition()
             return
@@ -2899,7 +3018,10 @@ final class Game: NSObject, NSApplicationDelegate {
                             action: #selector(toggleInventory)),
             ]
         }
-        v.inventory = shopItems.filter { $0.kind != .use && pet.owned.contains($0.id) }
+        v.inventory = shopItems.filter {
+            ($0.kind == .wear || $0.kind == .upgrade) && pet.owned.contains($0.id)
+                || $0.kind == .stack && pet.extraMonitors > 0 || $0.kind == .levelup && pet.monitorLevel > 1
+        }
         let pr = petScreenRect()
         let vf = (window.screen ?? NSScreen.main)?.visibleFrame ?? .zero
         var o = NSPoint(x: pr.midX - RetroView.width / 2, y: pr.maxY + 6)
@@ -2926,7 +3048,7 @@ final class Game: NSObject, NSApplicationDelegate {
             return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s % 3600 / 60, s % 60) : String(format: "%d:%02d", s / 60, s % 60)
         }
         var parts: [String] = []
-        if isDrunk { parts.append("КАФЕ " + clock(drunkUntil - time)) }
+        if isDrunk { parts.append("КАФЕ ×\(recentCoffees) " + clock(drunkUntil - time)) }
         if isSick, let until = pet.sickUntil { parts.append("БОЛЕН " + clock(until.timeIntervalSinceNow)) }
         if pet.overfull > 0.5 { parts.append("КОРЕМЧЕ " + clock(pet.overfull / 10 * 60)) }
         return parts.joined(separator: "  ")
@@ -2967,6 +3089,10 @@ final class Game: NSObject, NSApplicationDelegate {
 
     @objc func toggleSleep() {
         if pet.dead { return }
+        if isDrunk && !pet.asleep {
+            say("Не мога да спя! Изпих \(recentCoffees) кафета! Очите ми са отворени завинаги!", seconds: 3.5)
+            return
+        }
         endFetch()
         pet.asleep.toggle()
         pet.working = false
@@ -3241,6 +3367,10 @@ final class Game: NSObject, NSApplicationDelegate {
               let saved = try? JSONDecoder().decode(Pet.self, from: data) else { return }
         pet = saved
         if pet.name == "Пикси" { pet.name = "Пиксчо" }
+        if pet.owned.contains("monitor2") {
+            pet.owned.removeAll { $0 == "monitor2" }
+            pet.extraMonitors = max(pet.extraMonitors, 1)
+        }
         let away = Date().timeIntervalSince(pet.lastUpdate)
         pet.tick(min(away, 8 * 3600) * 0.3, offline: true)
     }

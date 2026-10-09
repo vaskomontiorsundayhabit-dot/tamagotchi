@@ -158,6 +158,7 @@ extension Game {
             }
         }
 
+        updateDrunkActs()
         if isDrunk && bubbleText == nil && time > nextDrunkLine {
             nextDrunkLine = time + Double.random(in: 15...30)
             say(pick(drunkLines, avoiding: &lastLine), seconds: 2.5)
@@ -181,8 +182,8 @@ extension Game {
 
         // хапва от прозореца, на който стои
         if let w = standingOnWindow, !pet.asleep, !pet.dead, !pet.working, !busyMoving, !isDragging,
-           pet.fullness < 85, time > nextWindowSnack, action == .none {
-            nextWindowSnack = time + Double.random(in: 3 * 60...8 * 60)
+           pet.fullness < 85 || isDrunk, time > nextWindowSnack, action == .none {
+            nextWindowSnack = time + (isDrunk ? Double.random(in: 30...60) : Double.random(in: 3 * 60...8 * 60))
             let pr = petScreenRect()
             let x = min(max(pr.midX + (facingLeft ? -40 : 10), w.minX + 2), w.maxX - 36)
             bites.append(BiteMark(at: NSPoint(x: x, y: w.maxY - 16), time: time))
@@ -198,11 +199,75 @@ extension Game {
 
     func drankCoffee() {
         coffeeTimes.append(time)
-        coffeeTimes.removeAll { time - $0 > 30 * 60 }
-        if coffeeTimes.count >= 2 {
-            drunkUntil = time + 10 * 60
-            nextDrunkLine = time + 4
-            say("Хик! Две кафета… светът се върти!", seconds: 3)
+        coffeeTimes.removeAll { time - $0 > 60 * 60 }
+        let n = recentCoffees
+        let inHalfHour = coffeeTimes.filter { time - $0 < 30 * 60 }.count
+        if inHalfHour >= 2 || isDrunk {
+            // всяко следващо кафе удължава лудостта
+            drunkUntil = max(drunkUntil, time) + (isDrunk ? 5 * 60 : 10 * 60)
+            nextDrunkLine = time + 6
+            nextDrunkAct = time + 8
+        }
+        let text: String
+        switch n {
+        case 1: text = "Кафеее! Сега мога да монтирам цяла нощ!"
+        case 2: text = "Второ кафе! Хик! Светът се върти…"
+        case 3: text = "ТРЕТО КАФЕ?! Виждам звуци и чувам цветове!"
+        case 4: text = "ЧЕТВЪРТО! Сърцето ми бие в 120 fps!"
+        default: text = "\(n) КАФЕТА! АЗ СЪМ КАФЕ! КАФЕТО СЪМ АЗ!"
+        }
+        say(text, seconds: 3.5)
+        if n >= 3 { glitchUntil = time + 1.5 }
+    }
+
+    // --- лудости от много кафе ---
+
+    func updateDrunkActs() {
+        guard isDrunk, time > nextDrunkAct, !pet.asleep, !pet.dead, !isDragging, !busyMoving,
+              catchPanel == nil, clipPanel == nil, shopPanel == nil, !drawing else { return }
+        nextDrunkAct = time + (isHyper ? Double.random(in: 8...18) : Double.random(in: 15...30))
+        var acts = ["closeup", "confetti", "shout", "rain", "snack"]
+        if !pet.working { acts += ["zoomies", "zoomies", "roll", "jump", "dance"] }
+        switch acts.randomElement()! {
+        case "closeup":
+            // идва „по-близо до екрана“ и пита как си
+            closeUpUntil = time + 5
+            if questionPanel == nil {
+                ask(Question(text: "КАК СИ? КАК СИ?! КАК СИИИ?!", answers: [
+                    ("ДОБРЕ", "Аз също! МНОГО ДОБРЕ! МНОГО!", .happy),
+                    ("ЗЛЕ", "Искаш ли кафе?! Аз искам! Още!", .nothing),
+                    ("ХИК", "Хик! Ти също ли?!", .happy),
+                ]), index: -1)
+            }
+        case "confetti":
+            confettiStart = time
+            say("ПИКСЕЛНО ПАРТИ!", seconds: 2)
+        case "shout":
+            say(["ААААА!", "КОЙ СЪМ АЗ?!", "МОНТИРАМ БЕЗ РЪЦЕ!", "ВСИЧКО Е 4K!", "НЕ МОГА ДА СПРА!"].randomElement()!, seconds: 2)
+            glitchUntil = time + 0.6
+        case "rain":
+            // хвърля пиксели наоколо
+            let pr = petScreenRect()
+            for _ in 0..<3 {
+                foods.append(FoodPixel(color: foodColors.randomElement()!,
+                                       at: NSPoint(x: pr.midX + CGFloat.random(in: -200...200), y: pr.maxY + CGFloat.random(in: 40...200)),
+                                       game: self))
+            }
+            say("Пиксели за всички!", seconds: 2)
+        case "snack":
+            nextWindowSnack = 0
+            if standingOnWindow == nil && !pet.working { _ = tryJump() }
+        case "zoomies":
+            zoomiesUntil = time + 6
+            walkTarget = nil
+            say("ЗУУУУМ!", seconds: 1.5)
+        case "roll":
+            startRoll()
+        case "jump":
+            _ = tryJump()
+        default:
+            start(.wave, length: 4)
+            say("Танцувам! Не мога да спра!", seconds: 2.5)
         }
     }
 
