@@ -265,6 +265,14 @@ extension Game {
                 spots.append(NSPoint(x: px, y: top))
             }
         }
+        // горните ръбове на отворените програми
+        for r in windowRects {
+            let top = r.maxY
+            let px = CGFloat.random(in: (r.minX + 40)...max(r.minX + 41, r.maxX - 40))
+            if abs(px - cx) < 450 && abs(px - cx) > 30 && top - feet < 320 && feet - top < 500 && top > feet + 20 {
+                spots.append(NSPoint(x: px, y: top))
+            }
+        }
         // другият екран
         if NSScreen.screens.count > 1, Double.random(in: 0..<1) < 0.35,
            let here = screenAt(NSPoint(x: cx, y: feet + 5)) {
@@ -332,9 +340,16 @@ extension Game {
 
     /// Нарисувал си нещо, след като го е поискал.
     func fulfillDrawRequest() {
-        if let w = want, case .draw = w {
+        // не разпознава формите: вярва ти, но иска да е поне малко нарисувано
+        if let w = want, case .draw(let what) = w {
+            if newCellsThisSession < 15 {
+                say("Това ли е \(what)? Нарисувай още малко!", seconds: 3)
+                return
+            }
             fulfill(w)
-            say("Уау, прекрасно е! Благодаря! +10 монети", seconds: 3)
+            let verdicts = ["Уау, точно \(what)! Благодаря!", "Хм… на \(what) ли прилича? Добре, приемам!",
+                            "Най-хубавото \(what) на света!", "Ще го сложа в следващия си клип!"]
+            say(verdicts.randomElement()! + " +10 монети", seconds: 3.5)
         }
     }
 

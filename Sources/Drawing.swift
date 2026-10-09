@@ -320,13 +320,20 @@ extension Game {
     func supportY(x0: CGFloat, x1: CGFloat, feet: CGFloat) -> CGFloat {
         let floor0 = screenAt(NSPoint(x: (x0 + x1) / 2, y: feet + 5))?.visibleFrame.minY ?? 0
         var best = floor0
+        var onWindow: NSRect?
+        // горните ръбове на прозорците на другите програми
+        for r in windowRects where r.maxX > x0 + 4 && r.minX < x1 - 4 {
+            let top = r.maxY
+            if top <= feet + 3 && top > best { best = top; onWindow = r }
+        }
         let c0 = Int(floor(x0 / drawCell)), c1 = Int(floor(x1 / drawCell))
         for (k, _) in drawCells {
             let (cx, cy) = cellFromKey(k)
             guard cx >= c0 && cx <= c1 else { continue }
             let top = CGFloat(cy + 1) * drawCell
-            if top <= feet + 3 && top > best { best = top }
+            if top <= feet + 3 && top > best { best = top; onWindow = nil }
         }
+        standingOnWindow = abs(best - feet) < 4 ? onWindow : nil
         return best
     }
 

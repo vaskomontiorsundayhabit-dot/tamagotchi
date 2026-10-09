@@ -198,7 +198,9 @@ extension Game {
         // иска конкретни неща от магазина (които още няма)
         let notOwned = shopItems.filter { $0.kind != .use && !pet.owned.contains($0.id) && $0.price <= max(60, pet.coins + 40) }
         if let item = notOwned.randomElement() { options.append(.buy(item.id)) }
-        options.append(.buy(["cake", "coffee", "gold"].randomElement()!))
+        options.append(.buy(pet.fullness < 60 ? ["cake", "coffee", "gold"].randomElement()! : ["coffee", "gold"].randomElement()!))
+        // докато работи, иска главно кафе
+        if pet.working { options = [.coffee, .coffee, .coffee, .buy("coffee"), .pet] }
         // пиксел с цвят иска само когато е гладен
         if foodPixelsOn && pet.fullness < 60 { options += [.color(foodColors.randomElement()!), .color(foodColors.randomElement()!)] }
         if !pet.working && pet.energy > 30 { options.append(.work) }

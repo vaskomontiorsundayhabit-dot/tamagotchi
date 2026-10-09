@@ -158,6 +158,7 @@ let iconPencil = grid([
 let shopItems: [ShopItem] = [
     ShopItem(id: "coffee", name: "Кафе", price: 15, kind: .use, slot: "", info: "+30 енергия", icon: iconCoffee),
     ShopItem(id: "cake", name: "Торта", price: 25, kind: .use, slot: "", info: "+40 ситост, +10 радост", icon: iconCake),
+    ShopItem(id: "tea", name: "Чай", price: 10, kind: .use, slot: "", info: "лекува по-бързо, +5 енергия", icon: iconTea),
     ShopItem(id: "pill", name: "Лекарство", price: 20, kind: .use, slot: "", info: "+35 здраве", icon: iconPill),
     ShopItem(id: "gold", name: "Златен пиксел", price: 60, kind: .use, slot: "", info: "+40 опит", icon: iconGold),
     ShopItem(id: "party", name: "Парти шапка", price: 40, kind: .wear, slot: "hat", info: "за купон", icon: hatParty),
@@ -326,20 +327,26 @@ extension Game {
             say("Ново: \(item.name.lowercased())!", seconds: 3)
         case .use:
             if pet.dead { return }
-            if item.id == "cake" && pet.fullness >= 90 { say("Не мога повече! Преядох!", seconds: 2.5); return }
+            if item.id == "cake" && pet.overfull >= 100 { say("Не! Ще се пръсна!", seconds: 2.5); return }
             guard pay(item) else { return }
             switch item.id {
             case "coffee":
                 pet.energy = (pet.energy + 30).clamped()
                 say("Кафеее! Сега мога да монтирам цяла нощ!", seconds: 3)
                 fulfill(.coffee)
+                drankCoffee()
+            case "tea":
+                pet.energy = (pet.energy + 5).clamped()
+                if isSick { cure(minutes: 40) } else { say("Ммм, чаят е топъл.", seconds: 2.5) }
             case "cake":
+                if pet.fullness >= 90 { pet.overfull = min(100, pet.overfull + 40) }
                 pet.fullness = (pet.fullness + 40).clamped()
                 pet.fun = (pet.fun + 10).clamped()
                 lastFoodColor = 0xff8fab
                 start(.eat, length: 1.6)
                 say("Торта! Обичам те!", seconds: 2.5)
             case "pill":
+                if isSick { cure(minutes: 60) }
                 pet.health = (pet.health + 35).clamped()
                 start(.pill, length: 1.6)
                 say("Бляк… но помага", seconds: 2.5)

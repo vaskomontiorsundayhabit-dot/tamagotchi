@@ -555,6 +555,10 @@ struct Pet: Codable {
     var owned: [String] = []
     var worn: [String] = []
     var workCoinSeconds: Double = 0
+    var overfull: Double = 0           // преяждане 0…100 (коремчето)
+    var sickUntil: Date?
+    var badToday = 0                   // изядени развалени пиксели днес
+    var badDay = ""
     var asleep = false
     var dead = false
     var born = Date()
@@ -580,6 +584,10 @@ struct Pet: Codable {
         owned = try c.decodeIfPresent([String].self, forKey: .owned) ?? owned
         worn = try c.decodeIfPresent([String].self, forKey: .worn) ?? worn
         workCoinSeconds = try c.decodeIfPresent(Double.self, forKey: .workCoinSeconds) ?? workCoinSeconds
+        overfull = try c.decodeIfPresent(Double.self, forKey: .overfull) ?? overfull
+        sickUntil = try c.decodeIfPresent(Date.self, forKey: .sickUntil) ?? sickUntil
+        badToday = try c.decodeIfPresent(Int.self, forKey: .badToday) ?? badToday
+        badDay = try c.decodeIfPresent(String.self, forKey: .badDay) ?? badDay
         asleep = try c.decodeIfPresent(Bool.self, forKey: .asleep) ?? asleep
         dead = try c.decodeIfPresent(Bool.self, forKey: .dead) ?? dead
         born = try c.decodeIfPresent(Date.self, forKey: .born) ?? born
@@ -779,7 +787,7 @@ final class PetView: NSView {
         else if atDesk { pose = .type }
         else { pose = .idle }
 
-        let sp = buildSprite(level: pet.level, face: game.currentFace(), pose: pose,
+        let sp = buildSprite(level: game.bodyCells, face: game.currentFace(), pose: pose,
                              frame: pose == .walk || game.isDragging ? Int(t * 8) : frame, working: atDesk, worn: pet.worn)
 
         var dy: CGFloat = 0
@@ -831,9 +839,28 @@ final class PetView: NSView {
             tr.translateX(by: -cx, yBy: -cy)
             tr.concat()
         }
+        let sway = game.isDrunk && !game.rolling
+        if sway {
+            ctx?.saveGraphicsState()
+            let cx = centerX, cy = vy(sp.bottom)
+            let tr = NSAffineTransform()
+            tr.translateX(by: cx, yBy: cy)
+            tr.rotate(byRadians: CGFloat(sin(t * 2.2)) * 0.22)
+            tr.translateX(by: -cx, yBy: -cy)
+            tr.concat()
+        }
         drawGlitchy(sp.grid, x: ox, y: oy + dy, s: s, flip: flip, palette: game.color,
                     glitch: game.glitching, noiseRect: box)
-        if game.rolling { ctx?.restoreGraphicsState() }
+        if game.rolling || sway { ctx?.restoreGraphicsState() }
+
+        // сополи, когато е болен
+        if game.isSick && !pet.dead {
+            let len = 3 + CGFloat(Int(t * 1.5) % 4) * 2
+            let nx = centerX - 2, ny = vy(sp.mouthY) - s * 2
+            NSColor(hex: 0x8ac926).setFill()
+            NSRect(x: nx, y: ny, width: 3, height: len).fill()
+            NSRect(x: nx - 1, y: ny + len, width: 5, height: 4).fill()
+        }
 
         let headTop = vy(sp.minY)
         let p = game.actionProgress
@@ -974,6 +1001,8 @@ final class PetView: NSView {
 
 final class FoodPixel: NSObject {
     let color: Int
+    var spoiled = false
+    let spoilAt: Double
     let panel: NSPanel
     let view: FoodView
     var flying = false
@@ -982,6 +1011,7 @@ final class FoodPixel: NSObject {
 
     init(color: Int, at origin: NSPoint, game: Game) {
         self.color = color
+        spoilAt = game.time + Double.random(in: 20 * 60...30 * 60)
         panel = overlayPanel(NSRect(origin: origin, size: FoodView.size), key: false)
         view = FoodView(frame: NSRect(origin: .zero, size: FoodView.size))
         super.init()
@@ -1037,7 +1067,16 @@ final class FoodView: NSView {
         let bob = dragStart == nil ? CGFloat(sin(t * 3 + Double(food.color % 7))) * 2.5 : 0
         let r = NSRect(x: 7, y: 9 + bob, width: 16, height: 16)
         NSColor(hex: 0x2b2b3a).setFill(); r.fill()
-        NSColor(hex: food.color).setFill(); r.insetBy(dx: 2.5, dy: 2.5).fill()
+        NSColor(hex: food.spoiled ? 0x1a1a1a : food.color).setFill(); r.insetBy(dx: 2.5, dy: 2.5).fill()
+        if food.spoiled {
+            // развален: черен и мирише
+            NSColor(hex: 0x6a994e).setFill()
+            for i in 0..<3 {
+                let wy = r.minY - 4 - CGFloat(Int(t * 3 + Double(i)) % 3) * 2
+                NSRect(x: r.minX + 2 + CGFloat(i) * 5, y: wy, width: 2, height: 3).fill()
+            }
+            return
+        }
         NSColor(white: 1, alpha: 0.7).setFill()
         NSRect(x: r.minX + 3.5, y: r.minY + 3.5, width: 3, height: 3).fill()
         if Int(t * 2 + Double(food.color % 5)) % 3 == 0 {
@@ -1602,7 +1641,7 @@ final class ClipView: NSView {
     var clip = 0
     var started: Double = 0
 
-    static let length: Double = 6
+    static let length: Double = 7.8      // 0,9 с заглавие + 6 с сцена + 0,9 с край
     static let size = NSSize(width: 320, height: 240)
 
     override var isFlipped: Bool { true }
@@ -1644,13 +1683,14 @@ final class ClipView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
-        let t = min(ClipView.length, game.time - started)
+        let raw = min(ClipView.length, game.time - started)
+        let t = max(0, min(6, raw - 0.9))      // време в самата сцена
         let b = bounds
         NSColor(hex: 0x1b1b24).setFill(); b.fill()
         let screen = NSRect(x: 8, y: 26, width: b.width - 16, height: 170)
         let W = screen.width, H = screen.height
 
-        text("КЛИП \(clip + 1)/\(clipTitles.count)", 10, 6, size: 10, color: 0x8d99ae)
+        text("ПИКСЧО ПРОДУКЦИЯ", 10, 6, size: 10, color: 0x8d99ae)
         if Int(t * 2) % 2 == 0 {
             NSColor(hex: 0xe63946).setFill()
             NSBezierPath(ovalIn: NSRect(x: b.width - 52, y: 8, width: 8, height: 8)).fill()
@@ -1662,6 +1702,21 @@ final class ClipView: NSView {
         let x0 = screen.minX, y0 = screen.minY
         let ground = y0 + H - 22
 
+        // монтаж: различни кадри (зуум), бързи преходи, заглавие и край
+        let shot = Int(t / 1.5)
+        let zoom: CGFloat = [1.0, 1.35, 1.0, 1.6, 1.15][min(shot, 4)]
+        let inScene = raw >= 0.9 && raw <= ClipView.length - 0.9
+        if inScene {
+            NSGraphicsContext.current?.saveGraphicsState()
+            let tr = NSAffineTransform()
+            let fx = screen.midX + (shot % 2 == 0 ? 0 : 30), fy = screen.midY + 20
+            tr.translateX(by: fx, yBy: fy)
+            tr.scale(by: zoom)
+            tr.translateX(by: -fx, yBy: -fy)
+            tr.concat()
+        }
+
+        if inScene {
         switch clip {
         case 0: // влог
             NSColor(hex: 0x9ad1f5).setFill(); screen.fill()
@@ -1809,6 +1864,30 @@ final class ClipView: NSView {
                 text("БУ!", x0 + W / 2, y0 + 20, size: 40, color: 0xe63946, center: true)
             }
         }
+        }
+        if inScene {
+            NSGraphicsContext.current?.restoreGraphicsState()
+            // бял проблясък на всяка смяна на кадъра
+            let since = t.truncatingRemainder(dividingBy: 1.5)
+            if t > 0.2 && since < 0.1 {
+                NSColor(white: 1, alpha: CGFloat(1 - since / 0.1) * 0.8).setFill(); screen.fill()
+            }
+            // кино ленти
+            NSColor.black.setFill()
+            NSRect(x: screen.minX, y: screen.minY, width: W, height: 10).fill()
+            NSRect(x: screen.minX, y: screen.maxY - 10, width: W, height: 10).fill()
+        } else if raw < 0.9 {
+            // заглавие с изтриване отляво надясно
+            NSColor.black.setFill(); screen.fill()
+            text(clipTitles[clip], screen.midX, screen.midY - 10, size: 13, color: 0xffd23f, center: true)
+            NSColor(hex: 0xe63946).setFill()
+            NSRect(x: screen.minX, y: screen.midY + 14, width: W * CGFloat(raw / 0.9), height: 3).fill()
+        } else {
+            // край
+            NSColor.black.setFill(); screen.fill()
+            text("КРАЙ", screen.midX, screen.midY - 26, size: 22, color: 0xffffff, center: true)
+            text("МОНТАЖ: \(game.pet.name.uppercased())", screen.midX, screen.midY + 8, size: 10, color: 0x8d99ae, center: true)
+        }
         NSGraphicsContext.current?.restoreGraphicsState()
 
         // накрая пита дали ти харесва
@@ -1832,9 +1911,9 @@ final class ClipView: NSView {
             NSRect(x: tl.minX + CGFloat(i) * tl.width / 4, y: tl.minY, width: tl.width / 4 - 2, height: tl.height).fill()
         }
         NSColor(hex: 0xe63946).setFill()
-        NSRect(x: tl.minX + CGFloat(t / ClipView.length) * tl.width - 1, y: tl.minY - 3, width: 3, height: tl.height + 6).fill()
+        NSRect(x: tl.minX + CGFloat(raw / ClipView.length) * tl.width - 1, y: tl.minY - 3, width: 3, height: tl.height + 6).fill()
         text(clipTitles[clip], 10, 222, size: 9, color: 0xffffff)
-        text(String(format: "00:0%d / 00:06", Int(min(t, 6))), b.width - 92, 222, size: 9, color: 0x8d99ae)
+        text(String(format: "00:0%d / 00:08", Int(raw)), b.width - 92, 222, size: 9, color: 0x8d99ae)
     }
 }
 
@@ -1872,7 +1951,9 @@ final class Game: NSObject, NSApplicationDelegate {
     var clickTimes: [Double] = []
     var glitchUntil: Double = 0
     var nextGlitch: Double = 40
-    var glitching: Bool { time < glitchUntil || action == .angry && Int(time * 7) % 3 == 0 }
+    var glitching: Bool {
+        time < glitchUntil || action == .angry && Int(time * 7) % 3 == 0 || isSick && Int(time * 4) % 5 == 0
+    }
 
     // търкаляне през екрана
     var rolling = false
@@ -1947,6 +2028,15 @@ final class Game: NSObject, NSApplicationDelegate {
     var lastDragYell: Double = 0
     var backToDesk = false
     var fallFrom: CGFloat = 0
+    var drunkUntil: Double = 0
+    var nextDrunkLine: Double = 0
+    var nextSickLine: Double = 0
+    var coffeeTimes: [Double] = []
+    var windowRects: [NSRect] = []
+    var lastWindowScan: Double = 0
+    var bites: [BiteMark] = []
+    var standingOnWindow: NSRect?
+    var nextWindowSnack: Double = 4 * 60
     var autoWorkStart: Double = 0
     var nextAutoWork: Double = 15 * 60
 
@@ -2078,6 +2168,7 @@ final class Game: NSObject, NSApplicationDelegate {
         updateFetch(step)
         updateWalk(step)
         updateLife(step)
+        updateHealth(step)
         updateDragYell()
         if monitorDetached && !pet.working && !isDragging && !jumping { reattachMonitor() }
         monitorPanel?.contentView?.needsDisplay = true
@@ -2190,6 +2281,8 @@ final class Game: NSObject, NSApplicationDelegate {
         case .angry: return .angry
         case .none: break
         }
+        if isSick { return .sick }
+        if isDrunk { return Int(time * 3) % 4 == 0 ? .blink : .happy }
         if isDragging && monitorDetached { return .angry }
         if isDragging || rolling || fetchPhase == .running { return .happy }
         if toiletPhase == .doing { return .focus }
@@ -2403,7 +2496,7 @@ final class Game: NSObject, NSApplicationDelegate {
 
     @objc func feed() {
         guard checkAwake() else { return }
-        eat(color: foodColors.randomElement()!)
+        eatFood(color: foodColors.randomElement()!, spoiled: false)
     }
 
     // пиксели по екрана
@@ -2423,7 +2516,7 @@ final class Game: NSObject, NSApplicationDelegate {
         if window.isVisible && petScreenRect().insetBy(dx: -14, dy: -14).contains(center) {
             if pet.dead { say("…", seconds: 1.5); return }
             if pet.asleep { say("Zzz… (спи)", seconds: 2); return }
-            if eat(color: food.color) {
+            if eatFood(color: food.color, spoiled: food.spoiled) {
                 food.remove()
                 foods.removeAll { $0 === food }
             } else {
@@ -2457,6 +2550,7 @@ final class Game: NSObject, NSApplicationDelegate {
             pet.working = false
             say("Пауза за кафе!", seconds: 2)
         } else {
+            if isSick { say("Болен съм… не мога да монтирам.", seconds: 2.5); return }
             if pet.energy < 15 { say("Нямам сили да монтирам…", seconds: 2.5); return }
             endFetch()
             pet.working = true
@@ -2675,6 +2769,7 @@ final class Game: NSObject, NSApplicationDelegate {
             RetroButton(icon: iconEnergy, label: "Енергия", value: pet.energy, action: nil),
             RetroButton(icon: iconWork, label: "Работа", value: pet.work, action: nil),
             RetroButton(icon: iconHealth, label: "Здраве", value: pet.health, action: nil),
+            RetroButton(icon: iconBelly, label: "Преядено", value: pet.overfull, action: nil),
         ]
         if dead {
             v.actions = [RetroButton(icon: iconSun, label: "Ново животинче", value: nil, action: #selector(newPet))]
@@ -2727,6 +2822,11 @@ final class Game: NSObject, NSApplicationDelegate {
 
     @objc func medicine() {
         guard checkAwake() else { return }
+        if isSick {
+            start(.pill, length: 1.6)
+            cure(minutes: 60)
+            return
+        }
         if pet.health > 80 { say("Не съм болен!", seconds: 2); return }
         pet.health = (pet.health + 35).clamped()
         start(.pill, length: 1.6)
