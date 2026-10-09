@@ -691,7 +691,7 @@ func pick(_ lines: [String], avoiding last: inout String) -> String {
 
 // MARK: - Изглед на Пиксчо
 
-enum Action { case none, eat, love, angry, pill, levelUp }
+enum Action { case none, eat, love, angry, pill, levelUp, wave }
 
 final class KeyPanel: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -742,7 +742,7 @@ final class PetView: NSView {
         guard let start = dragStart, let window, game?.busyMoving != true else { return }
         let p = NSEvent.mouseLocation
         let dx = p.x - start.x, dy = p.y - start.y
-        if abs(dx) + abs(dy) > 3 { dragged = true; game?.isDragging = true }
+        if abs(dx) + abs(dy) > 3 && !dragged { dragged = true; game?.isDragging = true; game?.dragStarted() }
         if dragged { window.setFrameOrigin(NSPoint(x: windowStart.x + dx, y: windowStart.y + dy)) }
     }
 
@@ -771,21 +771,23 @@ final class PetView: NSView {
         let flip = game.walking && game.facingLeft
 
         let pose: Pose
+        let atDesk = pet.working && !game.monitorDetached
         if pet.asleep || pet.dead { pose = .sleep }
+        else if game.isDragging { pose = .wave }
         else if game.walking { pose = .walk }
-        else if game.action == .love || game.action == .levelUp { pose = .wave }
-        else if pet.working { pose = .type }
+        else if game.action == .love || game.action == .levelUp || game.action == .wave { pose = .wave }
+        else if atDesk { pose = .type }
         else { pose = .idle }
 
         let sp = buildSprite(level: pet.level, face: game.currentFace(), pose: pose,
-                             frame: pose == .walk ? Int(t * 8) : frame, working: pet.working, worn: pet.worn)
+                             frame: pose == .walk || game.isDragging ? Int(t * 8) : frame, working: atDesk, worn: pet.worn)
 
         var dy: CGFloat = 0
         if pet.dead {
             dy = CGFloat(sin(t * 2) * 4)
         } else if pet.asleep {
             dy = frame % 4 < 2 ? 0 : 2
-        } else if game.action == .love || game.action == .levelUp {
+        } else if game.action == .love || game.action == .levelUp || game.action == .wave {
             dy = -abs(CGFloat(sin(t * 8))) * 8
         } else if !game.walking && !pet.working && game.action != .angry {
             dy = frame % 2 == 0 ? 0 : 2
@@ -898,6 +900,8 @@ final class PetView: NSView {
             for (dx, dyy) in [(0, 0), (6, 0), (0, 6), (6, 6), (3, 3)] {
                 NSRect(x: ax + CGFloat(dx), y: ay + CGFloat(dyy), width: 3, height: 3).fill()
             }
+        case .wave:
+            break
         case .pill:
             drawGrid(pillGrid, x: centerX - 7, y: headTop - 24 + CGFloat(p) * 30, s: 2.5, palette: game.color)
         case .none:
@@ -919,7 +923,7 @@ final class PetView: NSView {
 
         if let text = game.bubbleText { drawBubble(text, tailX: centerX, bottom: headTop - 4) }
         if hovering && game.bubbleText == nil {
-            drawName(pet.name, centerX: centerX, y: oy + CGFloat(sp.groundY + 1) * s + 3)
+            drawName(pet.name, centerX: centerX, y: max(2, vy(sp.minY) - 20))
         }
     }
 
@@ -1520,6 +1524,22 @@ final class CatchView: NSView {
 // MARK: - Съобщение на целия екран
 
 final class AlertView: NSView {
+    /// Голям надпис горе на екрана, без затъмняване; Пиксчо маха на мястото си.
+    func drawGreeting(_ game: Game, _ t: Double) {
+        let alpha = CGFloat(min(1, t * 2, max(0, 6 - t)))
+        let big: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 72, weight: .heavy),
+                                                  .foregroundColor: NSColor(hex: 0xffd23f, alpha: alpha)]
+        let shadow: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 72, weight: .heavy),
+                                                     .foregroundColor: NSColor(hex: 0x2b2b3a, alpha: alpha)]
+        let str = title as NSString
+        let w = str.size(withAttributes: big).width
+        let y = bounds.height * 0.22 + CGFloat(sin(t * 3)) * 6
+        for (dx, dy) in [(-4, 0), (4, 0), (0, -4), (0, 4), (4, 4)] {
+            str.draw(at: NSPoint(x: (bounds.width - w) / 2 + CGFloat(dx), y: y + CGFloat(dy)), withAttributes: shadow)
+        }
+        str.draw(at: NSPoint(x: (bounds.width - w) / 2, y: y), withAttributes: big)
+    }
+
     weak var game: Game?
     var title = ""
     var subtitle = ""
@@ -1533,7 +1553,8 @@ final class AlertView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let t = game.time - started
-        NSColor(hex: happy ? 0x1d3557 : 0x0b0b14, alpha: min(happy ? 0.6 : 0.75, t * 2)).setFill(); bounds.fill()
+        if happy { drawGreeting(game, t); return }
+        NSColor(hex: 0x0b0b14, alpha: min(0.75, t * 2)).setFill(); bounds.fill()
 
         let sp = buildSprite(level: game.pet.level, face: happy ? .happy : .angry, pose: .wave, frame: Int(game.time * 4),
                              working: false, worn: game.pet.worn)
@@ -1920,6 +1941,12 @@ final class Game: NSObject, NSApplicationDelegate {
     var jumpDuration: Double = 1
     var jumpHeight: CGFloat = 80
     var autoWorking = false
+    var monitorDetached = false
+    var monitorPanel: NSPanel?
+    var deskOrigin = NSPoint.zero
+    var lastDragYell: Double = 0
+    var backToDesk = false
+    var fallFrom: CGFloat = 0
     var autoWorkStart: Double = 0
     var nextAutoWork: Double = 15 * 60
 
@@ -2051,6 +2078,9 @@ final class Game: NSObject, NSApplicationDelegate {
         updateFetch(step)
         updateWalk(step)
         updateLife(step)
+        updateDragYell()
+        if monitorDetached && !pet.working && !isDragging && !jumping { reattachMonitor() }
+        monitorPanel?.contentView?.needsDisplay = true
         updateJump()
         updateFlyingFood()
         applyGravity(step)
@@ -2156,10 +2186,11 @@ final class Game: NSObject, NSApplicationDelegate {
         if pet.asleep { return action == .angry ? .angry : .sleep }
         switch action {
         case .eat: return Int(time * 5) % 2 == 0 ? .eatOpen : .eatShut
-        case .love, .pill, .levelUp: return .happy
+        case .love, .pill, .levelUp, .wave: return .happy
         case .angry: return .angry
         case .none: break
         }
+        if isDragging && monitorDetached { return .angry }
         if isDragging || rolling || fetchPhase == .running { return .happy }
         if toiletPhase == .doing { return .focus }
         if anger > 60 { return .angry }
@@ -2184,7 +2215,8 @@ final class Game: NSObject, NSApplicationDelegate {
             if Double.random(in: 0..<1) < 0.06 * step {
                 if Double.random(in: 0..<1) < 0.4 && tryJump() { return }
                 let t = origin.x + CGFloat.random(in: -220...220)
-                walkTarget = min(max(t, vf.minX), vf.maxX - PetView.size.width)
+                let r = xRange(vf)
+                walkTarget = min(max(t, r.lowerBound), r.upperBound)
             }
             return
         }
@@ -2218,7 +2250,7 @@ final class Game: NSObject, NSApplicationDelegate {
         guard let vf = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
         let x = window.frame.minX
         let leftSide = x - vf.minX > vf.maxX - x
-        rollTarget = leftSide ? vf.minX + 20 : vf.maxX - PetView.size.width - 20
+        rollTarget = leftSide ? xRange(vf).lowerBound + 10 : xRange(vf).upperBound - 10
         rolling = true
         walkTarget = nil
         say("Уиииии!", seconds: 2)
@@ -2239,12 +2271,22 @@ final class Game: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Къде може да е прозорецът, така че самият Пиксчо да е изцяло на екрана (прозорецът може да излиза).
+    func xRange(_ vf: NSRect) -> ClosedRange<CGFloat> {
+        let r = view.spriteRect
+        let lo = vf.minX - r.minX, hi = vf.maxX - r.maxX
+        return lo <= hi ? lo...hi : lo...lo
+    }
+
     func keepOnScreen() {
-        guard let screen = window.screen ?? NSScreen.main else { return }
+        let pr = petScreenRect()
+        guard let screen = screenAt(NSPoint(x: pr.midX, y: pr.midY)) else { return }
         let vf = screen.visibleFrame
         var o = window.frame.origin
-        o.x = min(max(o.x, vf.minX - 20), vf.maxX - PetView.size.width + 20)
-        o.y = min(max(o.y, vf.minY - 10), vf.maxY - PetView.size.height)
+        let r = xRange(vf)
+        o.x = min(max(o.x, r.lowerBound), r.upperBound)
+        let h = window.frame.height
+        o.y = min(max(o.y, vf.minY - (h - view.feetY)), vf.maxY - (h - view.spriteRect.minY))
         window.setFrameOrigin(o)
     }
 
@@ -2281,6 +2323,11 @@ final class Game: NSObject, NSApplicationDelegate {
 
     func finishedDrag() {
         walkTarget = nil
+        if monitorDetached {
+            // връща се със скок при монитора си
+            returnToDesk()
+            return
+        }
         keepOnScreen()
         saveWindowPosition()
     }
@@ -2290,9 +2337,19 @@ final class Game: NSObject, NSApplicationDelegate {
         if pet.dead { say("…", seconds: 1.5); return }
         clickTimes.append(time)
         clickTimes.removeAll { time - $0 > 3 }
+        if pet.asleep && clickTimes.count >= 5 {
+            pet.asleep = false
+            clickTimes.removeAll()
+            annoy(25, reason: "ме събуди насила")
+            start(.angry, length: 3)
+            glitchUntil = time + 1
+            say(["ДОБРЕ ДЕ, СТАНАХ! Доволен ли си?!", "Събуди ме! ГРРР!", "Сънувах нещо хубаво, а ти…!"].randomElement()!, seconds: 3.5)
+            save()
+            return
+        }
         if pet.asleep {
             pet.fun = (pet.fun - 2).clamped()
-            annoy(20, reason: "ме събуди")
+            annoy(12, reason: "ме буташ, докато спя")
             start(.angry, length: 2)
             glitchUntil = time + 0.5
             say(pick(angryLines, avoiding: &lastLine), seconds: 2.5)
@@ -2586,6 +2643,7 @@ final class Game: NSObject, NSApplicationDelegate {
     func showAlert(_ title: String, _ subtitle: String, happy: Bool = false) {
         guard let screen = window.screen ?? NSScreen.main else { return }
         let p = overlayPanel(screen.frame, key: false)
+        p.ignoresMouseEvents = happy
         let v = AlertView(frame: NSRect(origin: .zero, size: screen.frame.size))
         v.game = self
         v.title = title
@@ -2756,7 +2814,7 @@ final class Game: NSObject, NSApplicationDelegate {
         guard let vf = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
         endFetch()
         rolling = false
-        window.setFrameOrigin(NSPoint(x: vf.maxX - PetView.size.width - 20, y: vf.minY - 6))
+        window.setFrameOrigin(NSPoint(x: xRange(vf).upperBound - 20, y: vf.minY - (window.frame.height - view.feetY)))
         window.orderFrontRegardless()
         UserDefaults.standard.set(false, forKey: "hidden")
         saveWindowPosition()

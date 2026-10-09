@@ -7,6 +7,11 @@ let scaredLines = [
     "Пуснете ме! Страх ме е!", "Затворен съм! ПОМОЩ!", "Клаустрофобия! Махни това!",
     "Тук е тъмно и тясно!", "Ще глична от страх!", "Защо ме затвори?!", "Искам навън! ВЕДНАГА!",
 ]
+let dragWorkLines = [
+    "ИСКАААМ ДА МОНТИРАААМ!", "ПУСНИ МЕ! Таймлайнът ме чака!", "Рендерът! РЕНДЕРЪТ!",
+    "Не ме дърпай, бях на последния кадър!", "Клиентът ще ме убие!", "Монитореее, чакай ме!",
+    "Ще изгубя проекта!", "Не съм запазил! ПУСНИ МЕ!",
+]
 let drawRequests = ["сърце", "къща", "дърво", "стълбичка", "слънце", "котка", "ракета", "цвете", "кораб", "звезда"]
 
 enum Reaction { case happy, angry(Double), work, shop, clip, play, nothing }
@@ -295,6 +300,10 @@ extension Game {
             jumping = false
             walking = false
             saveWindowPosition()
+            if backToDesk {
+                reattachMonitor()
+                if pet.working { say("Обратно на работа! Не ме дърпай!", seconds: 2.5) }
+            }
         }
     }
 
@@ -334,7 +343,55 @@ extension Game {
     func greet() {
         let h = Calendar.current.component(.hour, from: Date())
         let title = h >= 5 && h < 12 ? "ДОБРО УТРО!" : (h < 18 && h >= 12 ? "ДОБЪР ДЕН!" : "ДОБЪР ВЕЧЕР!")
-        showAlert(title, "\(pet.name.uppercased()) ТИ МАХА!", happy: true)
+        showAlert(title, "", happy: true)
+        start(.wave, length: 5)
+        say(title == "ДОБРО УТРО!" ? "Добро утро! Как спа?" : (title == "ДОБЪР ДЕН!" ? "Добър ден!" : "Добър вечер!"), seconds: 4)
+    }
+
+    // --- влачене, докато монтира: мониторът си остава, той вика ---
+
+    func dragStarted() {
+        guard pet.working, !monitorDetached else { return }
+        let mr = view.monitorRect
+        guard mr != .zero else { return }
+        let wf = window.frame
+        let frame = NSRect(x: wf.minX + mr.minX, y: wf.maxY - mr.maxY, width: mr.width, height: mr.height)
+        let v = MonitorView(frame: NSRect(origin: .zero, size: frame.size))
+        v.game = self
+        let p = overlayPanel(frame, key: false)
+        p.level = .floating
+        p.ignoresMouseEvents = true
+        p.contentView = v
+        p.orderFrontRegardless()
+        monitorPanel = p
+        monitorDetached = true
+        deskOrigin = wf.origin
+        lastDragYell = 0
+    }
+
+    func updateDragYell() {
+        guard isDragging, monitorDetached, time - lastDragYell > 1.6 else { return }
+        lastDragYell = time
+        glitchUntil = time + 0.2
+        say(pick(dragWorkLines, avoiding: &lastLine), seconds: 1.6)
+    }
+
+    func returnToDesk() {
+        jumpFrom = window.frame.origin
+        jumpTo = deskOrigin
+        let dist = hypot(jumpTo.x - jumpFrom.x, jumpTo.y - jumpFrom.y)
+        jumpDuration = min(1.6, 0.5 + Double(dist) / 1400)
+        jumpHeight = max(60, jumpTo.y - jumpFrom.y + 80)
+        jumpStart = time
+        jumping = true
+        backToDesk = true
+    }
+
+    func reattachMonitor() {
+        monitorPanel?.orderOut(nil)
+        monitorPanel = nil
+        monitorDetached = false
+        backToDesk = false
     }
 
     // --- сам отива да монтира ---
@@ -355,6 +412,25 @@ extension Game {
                 autoWorking = true
                 autoWorkStart = time
                 say("Отивам да монтирам малко…", seconds: 3)
+            }
+        }
+    }
+}
+
+/// Мониторът сам, докато Пиксчо е отвлечен от бюрото.
+final class MonitorView: NSView {
+    weak var game: Game?
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let game else { return }
+        let sp = buildSprite(level: game.pet.level, face: .focus, pose: .type, frame: Int(game.time * 2), working: true)
+        let s = PetView.scale
+        for y in sp.monY..<(sp.monY + sp.monH) {
+            for x in sp.monX..<(sp.monX + sp.monW) {
+                guard let c = game.color(sp.grid[y][x]) else { continue }
+                c.setFill()
+                NSRect(x: CGFloat(x - sp.monX) * s, y: CGFloat(y - sp.monY) * s, width: s, height: s).fill()
             }
         }
     }

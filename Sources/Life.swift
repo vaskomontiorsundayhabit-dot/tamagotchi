@@ -229,7 +229,8 @@ extension Game {
             guard idle, time > nextToilet, !pet.working, fetchPhase == .off, !rolling, !isDragging,
                   let vf = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
             let x = window.frame.minX
-            toiletTarget = x - vf.minX > vf.maxX - x ? vf.minX + 10 : vf.maxX - PetView.size.width - 10
+            let r = xRange(vf)
+            toiletTarget = x - r.lowerBound > r.upperBound - x ? r.lowerBound + 10 : r.upperBound - 10
             toiletPhase = .going
             toiletReturnX = x
             walkTarget = nil
