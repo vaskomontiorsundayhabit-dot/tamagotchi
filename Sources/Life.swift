@@ -228,19 +228,20 @@ extension Game {
     func updateToilet(_ step: Double, idle: Bool) {
         switch toiletPhase {
         case .off:
-            guard idle, time > nextToilet, !pet.working, fetchPhase == .off, !rolling, !isDragging,
-                  let vf = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
-            let x = window.frame.minX
-            let r = xRange(vf)
-            toiletTarget = x - r.lowerBound > r.upperBound - x ? r.lowerBound + 10 : r.upperBound - 10
+            guard idle, time > nextToilet, !pet.working, fetchPhase == .off, !rolling, !isDragging, !jumping else { return }
+            let pr = petScreenRect()
+            guard let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame else { return }
+            // винаги слиза долу, в по-близкия ъгъл
+            let half = (view.bodyX1 - view.bodyX0) / 2
+            let left = vf.minX + 30 + half, right = vf.maxX - 30 - half
+            let x = abs(pr.midX - left) < abs(pr.midX - right) ? left : right
+            toiletReturnOrigin = window.frame.origin
             toiletPhase = .going
-            toiletReturnX = x
             walkTarget = nil
+            jump(toFeet: NSPoint(x: x, y: vf.minY))
             say("Трябва ми тоалетна! Веднага!", seconds: 2.5)
         case .going:
-            walking = true
-            let o = window.frame.origin
-            if moveWindow(toward: NSPoint(x: toiletTarget, y: o.y), speed: CGFloat(90 * step)) {
+            if !jumping {
                 walking = false
                 toiletPhase = .doing
                 toiletStart = time
@@ -260,12 +261,10 @@ extension Game {
                 }
                 say(toiletPoop ? "Ох, олекна ми! Почисти, моля." : "Ох, олекна ми!", seconds: 3)
                 toiletPhase = .returning
+                jump(toOrigin: toiletReturnOrigin)
             }
         case .returning:
-            walking = true
-            let o = window.frame.origin
-            if moveWindow(toward: NSPoint(x: toiletReturnX, y: o.y), speed: CGFloat(90 * step)) {
-                walking = false
+            if !jumping {
                 toiletPhase = .off
                 saveWindowPosition()
             }

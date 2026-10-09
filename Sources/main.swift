@@ -93,15 +93,15 @@ func makeBlobOrder(_ count: Int) -> [(Int, Int)] {
     return cells
 }
 
-let blobOrder = makeBlobOrder(108)
+let blobOrder = makeBlobOrder(8 + 250 + 6)
 
 // MARK: - Спрайт
 
 enum Face { case normal, blink, happy, sad, angry, sleep, eatOpen, eatShut, sick, dead, focus }
 enum Pose { case idle, wave, walk, type, sleep }
 
-let canvasW = 100
-let canvasH = 80
+let canvasW = 132
+let canvasH = 104
 let cellSize = 4
 
 struct Sprite {
@@ -116,7 +116,7 @@ struct Sprite {
 
 func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, worn: [String] = []) -> Sprite {
     var g = Grid(repeating: Array(repeating: ".", count: canvasW), count: canvasH)
-    let count = max(1, min(100, level))
+    let count = max(1, min(256, level))
     let cells = blobOrder.prefix(8 + count)
     let minCX = cells.map { $0.0 }.min()!, maxCX = cells.map { $0.0 }.max()!
     let minCY = cells.map { $0.1 }.min()!, maxCY = cells.map { $0.1 }.max()!
@@ -304,9 +304,12 @@ func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, 
         for x in (l - 1)...(r + 1) { put(&g, x, y, "O"); put(&g, x, y + 1, "O") }
         for dy in 2...4 { put(&g, r - 3, y + dy, "O"); put(&g, r - 2, y + dy, "O") }
     }
-    for (id, hat) in [("party", hatParty), ("beanie", hatBeanie), ("crown", hatCrown)] where worn.contains(id) {
+    for (id, hat) in [("party", hatParty), ("beanie", hatBeanie), ("crown", hatCrown), ("cap", hatCap),
+                      ("chef", hatChef), ("catears", hatCatEars)] where worn.contains(id) {
         stampK(hat, cx - hat[0].count * kk / 2, topY - hat.count * kk + kk)
     }
+    if worn.contains("halo") { stampK(hatHalo, cx - 4 * kk, topY - 3 * kk - 4) }
+    if worn.contains("mustache") { stampK(lipMustache, cx - 3 * kk, mouthY - 1) }
     if worn.contains("bow") { stampK(hatBow, rowSpan(topY + 1).1 - 3 * kk, topY - 2 * kk) }
 
     var sp = Sprite(grid: g)
@@ -332,6 +335,20 @@ func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, 
         for y in (top + 19)...(top + 21) { put(&g, m0 + 12, y, "E"); put(&g, m0 + 15, y, "E") }
         for x in (m0 + 8)...(m0 + 19) { put(&g, x, groundY, "E") }
         sp.monX = m0; sp.monY = top; sp.monW = 28; sp.monH = 23
+        if worn.contains("monitor2") {
+            // втори монитор над първия
+            let t2 = top - 21
+            for x in m0..<(m0 + 28) { put(&g, x, t2, "E"); put(&g, x, t2 + 18, "E") }
+            for y in t2...(t2 + 18) { put(&g, m0, y, "E"); put(&g, m0 + 27, y, "E") }
+            for y in (t2 + 1)..<(t2 + 18) { for x in (m0 + 1)..<(m0 + 27) { put(&g, x, y, "S") } }
+            // на него: цветна графика (скоупове)
+            for i in 0..<12 {
+                let h = 3 + (i * 7 + frame) % 11
+                for y in (t2 + 17 - h)...(t2 + 16) { put(&g, m0 + 2 + i * 2, y, i % 3 == 0 ? "G" : (i % 3 == 1 ? "C" : "Y")) }
+            }
+            put(&g, m0 + 13, t2 + 19, "E"); put(&g, m0 + 14, t2 + 19, "E")
+            sp.monY = t2; sp.monH = 23 + 21
+        }
     }
 
     sp.grid = g
@@ -595,7 +612,7 @@ struct Pet: Codable {
     }
 
     /// с всяко ниво един залепен пиксел повече (започва от 3×3)
-    var cellsAcross: Int { Int(Double(8 + min(100, level)).squareRoot().rounded(.up)) }
+    var cellsAcross: Int { Int(Double(8 + min(250, level)).squareRoot().rounded(.up)) }
     var xpNeeded: Int { 15 + level * 3 }
 
     static let videoSeconds: Double = 30 * 60
@@ -614,7 +631,7 @@ struct Pet: Codable {
         } else if working && !offline {
             fullness -= 0.6 * m * (1 + Double(level) / 100)
             fun -= 0.3 * m
-            energy -= 1.0 * m
+            energy -= (owned.contains("chair") ? 0.7 : 1.0) * m
             work += 5 * m
             workSeconds += dt
             if energy <= 10 { working = false }
@@ -788,7 +805,8 @@ final class PetView: NSView {
         else { pose = .idle }
 
         let sp = buildSprite(level: game.bodyCells, face: game.currentFace(), pose: pose,
-                             frame: pose == .walk || game.isDragging ? Int(t * 8) : frame, working: atDesk, worn: pet.worn)
+                             frame: pose == .walk || game.isDragging ? Int(t * 8) : frame, working: atDesk,
+                             worn: pet.worn + pet.owned.filter { $0 == "monitor2" })
 
         var dy: CGFloat = 0
         if pet.dead {
@@ -849,9 +867,26 @@ final class PetView: NSView {
             tr.translateX(by: -cx, yBy: -cy)
             tr.concat()
         }
-        drawGlitchy(sp.grid, x: ox, y: oy + dy, s: s, flip: flip, palette: game.color,
+        // мониторът не се клати заедно с него
+        var petGrid = sp.grid
+        var monGrid: Grid?
+        if sway && sp.monW > 0 {
+            var mg = Grid(repeating: Array(repeating: ".", count: canvasW), count: canvasH)
+            for y in sp.monY..<min(canvasH, sp.monY + sp.monH) {
+                for x in sp.monX..<min(canvasW, sp.monX + sp.monW) { mg[y][x] = petGrid[y][x]; petGrid[y][x] = "." }
+            }
+            monGrid = mg
+        }
+        drawGlitchy(petGrid, x: ox, y: oy + dy, s: s, flip: flip, palette: game.color,
                     glitch: game.glitching, noiseRect: box)
         if game.rolling || sway { ctx?.restoreGraphicsState() }
+        if let mg = monGrid { drawGrid(mg, x: ox, y: oy + dy, s: s, flip: flip, palette: game.color) }
+
+        // колко още ще е „пиян“ или болен
+        var timers: [String] = []
+        if game.isDrunk { timers.append("КАФЕ " + clock(game.drunkUntil - t)) }
+        if game.isSick, let until = pet.sickUntil { timers.append("БОЛЕН " + clock(until.timeIntervalSinceNow)) }
+        if !timers.isEmpty { drawTimer(timers.joined(separator: "  "), centerX: centerX, y: oy + CGFloat(sp.groundY + 1) * s + 3) }
 
         // сополи, когато е болен
         if game.isSick && !pet.dead {
@@ -982,6 +1017,23 @@ final class PetView: NSView {
         NSRect(x: tx + 3, y: rect.maxY + 3, width: 2, height: 2).fill()
         str.draw(with: NSRect(x: rect.minX + 7, y: rect.minY + 5, width: w - 14, height: h - 10),
                  options: [.usesLineFragmentOrigin], attributes: attrs)
+    }
+
+    private func clock(_ seconds: Double) -> String {
+        let s = max(0, Int(seconds))
+        return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s % 3600 / 60, s % 60) : String(format: "%d:%02d", s / 60, s % 60)
+    }
+
+    private func drawTimer(_ text: String, centerX: CGFloat, y: CGFloat) {
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedSystemFont(ofSize: 9, weight: .bold),
+            .foregroundColor: NSColor(hex: 0xffd166),
+        ]
+        let str = text as NSString
+        let size = str.size(withAttributes: attrs)
+        let rect = NSRect(x: centerX - size.width / 2 - 5, y: y, width: size.width + 10, height: size.height + 3)
+        NSColor(hex: 0x1b1b24, alpha: 0.85).setFill(); rect.fill()
+        str.draw(at: NSPoint(x: rect.minX + 5, y: rect.minY + 1.5), withAttributes: attrs)
     }
 
     private func drawName(_ name: String, centerX: CGFloat, y: CGFloat) {
@@ -1231,12 +1283,14 @@ final class RetroView: NSView {
     weak var game: Game?
     var stats: [RetroButton] = []
     var actions: [RetroButton] = []
+    var inventory: [ShopItem] = []   // купените неща
     var hover: (Int, Int)?      // (ред, индекс)
 
     static let cell: CGFloat = 36
+    static let invCell: CGFloat = 30
     static let pad: CGFloat = 12
     static let width = pad * 2 + cell * 8
-    static let height: CGFloat = 158
+    static let height: CGFloat = 244
 
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -1248,21 +1302,31 @@ final class RetroView: NSView {
                                        owner: self, userInfo: nil))
     }
 
-    private func rowY(_ row: Int) -> CGFloat { row == 0 ? 50 : 94 }
+    private func rowY(_ row: Int) -> CGFloat { [50, 94, 152][row] }
 
     private func rowX(_ row: Int, _ i: Int) -> CGFloat {
+        if row == 2 {
+            let perRow = min(inventory.count, 10)
+            let start = (bounds.width - CGFloat(perRow) * RetroView.invCell) / 2
+            return start + CGFloat(i % 10) * RetroView.invCell
+        }
         let count = CGFloat(row == 0 ? stats.count : actions.count)
         let start = (bounds.width - count * RetroView.cell) / 2
         return start + CGFloat(i) * RetroView.cell
     }
 
+    private func cellRect(_ row: Int, _ i: Int) -> NSRect {
+        if row == 2 {
+            return NSRect(x: rowX(2, i), y: rowY(2) + CGFloat(i / 10) * RetroView.invCell,
+                          width: RetroView.invCell, height: RetroView.invCell)
+        }
+        return NSRect(x: rowX(row, i), y: rowY(row), width: RetroView.cell, height: RetroView.cell)
+    }
+
     private func hit(_ p: NSPoint) -> (Int, Int)? {
-        for row in 0...1 {
-            let items = row == 0 ? stats : actions
-            for i in items.indices {
-                let r = NSRect(x: rowX(row, i), y: rowY(row), width: RetroView.cell, height: RetroView.cell)
-                if r.contains(p) { return (row, i) }
-            }
+        for row in 0...2 {
+            let n = [stats.count, actions.count, inventory.count][row]
+            for i in 0..<n where cellRect(row, i).contains(p) { return (row, i) }
         }
         return nil
     }
@@ -1275,8 +1339,14 @@ final class RetroView: NSView {
     override func mouseExited(with event: NSEvent) { hover = nil; needsDisplay = true }
 
     override func mouseDown(with event: NSEvent) {
-        guard let h = hit(convert(event.locationInWindow, from: nil)), h.0 == 1,
-              let sel = actions[h.1].action, let game else { return }
+        guard let h = hit(convert(event.locationInWindow, from: nil)), let game else { return }
+        if h.0 == 2 {
+            // облича/съблича нещо от инвентара
+            let item = inventory[h.1]
+            if item.kind == .wear { game.shopAction(item); needsDisplay = true }
+            return
+        }
+        guard h.0 == 1, let sel = actions[h.1].action else { return }
         game.closeRetro()
         game.perform(sel)
     }
@@ -1341,16 +1411,39 @@ final class RetroView: NSView {
             }
         }
 
+        // инвентар: купените неща (облеклото се слага/сваля с клик)
+        let grey: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 9, weight: .heavy),
+                                                   .foregroundColor: NSColor(hex: 0x8d99ae)]
+        ("ИНВЕНТАР" as NSString).draw(at: NSPoint(x: 14, y: 136), withAttributes: grey)
+        if inventory.isEmpty {
+            ("ОЩЕ НИЩО НЕ СИ МУ КУПИЛ" as NSString).draw(at: NSPoint(x: 14, y: 158), withAttributes: grey)
+        }
+        for (i, item) in inventory.enumerated() {
+            let r = cellRect(2, i)
+            let worn = pet.worn.contains(item.id)
+            NSColor(hex: worn ? 0x2f5d50 : (hover?.0 == 2 && hover?.1 == i ? 0x3a3a50 : 0x26263a)).setFill()
+            r.insetBy(dx: 2, dy: 2).fill()
+            let w = CGFloat(item.icon[0].count), h = CGFloat(item.icon.count)
+            let s = min(2.5, 22 / max(w, h))
+            drawGrid(item.icon, x: r.midX - w * s / 2, y: r.midY - h * s / 2, s: s, palette: game.color)
+        }
+
         // надпис за посоченото
         var label = "ПОСОЧИ ИКОНКА"
         if let h = hover {
-            let item = h.0 == 0 ? stats[h.1] : actions[h.1]
-            label = item.label.uppercased()
-            if let v = item.value { label += "  \(Int(v.rounded()))%" }
+            if h.0 == 2 {
+                let item = inventory[h.1]
+                label = item.name.uppercased() + (item.kind == .upgrade ? "  (ПОДОБРЕНИЕ)"
+                    : (pet.worn.contains(item.id) ? "  (СВАЛИ)" : "  (СЛОЖИ)"))
+            } else {
+                let item = h.0 == 0 ? stats[h.1] : actions[h.1]
+                label = item.label.uppercased()
+                if let v = item.value { label += "  \(Int(v.rounded()))%" }
+            }
         }
         let ls = label as NSString
         let size = ls.size(withAttributes: white)
-        ls.draw(at: NSPoint(x: (b.width - size.width) / 2, y: 136), withAttributes: hover == nil ? [.font: font, .foregroundColor: NSColor(hex: 0x8d99ae)] : white)
+        ls.draw(at: NSPoint(x: (b.width - size.width) / 2, y: b.height - 26), withAttributes: hover == nil ? [.font: font, .foregroundColor: NSColor(hex: 0x8d99ae)] : white)
     }
 }
 
@@ -2002,7 +2095,7 @@ final class Game: NSObject, NSApplicationDelegate {
     var toiletPoop = false
     var nextToilet: Double = 12 * 60
     var messes: [MessPixel] = []
-    var toiletReturnX: CGFloat = 0
+    var toiletReturnOrigin = NSPoint.zero
 
     // ядосване с причина, затваряне, въпроси, скокове, сам на работа
     var angerReason: String?
@@ -2408,7 +2501,7 @@ final class Game: NSObject, NSApplicationDelegate {
         }
         if leveled {
             start(.levelUp, length: 2.5)
-            say(pet.level <= 12 ? "НИВО \(pet.level)! Пораснах!" : "НИВО \(pet.level)!", seconds: 3.5)
+            say(pet.level <= 250 ? "НИВО \(pet.level)! Пораснах!" : "НИВО \(pet.level)! Вече съм огромен!", seconds: 3.5)
         }
         save()
     }
@@ -2787,6 +2880,7 @@ final class Game: NSObject, NSApplicationDelegate {
                 RetroButton(icon: iconPencil, label: "Рисувай платформи", value: nil, action: #selector(startDrawing)),
             ]
         }
+        v.inventory = shopItems.filter { $0.kind != .use && pet.owned.contains($0.id) }
         let pr = petScreenRect()
         let vf = (window.screen ?? NSScreen.main)?.visibleFrame ?? .zero
         var o = NSPoint(x: pr.midX - RetroView.width / 2, y: pr.maxY + 6)

@@ -38,6 +38,94 @@ let hatBow = grid([
     "PPRPP",
     "PP.PP",
 ])
+let hatCap = grid([
+    "..RRRRR...",
+    ".RRRRRRR..",
+    ".RRWRRRR..",
+    "RRRRRRRRRR",
+])
+let hatChef = grid([
+    ".WW.WW.",
+    "WWWWWWW",
+    "WWWWWWW",
+    ".WWWWW.",
+    ".EEEEE.",
+])
+let hatHalo = grid([
+    ".YYYYYY.",
+    "Y......Y",
+    ".YYYYYY.",
+])
+let hatCatEars = grid([
+    "KK......KK",
+    "KPK....KPK",
+    "KPPK..KPPK",
+])
+let lipMustache = grid([
+    "KK..KK",
+    "KKKKKK",
+    ".K..K.",
+])
+let iconPizza = grid([
+    "OOOOOOOO",
+    ".YRYYRY.",
+    ".YYYYYY.",
+    "..YRYY..",
+    "..YYYY..",
+    "...YY...",
+    "...YY...",
+    "........",
+])
+let iconCandy = grid([
+    "........",
+    "P.....P.",
+    "PP.RR.PP",
+    "PPRWRRPP",
+    "PPRRRRPP",
+    "PP.RR.PP",
+    "P.....P.",
+    "........",
+])
+let iconEnergyDrink = grid([
+    "..EEEE..",
+    ".CCCCCC.",
+    ".CYYYYC.",
+    ".CCCYCC.",
+    ".CCYCCC.",
+    ".CYYYYC.",
+    ".CCCCCC.",
+    "..EEEE..",
+])
+let iconVitamins = grid([
+    "..WWWW..",
+    ".WWWWWW.",
+    ".GGGGGG.",
+    ".GWGGGG.",
+    ".GGGGGG.",
+    ".GGGGGG.",
+    ".GGGGGG.",
+    "........",
+])
+let iconChair = grid([
+    ".NNNNN..",
+    ".NNNNN..",
+    ".NNNNN..",
+    ".NNNNN..",
+    "NNNNNNN.",
+    "...E....",
+    "..EEE...",
+    ".E.E.E..",
+])
+let iconPiggy = grid([
+    "........",
+    ".PPPPPP.",
+    "PPKPPPPP",
+    "PPPPPPPR",
+    "PPPPPPPP",
+    ".PPPPPP.",
+    ".P.PP.P.",
+    "........",
+])
 let neckBowtie = grid([
     "RR.RR",
     "RRKRR",
@@ -160,17 +248,28 @@ let shopItems: [ShopItem] = [
     ShopItem(id: "cake", name: "Торта", price: 25, kind: .use, slot: "", info: "+40 ситост, +10 радост", icon: iconCake),
     ShopItem(id: "tea", name: "Чай", price: 10, kind: .use, slot: "", info: "лекува по-бързо, +5 енергия", icon: iconTea),
     ShopItem(id: "pill", name: "Лекарство", price: 20, kind: .use, slot: "", info: "+35 здраве", icon: iconPill),
+    ShopItem(id: "pizza", name: "Пица", price: 30, kind: .use, slot: "", info: "+60 ситост", icon: iconPizza),
+    ShopItem(id: "candy", name: "Бонбон", price: 8, kind: .use, slot: "", info: "+15 радост, +5 ситост", icon: iconCandy),
+    ShopItem(id: "energy", name: "Енергийна напитка", price: 35, kind: .use, slot: "", info: "+50 енергия, но се напива за 5 мин", icon: iconEnergyDrink),
+    ShopItem(id: "vitamins", name: "Витамини", price: 25, kind: .use, slot: "", info: "+20 здраве, лекува по-бързо", icon: iconVitamins),
     ShopItem(id: "gold", name: "Златен пиксел", price: 60, kind: .use, slot: "", info: "+40 опит", icon: iconGold),
     ShopItem(id: "party", name: "Парти шапка", price: 40, kind: .wear, slot: "hat", info: "за купон", icon: hatParty),
     ShopItem(id: "beanie", name: "Зимна шапка", price: 60, kind: .wear, slot: "hat", info: "топло е", icon: hatBeanie),
     ShopItem(id: "bow", name: "Панделка", price: 30, kind: .wear, slot: "hat", info: "сладко", icon: hatBow),
+    ShopItem(id: "cap", name: "Шапка с козирка", price: 35, kind: .wear, slot: "hat", info: "спортно", icon: hatCap),
+    ShopItem(id: "chef", name: "Готварска шапка", price: 45, kind: .wear, slot: "hat", info: "за кулинарното шоу", icon: hatChef),
+    ShopItem(id: "catears", name: "Котешки уши", price: 70, kind: .wear, slot: "hat", info: "мяу", icon: hatCatEars),
+    ShopItem(id: "halo", name: "Ореол", price: 150, kind: .wear, slot: "hat", info: "ангелче (уж)", icon: hatHalo),
     ShopItem(id: "crown", name: "Корона", price: 300, kind: .wear, slot: "hat", info: "кралят на монтажа", icon: hatCrown),
     ShopItem(id: "glasses", name: "Очила", price: 50, kind: .wear, slot: "face", info: "умен вид", icon: iconGlasses),
     ShopItem(id: "sunglasses", name: "Слънчеви очила", price: 80, kind: .wear, slot: "face", info: "супер готин", icon: iconSunglasses),
     ShopItem(id: "headphones", name: "Слушалки", price: 120, kind: .wear, slot: "ears", info: "за монтаж на звук", icon: iconHeadphones),
+    ShopItem(id: "mustache", name: "Мустаци", price: 40, kind: .wear, slot: "lip", info: "сериозен монтажист", icon: lipMustache),
     ShopItem(id: "bowtie", name: "Папийонка", price: 40, kind: .wear, slot: "neck", info: "официално", icon: neckBowtie),
     ShopItem(id: "scarf", name: "Шал", price: 50, kind: .wear, slot: "neck", info: "уютно", icon: iconScarf),
-    ShopItem(id: "monitor2", name: "Втори монитор", price: 250, kind: .upgrade, slot: "", info: "работата носи двойно повече монети", icon: iconMonitor),
+    ShopItem(id: "monitor2", name: "Втори монитор", price: 250, kind: .upgrade, slot: "", info: "още един монитор на бюрото; двойно монети от работа", icon: iconMonitor),
+    ShopItem(id: "chair", name: "Удобен стол", price: 180, kind: .upgrade, slot: "", info: "работата го изморява с 30% по-малко", icon: iconChair),
+    ShopItem(id: "piggy", name: "Касичка", price: 220, kind: .upgrade, slot: "", info: "+25% монети от всичко", icon: iconPiggy),
     ShopItem(id: "fastedit", name: "Бърз монтаж", price: 200, kind: .upgrade, slot: "", info: "видео за 20 минути вместо 30", icon: iconEnergy),
     ShopItem(id: "magnet", name: "Пикселен магнит", price: 150, kind: .upgrade, slot: "", info: "пикселите-храна идват по-често", icon: iconMagnet),
 ]
@@ -181,9 +280,9 @@ final class ShopView: NSView {
     weak var game: Game?
     var hover: Int?
 
-    static let cols = 4
+    static let cols = 6
     static let tileW: CGFloat = 112
-    static let tileH: CGFloat = 86
+    static let tileH: CGFloat = 94
     static let pad: CGFloat = 14
     static let header: CGFloat = 44
     static var size: NSSize {
@@ -222,7 +321,15 @@ final class ShopView: NSView {
     override func mouseDown(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
         if closeRect.contains(p) { game?.closeShop(); return }
-        if let i = hit(p) { game?.shopAction(shopItems[i]); needsDisplay = true }
+        if let i = hit(p) {
+            let item = shopItems[i]
+            if p.y > tileRect(i).minY + 70, item.kind != .use, game?.pet.owned.contains(item.id) == true {
+                game?.sell(item)
+            } else {
+                game?.shopAction(item)
+            }
+            needsDisplay = true
+        }
     }
 
     override func keyDown(with event: NSEvent) {
@@ -272,12 +379,17 @@ final class ShopView: NSView {
             drawGrid(item.icon, x: r.midX - w * s / 2, y: r.minY + 8 + (26 - h * s) / 2, s: s, palette: game.color)
             text(item.name.uppercased(), r.midX, r.minY + 40, 9, 0xffffff, center: true)
             let (l, c) = label(item, pet)
-            text(l, r.midX, r.minY + 58, 10, c, center: true)
+            text(l, r.midX, r.minY + 54, 10, c, center: true)
+            if item.kind != .use && pet.owned.contains(item.id) {
+                NSColor(hex: 0x3a2a3a).setFill()
+                NSRect(x: r.minX + 6, y: r.minY + 70, width: r.width - 12, height: 14).fill()
+                text("ПРОДАЙ \(item.price / 2)", r.midX, r.minY + 71, 9, 0xff8fab, center: true)
+            }
         }
 
         let info: String
         if let h = hover { info = "\(shopItems[h].name): \(shopItems[h].info)".uppercased() }
-        else { info = "МОНЕТИ СЕ ПЕЧЕЛЯТ С РАБОТА, ВИДЕА И ИГРИ" }
+        else { info = "МОНЕТИ СЕ ПЕЧЕЛЯТ С РАБОТА, ВИДЕА И ИГРИ. КУПЕНОТО СЕ ПРОДАВА ЗА ПОЛОВИН ЦЕНА." }
         text(info, b.width / 2, b.height - 30, 10, hover == nil ? 0x8d99ae : 0xffffff, center: true)
     }
 }
@@ -350,6 +462,26 @@ extension Game {
                 pet.health = (pet.health + 35).clamped()
                 start(.pill, length: 1.6)
                 say("Бляк… но помага", seconds: 2.5)
+            case "pizza":
+                if pet.fullness >= 90 { pet.overfull = min(100, pet.overfull + 50) }
+                pet.fullness = (pet.fullness + 60).clamped()
+                lastFoodColor = 0xffca3a
+                start(.eat, length: 1.8)
+                say("Пица! Най-доброто нещо след пикселите!", seconds: 3)
+            case "candy":
+                pet.fun = (pet.fun + 15).clamped()
+                pet.fullness = (pet.fullness + 5).clamped()
+                lastFoodColor = 0xff8fab
+                start(.eat, length: 1.2)
+                say("Сладко! Хи-хи!", seconds: 2)
+            case "energy":
+                pet.energy = (pet.energy + 50).clamped()
+                drunkUntil = time + 5 * 60
+                nextDrunkLine = time + 3
+                say("ЕНЕРГИЯЯЯ! Хик!", seconds: 2.5)
+            case "vitamins":
+                pet.health = (pet.health + 20).clamped()
+                if isSick { cure(minutes: 20) } else { say("Витамини! Здрав съм като пиксел!", seconds: 2.5) }
             case "gold":
                 say("Златен пиксел! +40 опит", seconds: 3)
                 addXP(40)
@@ -378,6 +510,16 @@ extension Game {
 
     func earnCoins(_ n: Int) {
         guard n > 0 else { return }
-        pet.coins += n
+        pet.coins += pet.owned.contains("piggy") ? Int((Double(n) * 1.25).rounded(.up)) : n
+    }
+
+    func sell(_ item: ShopItem) {
+        guard pet.owned.contains(item.id) else { return }
+        pet.owned.removeAll { $0 == item.id }
+        pet.worn.removeAll { $0 == item.id }
+        pet.coins += item.price / 2
+        pet.fun = (pet.fun - 5).clamped()
+        say("Продадохме \(item.name.lowercased()) за \(item.price / 2) монети. Сниф…", seconds: 3)
+        save()
     }
 }

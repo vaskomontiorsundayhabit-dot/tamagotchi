@@ -284,16 +284,26 @@ extension Game {
             }
         }
         guard let spot = spots.randomElement() else { return false }
-        jumpFrom = wf.origin
-        jumpTo = NSPoint(x: spot.x - bodyCenterOffset, y: spot.y - (wf.height - view.feetY))
+        jump(toFeet: spot)
+        say(["Хоп!", "Скачам!", "Йеее!", "Гледай сега!"].randomElement()!, seconds: 1.5)
+        return true
+    }
+
+    /// Скок така, че краката да стъпят точно в дадената точка.
+    func jump(toFeet spot: NSPoint) {
+        let wf = window.frame
+        jump(toOrigin: NSPoint(x: spot.x - bodyCenterOffset, y: spot.y - (wf.height - view.feetY)))
+    }
+
+    func jump(toOrigin target: NSPoint) {
+        jumpFrom = window.frame.origin
+        jumpTo = target
         let dist = hypot(jumpTo.x - jumpFrom.x, jumpTo.y - jumpFrom.y)
         jumpDuration = min(1.6, 0.55 + Double(dist) / 1400)
         jumpHeight = max(70, jumpTo.y - jumpFrom.y + 90)
         jumpStart = time
         jumping = true
         facingLeft = jumpTo.x < jumpFrom.x
-        say(["Хоп!", "Скачам!", "Йеее!", "Гледай сега!"].randomElement()!, seconds: 1.5)
-        return true
     }
 
     func updateJump() {
@@ -439,7 +449,8 @@ final class MonitorView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
-        let sp = buildSprite(level: game.pet.level, face: .focus, pose: .type, frame: Int(game.time * 2), working: true)
+        let sp = buildSprite(level: game.bodyCells, face: .focus, pose: .type, frame: Int(game.time * 2), working: true,
+                             worn: game.pet.owned.filter { $0 == "monitor2" })
         let s = PetView.scale
         for y in sp.monY..<(sp.monY + sp.monH) {
             for x in sp.monX..<(sp.monX + sp.monW) {
