@@ -2355,6 +2355,9 @@ final class Game: NSObject, NSApplicationDelegate {
     var debris: [Debris] = []
     var nextUrgentWork: Double = 60
     var nextGameJump: Double = 0
+    var sleepSnapshot: SleepSnapshot?
+    var sleepWatch = false
+    var pendingWakeLine: (text: String, at: Double)?
     var debrisPanel: NSPanel?
     var crazySmashAt: Double = 0
     var nextCrazySmash: Double = 0
@@ -2472,6 +2475,10 @@ final class Game: NSObject, NSApplicationDelegate {
         let wasAsleep = pet.asleep
         if dt > 30 { pet.tick(min(dt, 8 * 3600) * 0.3, offline: true) } else { pet.tick(dt) }
         if wasAsleep && !pet.asleep { nextRatCare = min(nextRatCare, time + 60) }
+        if !sleepWatch && pet.asleep { takeSleepSnapshot() }
+        if sleepWatch && !pet.asleep { noticeChangesAfterSleep() }
+        sleepWatch = pet.asleep
+        updateWakeLines()
         if isDrunk && pet.asleep && !wasAsleep {
             pet.asleep = false
             say("Искам да спя, ама кафето не ме оставя!", seconds: 3)

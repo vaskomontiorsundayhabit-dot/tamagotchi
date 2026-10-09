@@ -288,6 +288,9 @@ extension Game {
             carryingRat = false
             ratSay("Уф! Цик!", 1.5)
         }
+        // скрит зад ръба: плъхът (в ръката му) също не се вижда
+        let ratHidden = carryingRat && (hidePhase == .hidden || hidePhase == .peeking)
+        if p.alphaValue != (ratHidden ? 0 : 1) { p.alphaValue = ratHidden ? 0 : 1 }
         if carryingRat {
             // виси за опашката от ръката му
             v.hanging = true
@@ -492,13 +495,19 @@ extension Game {
     func updateCarriedCage() {
         guard let c = cagePanel else { return }
         if carryingCage {
+            // носи я пред себе си, за да влезе зад ръба заедно с него
             let pr = petScreenRect()
-            let x = facingLeft ? pr.maxX - 40 : pr.minX - c.frame.width + 40
+            let x = facingLeft ? pr.minX - c.frame.width + 40 : pr.maxX - 40
             c.setFrameOrigin(NSPoint(x: x, y: pr.minY + 6))
+            let hidden = hidePhase == .hidden || hidePhase == .peeking
+            c.alphaValue = hidden ? 0 : 1
             if hidePhase == .off && !jumping {
                 carryingCage = false
+                c.alphaValue = 1
                 c.setFrameOrigin(cageHome)
             }
+        } else if c.alphaValue < 1 {
+            c.alphaValue = 1
         }
     }
 

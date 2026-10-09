@@ -277,6 +277,9 @@ extension Game {
             fulfillDrawRequest()
         }
         drawingChanged()
+        if pet.asleep && newCellsThisSession > 0 {
+            say(["Ммм… кой шава там…", "Хррр… пиксели… някой рисува ли?", "Zzz… чувам четка…"].randomElement()!, seconds: 2.5)
+        }
         // поискал е нещо, на което да стъпи: отива и стъпва на него
         if (askedToStep || stepAfterDrawing) && newCellsThisSession >= 5, let spot = newPlatformSpot() {
             stepAfterDrawing = false

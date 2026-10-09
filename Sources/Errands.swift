@@ -460,3 +460,87 @@ extension Game {
         letterPanel = nil
     }
 }
+
+// MARK: - Какво се е променило, докато е спал
+
+struct SleepSnapshot {
+    let origin: NSPoint
+    let cells: Int
+    let cellSum: Int
+    let worn: [String]
+    let foods: Int
+    let coins: Int
+    let owned: Int
+    let cageX: CGFloat
+    let ratInCage: Bool
+    let messes: Int
+    let hasOrder: Bool
+}
+
+let wakeMovedLines = ["Ей… това не е мястото, където заспах!", "Кой ме премести?! Лунатик ли съм?",
+                      "Хм… заспах там, събудих се тук. Мистерия!", "Летял ли съм насън?!", "Къде съм? Това не е моето ъгълче!"]
+let wakeDrawnLines = ["Кой е рисувал, докато спях?!", "Ооо, нови пиксели! Откъде се взеха?", "Някой ми е пипал платформите…",
+                      "Чакай, тук нямаше нищо нарисувано!", "Пиксели?! Духове ли рисуват нощем?"]
+let wakeErasedLines = ["Къде ми изчезнаха платформите?!", "Някой е трил, докато спя! Видях го насън!",
+                       "Рисунките… ги няма! Сънувал ли съм ги?"]
+let wakeWornLines = ["Чакай… с какво съм облечен?!", "Кой ме преоблече, докато спях?!", "Това не е моята шапка… или е?",
+                     "Огледало! Трябва ми огледало!"]
+let wakeFoodLines = ["Пиксели! Цял бюфет, докато съм спал!", "Откъде толкова храна? Някой ме обича!",
+                     "Сънувах пиксели и те… са истински!"]
+let wakeCoinLines = ["Монетите ми са други… кой е пазарувал?!", "Броих монетите преди да заспя… не излиза сметката!",
+                     "Някой е бъркал в касичката ми!"]
+let wakeNewLines = ["Ново нещо! Кога се появи това?!", "Подарък ли е? Докато спях?!", "Ей, тук има нещо ново!"]
+let wakeCageLines = ["Клетката е на друго място… кой я е бутал?", "Хм, клетката сама ли се разхожда?"]
+let wakeRatLines = ["Как е излязъл плъхът от клетката?!", "Плъхът е в клетката? Аз ли го прибрах насън?"]
+let wakeMessLines = ["Някой е чистил, докато спях! Благодаря… май.", "Къде отидоха… хм, неща?"]
+let wakeOrderLines = ["Имам поръчка?! Кога съм я приел?", "Поръчката я няма… какво пропуснах?"]
+let wakeManyLines = ["Какво е станало тук, докато спях?!", "Всичко е различно! Колко съм спал?!", "Сънувам ли още? Нищо не е същото!",
+                     "Някой е купонясвал без мен!"]
+
+extension Game {
+    func takeSleepSnapshot() {
+        sleepSnapshot = SleepSnapshot(origin: window.frame.origin, cells: drawCells.count,
+                                      cellSum: drawCells.keys.reduce(0, &+), worn: pet.worn, foods: foods.count,
+                                      coins: pet.coins, owned: pet.owned.count, cageX: cagePanel?.frame.minX ?? 0,
+                                      ratInCage: ratInCage, messes: messes.count, hasOrder: pet.orderText != nil)
+    }
+
+    /// Буди се и се чуди какво се е променило.
+    func noticeChangesAfterSleep() {
+        guard let s = sleepSnapshot, !pet.dead else { return }
+        sleepSnapshot = nil
+        var found: [[String]] = []
+        let o = window.frame.origin
+        if hypot(o.x - s.origin.x, o.y - s.origin.y) > 40 { found.append(wakeMovedLines) }
+        if drawCells.count > s.cells + 3 { found.append(wakeDrawnLines) }
+        else if drawCells.count + 3 < s.cells { found.append(wakeErasedLines) }
+        else if drawCells.keys.reduce(0, &+) != s.cellSum && drawCells.count != s.cells { found.append(wakeDrawnLines) }
+        if Set(pet.worn) != Set(s.worn) { found.append(wakeWornLines) }
+        if pet.owned.count > s.owned { found.append(wakeNewLines) }
+        if pet.coins != s.coins && abs(pet.coins - s.coins) > 5 { found.append(wakeCoinLines) }
+        if foods.count > s.foods + 1 { found.append(wakeFoodLines) }
+        if let c = cagePanel, abs(c.frame.minX - s.cageX) > 30 { found.append(wakeCageLines) }
+        if hasRat && ratInCage != s.ratInCage { found.append(wakeRatLines) }
+        if messes.count < s.messes { found.append(wakeMessLines) }
+        if (pet.orderText != nil) != s.hasOrder { found.append(wakeOrderLines) }
+        guard let first = found.first else { return }
+        // учуден е: оглежда се
+        followUntil = time + 6
+        blinkUntil = time + 0.6
+        glitchUntil = time + 0.3
+        sfx("Pop")
+        let line = found.count >= 3 ? wakeManyLines.randomElement()! + " " + first.randomElement()!
+            : first.randomElement()!
+        say(line, seconds: 4)
+        if found.count >= 2 {
+            let second = found[1].randomElement()!
+            pendingWakeLine = (second, time + 4.5)
+        }
+    }
+
+    func updateWakeLines() {
+        guard let w = pendingWakeLine, time > w.at else { return }
+        pendingWakeLine = nil
+        if !pet.asleep { say(w.text, seconds: 3.5) }
+    }
+}
