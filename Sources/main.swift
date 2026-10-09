@@ -115,7 +115,7 @@ struct Sprite {
 }
 
 func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, worn: [String] = [], variant: Int = 0,
-                 monitors: Int = 1, monitorLevel: Int = 1, redEyes: Bool = false) -> Sprite {
+                 monitors: Int = 1, monitorLevel: Int = 1, redEyes: Bool = false, lookX: Int = 0, lookY: Int = 0) -> Sprite {
     var g = Grid(repeating: Array(repeating: ".", count: canvasW), count: canvasH)
     let count = max(1, min(256, level))
     let cells = shapeOrder(variant: variant).prefix(8 + count)
@@ -170,10 +170,10 @@ func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, 
     let topY = (bx0..<(bx0 + bw)).map { topOf($0) }.min() ?? by0
 
     // лице
-    let eyeY = by0 + bh * 2 / 5
+    let eyeY = by0 + bh * 2 / 5 + lookY
     let e = bw >= 36 ? 4 : (bw >= 24 ? 3 : 2)
     let gap = max(2, bw / 6)
-    let look = face == .focus ? 1 : 0
+    let look = (face == .focus ? 1 : 0) + lookX
     let lx = cx - gap - e + look, rx = cx + gap + look
     let visor = false
     let ink: Character = visor ? "G" : "K"
@@ -628,6 +628,11 @@ struct Pet: Codable {
     var workCoinSeconds: Double = 0
     var overfull: Double = 0           // преяждане 0…100 (коремчето)
     var tired: Double = 0              // часове без сън (червени очи над 3)
+    var compilations: [[Int]] = []     // компилациите, които е направил (номера на клипове)
+    var views = 0                      // общо гледания на видеата му
+    var orderText: String?             // поръчка от клиент
+    var orderDeadline: Date?
+    var orderReward = 0
     var extraMonitors = 0              // допълнителни монитори (до 3)
     var monitorLevel = 1               // ниво на монитора (1…3)
     var sickUntil: Date?
@@ -660,6 +665,11 @@ struct Pet: Codable {
         workCoinSeconds = try c.decodeIfPresent(Double.self, forKey: .workCoinSeconds) ?? workCoinSeconds
         overfull = try c.decodeIfPresent(Double.self, forKey: .overfull) ?? overfull
         tired = try c.decodeIfPresent(Double.self, forKey: .tired) ?? tired
+        compilations = try c.decodeIfPresent([[Int]].self, forKey: .compilations) ?? compilations
+        views = try c.decodeIfPresent(Int.self, forKey: .views) ?? views
+        orderText = try c.decodeIfPresent(String.self, forKey: .orderText) ?? orderText
+        orderDeadline = try c.decodeIfPresent(Date.self, forKey: .orderDeadline) ?? orderDeadline
+        orderReward = try c.decodeIfPresent(Int.self, forKey: .orderReward) ?? orderReward
         extraMonitors = try c.decodeIfPresent(Int.self, forKey: .extraMonitors) ?? extraMonitors
         monitorLevel = try c.decodeIfPresent(Int.self, forKey: .monitorLevel) ?? monitorLevel
         sickUntil = try c.decodeIfPresent(Date.self, forKey: .sickUntil) ?? sickUntil
@@ -864,6 +874,18 @@ final class PetView: NSView {
 
     override func rightMouseDown(with event: NSEvent) { game?.openRetro() }
 
+    // пуснат файл върху него: почва да работи
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        if game?.bubbleText == nil { game?.say("Какво е това? Дай го!", seconds: 1.5) }
+        return .copy
+    }
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool { true }
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self]) as? [URL] ?? []
+        game?.fileDropped(urls.map { $0.lastPathComponent })
+        return true
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let s = PetView.scale
@@ -888,7 +910,8 @@ final class PetView: NSView {
                              frame: pose == .walk || pose == .wobble || pose == .dance || game.isDragging ? Int(t * 7) : frame,
                              working: atDesk,
                              worn: pet.worn, variant: game.bodyVariant, monitors: game.monitorCount,
-                             monitorLevel: pet.monitorLevel, redEyes: game.redEyes)
+                             monitorLevel: pet.monitorLevel, redEyes: game.redEyes,
+                             lookX: game.lookOffset(flip: flip).0, lookY: game.lookOffset(flip: flip).1)
 
         var dy: CGFloat = 0
         if pet.dead {
@@ -1464,7 +1487,7 @@ final class RetroView: NSView {
     static let cell: CGFloat = 36
     static let invCell: CGFloat = 30
     static let pad: CGFloat = 12
-    static let width = pad * 2 + cell * 9
+    static let width = pad * 2 + cell * 11
     static let height: CGFloat = 162
     static let heightWithInventory: CGFloat = 244
     var showInventory = false
@@ -1914,7 +1937,10 @@ final class ClipView: NSView {
     var clip = 0
     var started: Double = 0
 
-    var fixedTime: Double?               // за запис на видео: точно това време
+    var playlist: [Int] = []             // компилация: няколко клипа един след друг
+    var compTitle: String?
+    static let segment: Double = 2.9
+    var totalLength: Double { playlist.isEmpty ? ClipView.length : Double(playlist.count) * ClipView.segment + 0.9 }
     static let length: Double = 7.8      // 0,9 с заглавие + 6 с сцена + 0,9 с край
     static let size = NSSize(width: 320, height: 240)
 
@@ -1926,8 +1952,8 @@ final class ClipView: NSView {
     override func mouseDown(with event: NSEvent) {
         guard let game else { return }
         let p = convert(event.locationInWindow, from: nil)
-        if game.time - started < ClipView.length {
-            started = game.time - ClipView.length     // прескача до въпроса
+        if game.time - started < totalLength {
+            started = game.time - totalLength     // прескача до въпроса
         } else if yesRect.contains(p) {
             game.clipAnswer(true)
         } else if noRect.contains(p) {
@@ -1957,14 +1983,26 @@ final class ClipView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
-        let raw = min(ClipView.length, fixedTime ?? (game.time - started))
+        let elapsed = min(totalLength, game.time - started)
+        var raw = elapsed
+        if !playlist.isEmpty {
+            // компилация: от всеки клип кратко заглавие и 2,4 с сцена, накрая „КРАЙ“
+            let i = Int(elapsed / ClipView.segment)
+            if i < playlist.count {
+                clip = playlist[i]
+                raw = 0.4 + elapsed - Double(i) * ClipView.segment
+            } else {
+                clip = playlist[playlist.count - 1]
+                raw = ClipView.length - 0.9 + (elapsed - Double(playlist.count) * ClipView.segment)
+            }
+        }
         let t = max(0, min(6, raw - 0.9))      // време в самата сцена
         let b = bounds
         NSColor(hex: 0x1b1b24).setFill(); b.fill()
         let screen = NSRect(x: 8, y: 26, width: b.width - 16, height: 170)
         let W = screen.width, H = screen.height
 
-        text("ПИКСЧО ПРОДУКЦИЯ", 10, 6, size: 10, color: 0x8d99ae)
+        text(compTitle ?? "ПИКСЧО ПРОДУКЦИЯ", 10, 6, size: 10, color: compTitle == nil ? 0x8d99ae : 0xffd23f)
         if Int(t * 2) % 2 == 0 {
             NSColor(hex: 0xe63946).setFill()
             NSBezierPath(ovalIn: NSRect(x: b.width - 52, y: 8, width: 8, height: 8)).fill()
@@ -2165,7 +2203,7 @@ final class ClipView: NSView {
         NSGraphicsContext.current?.restoreGraphicsState()
 
         // накрая пита дали ти харесва
-        if fixedTime == nil && game.time - started >= ClipView.length {
+        if game.time - started >= totalLength {
             NSColor(hex: 0x0b0b14, alpha: 0.8).setFill(); screen.fill()
             text("ХАРЕСВА ЛИ ТИ?", b.midX, 80, size: 18, color: 0xffffff, center: true)
             for (r, label, color) in [(yesRect, "ДА", 0x52b788), (noRect, "НЕ", 0xe63946)] {
@@ -2185,9 +2223,9 @@ final class ClipView: NSView {
             NSRect(x: tl.minX + CGFloat(i) * tl.width / 4, y: tl.minY, width: tl.width / 4 - 2, height: tl.height).fill()
         }
         NSColor(hex: 0xe63946).setFill()
-        NSRect(x: tl.minX + CGFloat(raw / ClipView.length) * tl.width - 1, y: tl.minY - 3, width: 3, height: tl.height + 6).fill()
+        NSRect(x: tl.minX + CGFloat(elapsed / totalLength) * tl.width - 1, y: tl.minY - 3, width: 3, height: tl.height + 6).fill()
         text(clipTitles[clip], 10, 222, size: 9, color: 0xffffff)
-        text(String(format: "00:0%d / 00:08", Int(raw)), b.width - 92, 222, size: 9, color: 0x8d99ae)
+        text(String(format: "00:%02d / 00:%02d", Int(elapsed), Int(totalLength.rounded(.up))), b.width - 92, 222, size: 9, color: 0x8d99ae)
     }
 }
 
@@ -2358,13 +2396,38 @@ final class Game: NSObject, NSApplicationDelegate {
     var nextDream: Double = 0
     var dreamUntil: Double = 0
     var sleepStart: Double = 0
-    var compilationWriter: CompilationWriter?
+
+    // приятел, плъх, клиенти, гледания, звуци, игри
+    var lastSounds: [String: Double] = [:]
+    var pendingRatings: [(video: Int, views: Int, likes: Int, viral: Bool, at: Double)] = []
+    var nextOrder: Double = 20 * 60
+    var nextDayTalk: Double = 5 * 60
+    var friendPanel: NSPanel?
+    var friendView: FriendView?
+    var friendTarget: NSPoint?
+    var friendFood: FoodPixel?
+    var nextFriendAct: Double = 60
+    var pendingReply: (text: String, at: Double, angry: Bool)?
+    var ratPanel: NSPanel?
+    var ratView: RatView?
+    var ratTarget: CGFloat?
+    var chasing = false
+    var chaseUntil: Double = 0
+    var nextChase: Double = 3 * 60
+    var followUntil: Double = 0
+    var windowNumbers: [Int] = []
+    var battlePanel: NSPanel?
+    var battleView: BattleView?
+    var seekPhase = SeekPhase.off
+    var seekStart: Double = 0
+    var seekHome = NSPoint.zero
     var bellOn: Bool {
         get { UserDefaults.standard.object(forKey: "bellOn") as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: "bellOn") }
     }
 
-    var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off || jumping || hidePhase != .off }
+    var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off || jumping || hidePhase != .off
+        || chasing || seekPhase != .off }
 
     // обновяване
     static let updateRepo = "vaskomontiorsundayhabit-dot/tamagotchi"
@@ -2403,6 +2466,7 @@ final class Game: NSObject, NSApplicationDelegate {
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         view = PetView(frame: NSRect(origin: .zero, size: PetView.size))
         view.game = self
+        view.registerForDraggedTypes([.fileURL])
         window.contentView = view
 
         let d = UserDefaults.standard
@@ -2457,7 +2521,8 @@ final class Game: NSObject, NSApplicationDelegate {
             earnCoins(coins)
             say("Готово видео №\(pet.videos)! +40 опит, +\(coins) монети", seconds: 4)
             addXP(40)
-            exportCompilation()
+            createCompilation()
+            completeOrderIfAny()
         }
         if pet.working {
             pet.workCoinSeconds += step
@@ -2500,6 +2565,11 @@ final class Game: NSObject, NSApplicationDelegate {
         updateHealth(step)
         updateHiding(step)
         updateDreams()
+        updateFriend(step)
+        updateFriendReply()
+        updateRat(step)
+        updateRatings()
+        updateSeek()
         updateBin()
         bellView?.needsDisplay = true
         updateDragYell()
@@ -2512,7 +2582,7 @@ final class Game: NSObject, NSApplicationDelegate {
         updateRetro()
         alertView?.needsDisplay = true
         clipView?.needsDisplay = true
-        if let c = clipView, time - c.started > ClipView.length + 15 { closeClip() }
+        if let c = clipView, time - c.started > c.totalLength + 15 { closeClip() }
         shopPanel?.contentView?.needsDisplay = true
         if let a = alertView, time - a.started > 6 { closeAlert() }
 
@@ -2592,6 +2662,18 @@ final class Game: NSObject, NSApplicationDelegate {
         case "U": return NSColor(hex: 0x5c3a1e)
         default: return nil
         }
+    }
+
+    /// Накъде гледа (след клик следи мишката 8 секунди).
+    func lookOffset(flip: Bool) -> (Int, Int) {
+        guard time < followUntil, !pet.asleep else { return (0, 0) }
+        let pr = petScreenRect()
+        let m = NSEvent.mouseLocation
+        let step = pet.level > 30 ? 2 : 1
+        var lx = m.x > pr.midX + 30 ? step : (m.x < pr.midX - 30 ? -step : 0)
+        if flip { lx = -lx }
+        let ly = m.y > pr.midY + 30 ? -step : (m.y < pr.midY - 30 ? step : 0)
+        return (lx, ly)
     }
 
     func currentNeed() -> String? {
@@ -2733,6 +2815,13 @@ final class Game: NSObject, NSApplicationDelegate {
         actionStart = time
         actionLength = length
         walkTarget = nil
+        switch a {
+        case .angry: sfx("Funk", every: 2)
+        case .love: sfx("Purr", every: 3)
+        case .levelUp: sfx("Hero")
+        case .eat: sfx("Pop")
+        default: break
+        }
     }
 
     func say(_ text: String, seconds: Double = 2.5) {
@@ -2771,6 +2860,8 @@ final class Game: NSObject, NSApplicationDelegate {
     /// Клик: работи → смешна реплика, спи → сърди се, иначе → кефи се. Много кликове → ядосва се.
     func petIt() {
         if pet.dead { say("…", seconds: 1.5); return }
+        if seekPhase == .hiding { foundInSeek(); return }
+        followUntil = time + 8
         clickTimes.append(time)
         clickTimes.removeAll { time - $0 > 3 }
         if pet.asleep && clickTimes.count >= 5 {
@@ -3045,6 +3136,12 @@ final class Game: NSObject, NSApplicationDelegate {
         v.game = self
         v.clip = n
         v.started = time
+        // ако вече е правил компилации, пуска някоя от тях
+        if !pet.compilations.isEmpty && Int.random(in: 0..<3) > 0 {
+            let i = Int.random(in: 0..<pet.compilations.count)
+            v.playlist = pet.compilations[i]
+            v.compTitle = "КОМПИЛАЦИЯ №\(i + 1)"
+        }
         let mr = view.monitorRect
         let wf = window.frame
         let monScreen = mr == .zero ? petScreenRect()
@@ -3137,6 +3234,8 @@ final class Game: NSObject, NSApplicationDelegate {
                 RetroButton(icon: iconPill, label: "Лекарство", value: nil, action: asleep ? nil : #selector(medicine)),
                 RetroButton(icon: iconShop, label: "Магазин", value: nil, action: #selector(openShop)),
                 RetroButton(icon: iconPencil, label: "Рисувай платформи", value: nil, action: #selector(startDrawing)),
+                RetroButton(icon: iconBattle, label: "Игра: пикселна битка", value: nil, action: asleep ? nil : #selector(startBattle)),
+                RetroButton(icon: iconSeek, label: "Игра: криеница", value: nil, action: asleep ? nil : #selector(startSeek)),
                 RetroButton(icon: iconBag, label: inventoryOpen ? "Скрий инвентара" : "Инвентар", value: nil,
                             action: #selector(toggleInventory)),
             ]
@@ -3174,6 +3273,7 @@ final class Game: NSObject, NSApplicationDelegate {
         if isDrunk { parts.append("КАФЕ ×\(recentCoffees) " + clock(drunkUntil - time)) }
         else if recentCoffees > 0 { parts.append("КАФЕ ×\(recentCoffees) (БОДЪР)") }
         if pet.tired > 3 { parts.append("НЕДОСПАЛ \(Int(pet.tired)) Ч") }
+        if let o = orderText { parts.append(o) }
         if isSick, let until = pet.sickUntil { parts.append("БОЛЕН " + clock(until.timeIntervalSinceNow)) }
         if pet.overfull > 0.5 { parts.append("КОРЕМЧЕ " + clock(pet.overfull / 10 * 60)) }
         return parts.joined(separator: "  ")
@@ -3260,20 +3360,21 @@ final class Game: NSObject, NSApplicationDelegate {
             menu.addItem(.separator())
         }
         item("\(pet.name) · ниво \(pet.level) · опит \(pet.xp)/\(pet.xpNeeded) · видеа \(pet.videos)", nil)
-        item("Монети: \(pet.coins)", nil)
+        item("Монети: \(pet.coins) · гледания: \(pet.views)", nil)
+        if let o = orderText { item(o.capitalized, nil) }
         if !timersText().isEmpty { item(timersText().capitalized, nil) }
         if let w = want { item("Иска: \(wantText(w))", nil) }
         menu.addItem(.separator())
         item("Магазин…", #selector(openShop))
         item(drawing ? "Спри рисуването" : "Рисувай с пиксели (платформи)", drawing ? #selector(stopDrawingAction) : #selector(startDrawing))
         item("Изтрий всичко нарисувано", #selector(clearDrawingAction), enabled: !drawCells.isEmpty)
-        item("Видеата на Пиксчо (папка)…", #selector(openVideosFolder))
         menu.addItem(.separator())
         item(window.isVisible ? "Скрий" : "Покажи", #selector(toggleWindow))
         item("Повикай в ъгъла", #selector(callHome))
         item("Разхожда се", #selector(toggleWander), on: wander)
         item("Пиксели-храна по екрана", #selector(toggleFoodPixels), on: foodPixelsOn)
         item("Звънче за тревога на екрана", #selector(toggleBell), on: bellOn)
+        item("Звуци", #selector(toggleSounds), on: soundsOn)
         if foodPixelsOn { item("Пусни пиксел сега", #selector(spawnFoodNow), enabled: foods.count < 12) }
         item("Смени името…", #selector(rename))
         if #available(macOS 13.0, *) {

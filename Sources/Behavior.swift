@@ -310,6 +310,7 @@ extension Game {
         jumpStart = time
         jumping = true
         facingLeft = jumpTo.x < jumpFrom.x
+        sfx("Bottle", every: 1)
     }
 
     func updateJump() {

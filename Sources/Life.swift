@@ -153,6 +153,8 @@ extension Game {
         let idle = !pet.dead && !pet.asleep && catchPanel == nil && !drawing && window.isVisible && hidePhase == .off
         updateWant(idle)
         updateToilet(step, idle: idle)
+        updateClients(idle)
+        updateDayTalk(idle && toiletPhase == .off)
         updateQuestions(idle && toiletPhase == .off && !jumping)
         updateAutoWork(idle)
         if time - lastEnclosureCheck > 2 {

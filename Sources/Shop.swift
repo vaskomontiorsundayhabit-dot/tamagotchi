@@ -146,6 +146,46 @@ let iconMonitorUp = grid([
     "EEEEEEEE",
     "..EEEE..",
 ])
+let iconFriend = grid([
+    "........",
+    ".KKKKKK.",
+    ".KPPPPK.",
+    ".KPKPKK.",
+    ".KPPPPK.",
+    ".KKKKKK.",
+    "..K..K..",
+    ".KK..KK.",
+])
+let iconRat = grid([
+    "........",
+    "..KK....",
+    ".KEEK...",
+    "KEWEEKK.",
+    "REEEEEEK",
+    ".KKKKKK.",
+    "......PP",
+    ".......P",
+])
+let iconBattle = grid([
+    "R......Y",
+    ".R....Y.",
+    "..R..Y..",
+    "...KK...",
+    "..KBBK..",
+    ".KBBBBK.",
+    ".KBBBBK.",
+    "..KKKK..",
+])
+let iconSeek = grid([
+    "EEEE....",
+    "ESSE....",
+    "ESSEKK..",
+    "ESSEBBK.",
+    "ESSEKBK.",
+    "ESSEBBK.",
+    "EEEEKK..",
+    "........",
+])
 let neckBowtie = grid([
     "RR.RR",
     "RRKRR",
@@ -289,6 +329,8 @@ let shopItems: [ShopItem] = [
     ShopItem(id: "scarf", name: "Шал", price: 50, kind: .wear, slot: "neck", info: "уютно", icon: iconScarf),
     ShopItem(id: "monitor2", name: "Още един монитор", price: 250, kind: .stack, slot: "", info: "още един монитор над другите (до 4); всеки дава още монети от работа", icon: iconMonitor),
     ShopItem(id: "monitorup", name: "Подобри монитора", price: 150, kind: .levelup, slot: "", info: "по-хубав монитор (до ниво 3); всяко ниво: видео с 10% по-бързо", icon: iconMonitorUp),
+    ShopItem(id: "friend", name: "Приятел", price: 400, kind: .upgrade, slot: "", info: "Пиксчочка: говорят си, карат се, краде му храна", icon: iconFriend),
+    ShopItem(id: "rat", name: "Пиксел плъх", price: 120, kind: .upgrade, slot: "", info: "домашен любимец, когото Пиксчо гони", icon: iconRat),
     ShopItem(id: "chair", name: "Удобен стол", price: 180, kind: .upgrade, slot: "", info: "работата го изморява с 30% по-малко", icon: iconChair),
     ShopItem(id: "piggy", name: "Касичка", price: 220, kind: .upgrade, slot: "", info: "+25% монети от всичко", icon: iconPiggy),
     ShopItem(id: "fastedit", name: "Бърз монтаж", price: 200, kind: .upgrade, slot: "", info: "видео за 20 минути вместо 30", icon: iconEnergy),

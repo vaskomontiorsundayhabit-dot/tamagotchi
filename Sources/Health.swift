@@ -172,6 +172,7 @@ extension Game {
         if vomitAt > 0 && time > vomitAt && !pet.asleep {
             vomitAt = 0
             vomitUntil = time + 2.5
+            sfx("Submarine")
             say("Бле… прекалих с кафето…", seconds: 2.5)
         }
         if vomitUntil > 0 && time > vomitUntil {
@@ -187,6 +188,7 @@ extension Game {
         if isDrunk && bubbleText == nil && time > nextDrunkLine {
             nextDrunkLine = time + Double.random(in: 15...30)
             say(pick(drunkLines, avoiding: &lastLine), seconds: 2.5)
+            sfx("Morse")
             if Bool.random() { glitchUntil = time + 0.3 }
         }
 
@@ -305,6 +307,7 @@ extension Game {
         let mainH = NSScreen.screens.first?.frame.height ?? 0
         let me = ProcessInfo.processInfo.processIdentifier
         var rects: [NSRect] = []
+        var numbers: [Int] = []
         for w in info {
             guard (w[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
                   (w[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value != me,
@@ -312,7 +315,9 @@ extension Game {
                   let r = CGRect(dictionaryRepresentation: bd as CFDictionary),
                   r.width > 120, r.height > 60 else { continue }
             rects.append(NSRect(x: r.minX, y: mainH - r.maxY, width: r.width, height: r.height))
+            numbers.append((w[kCGWindowNumber as String] as? NSNumber)?.intValue ?? 0)
         }
         windowRects = rects
+        windowNumbers = numbers
     }
 }

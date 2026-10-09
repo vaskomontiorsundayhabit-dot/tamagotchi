@@ -352,6 +352,7 @@ extension Game {
                 // сърди се само ако е паднал от много високо
                 if fallFrom - support > 350 && !pet.asleep && !pet.dead {
                     annoy(10, reason: "ме изпусна и паднах")
+                    sfx("Basso")
                     start(.angry, length: 1.5)
                     say(pick(fallLines, avoiding: &lastLine), seconds: 2.5)
                 }
