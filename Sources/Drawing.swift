@@ -89,7 +89,7 @@ final class DrawLayer: NSView {
                 let k = cellKey(c.0 - off + dx, c.1 - off + dy)
                 if erase { game.drawCells.removeValue(forKey: k) }
                 else {
-                    if game.drawCells[k] == nil { game.newCellsThisSession += 1 }
+                    if game.drawCells[k] == nil { game.newCellsThisSession += 1; game.newCellKeys.append(k) }
                     game.drawCells[k] = game.drawColor
                 }
             }
@@ -236,6 +236,7 @@ extension Game {
         drawing = true
         pipetteOn = false
         newCellsThisSession = 0
+        newCellKeys = []
         if drawPanels.count != NSScreen.screens.count { setUpDrawLayer() }
         for p in drawPanels { p.ignoresMouseEvents = false; p.orderFrontRegardless() }
         redrawDrawing()
@@ -253,6 +254,7 @@ extension Game {
             p.makeFirstResponder(tb)
         }
         window.orderFrontRegardless()
+        stepAfterDrawing = true
         say("Нарисувай ми нещо, на което да стъпя!", seconds: 3)
     }
 
@@ -265,11 +267,39 @@ extension Game {
         toolbarPanel = nil
         redrawDrawing()
         saveDrawing()
+        var askedToStep = false
+        if let w = want {
+            if case .platform = w { askedToStep = true }
+            if case .draw = w { askedToStep = true }
+        }
         if newCellsThisSession >= 5 {
             fulfill(.platform)
             fulfillDrawRequest()
         }
         drawingChanged()
+        // поискал е нещо, на което да стъпи: отива и стъпва на него
+        if (askedToStep || stepAfterDrawing) && newCellsThisSession >= 5, let spot = newPlatformSpot() {
+            stepAfterDrawing = false
+            if !pet.asleep && !pet.dead && !pet.working && hidePhase == .off {
+                cancelErrands()
+                runErrands([.stepOn(spot)])
+            }
+        }
+    }
+
+    /// Най-удобното място за стъпване върху новонарисуваното: горен пиксел, най-близо до Пиксчо.
+    func newPlatformSpot() -> NSPoint? {
+        let cx = petScreenRect().midX
+        var best: NSPoint?
+        var bestD = CGFloat.greatestFiniteMagnitude
+        for k in newCellKeys where drawCells[k] != nil {
+            let (x, y) = cellFromKey(k)
+            if drawCells[cellKey(x, y + 1)] != nil { continue }
+            let p = NSPoint(x: (CGFloat(x) + 0.5) * drawCell, y: CGFloat(y + 1) * drawCell)
+            let d = abs(p.x - cx) + abs(p.y - feetScreenY) * 0.5
+            if d < bestD { bestD = d; best = p }
+        }
+        return best
     }
 
     func clearDrawing() {
@@ -338,7 +368,7 @@ extension Game {
     }
 
     func applyGravity(_ step: Double) {
-        guard window.isVisible, !isDragging, !busyMoving, catchPanel == nil else { fallSpeed = 0; return }
+        guard window.isVisible, !isDragging, !busyMoving else { fallSpeed = 0; return }
         let wf = window.frame
         let feet = wf.maxY - view.feetY
         let x0 = wf.minX + view.bodyX0, x1 = wf.minX + view.bodyX1

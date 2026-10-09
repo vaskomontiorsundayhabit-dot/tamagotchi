@@ -14,11 +14,13 @@ let dragWorkLines = [
 ]
 let drawRequests = ["сърце", "къща", "дърво", "стълбичка", "слънце", "котка", "ракета", "цвете", "кораб", "звезда"]
 
-enum Reaction { case happy, angry(Double), work, shop, clip, play, nothing, comeOut }
+enum Reaction { case happy, angry(Double), work, shop, clip, play, nothing, comeOut, sleep, seek, laser, balloon,
+                 feedRat, cuddleRat, jump, draw, acceptName, nextName }
 
 struct Question {
     let text: String
     let answers: [(String, String, Reaction)]   // бутон, отговор на Пиксчо, ефект
+    var needsRat = false
 }
 
 let questions: [Question] = [
@@ -27,7 +29,7 @@ let questions: [Question] = [
     Question(text: "Кое е по-хубаво: кафе или чай?", answers: [
         ("КАФЕ", "Знаех си! Брат!", .happy), ("ЧАЙ", "Чай?! Сериозно ли?", .angry(5))]),
     Question(text: "Да монтирам ли още едно видео?", answers: [
-        ("ДА", "Отварям таймлайна!", .work), ("НЕ", "Добре, почивка!", .nothing)]),
+        ("ДА", "Отивам за монитора!", .work), ("НЕ", "Добре, почивка!", .nothing)]),
     Question(text: "Харесва ли ти как изглеждам днес?", answers: [
         ("ДА", "Знам, знам, красавец съм.", .happy), ("НЕ", "Ти също не си много пикселен!", .angry(15))]),
     Question(text: "Кой е най-сладкият пиксел?", answers: [
@@ -45,7 +47,25 @@ let questions: [Question] = [
     Question(text: "Какво да ям днес?", answers: [
         ("ПИКСЕЛИ", "Пак пиксели. Обичам ги!", .happy), ("НИЩО", "Искаш да гладувам?!", .angry(15))]),
     Question(text: "Ще ме гледаш ли, докато работя?", answers: [
-        ("ДА", "Тогава ще се постарая!", .happy), ("НЕ", "Никой не ме оценява…", .angry(8))]),
+        ("ДА", "Тогава почвам! Отивам за монитора!", .work), ("НЕ", "Никой не ме оценява…", .angry(8))]),
+    Question(text: "Искаш ли да играем?", answers: [
+        ("ДА", "Изваждам топката! Хвърли я!", .play), ("НЕ", "Ех… добре.", .angry(5))]),
+    Question(text: "Да поиграем ли на криеница?", answers: [
+        ("ДА", "Затваряй очи!", .seek), ("НЕ", "Добре, друг път.", .nothing)]),
+    Question(text: "Ще ми пуснеш ли балон?", answers: [
+        ("ДА", "Урааа! Балон!", .balloon), ("НЕ", "Скучно…", .angry(5))]),
+    Question(text: "Искаш ли да гоним червената точка?", answers: [
+        ("ДА", "Мърдай мишката! Идвам!", .laser), ("НЕ", "Аз пък искам…", .angry(5))]),
+    Question(text: "Уморен ли изглеждам?", answers: [
+        ("ДА", "Прав си… лягам си.", .sleep), ("НЕ", "Значи съм свеж!", .happy)]),
+    Question(text: "Искаш ли да видиш как скачам?", answers: [
+        ("ДА", "Гледай сега!", .jump), ("НЕ", "Добре де…", .nothing)]),
+    Question(text: "Ще ми нарисуваш ли нещо, на което да стъпя?", answers: [
+        ("ДА", "Чакам! Рисувай!", .draw), ("НЕ", "Ами ще стоя долу…", .angry(5))]),
+    Question(text: "Да нахраня ли плъхчето?", answers: [
+        ("ДА", "Отивам с пикселите!", .feedRat), ("НЕ", "Ама то е гладно…", .nothing)], needsRat: true),
+    Question(text: "Да гушнем ли плъхчето?", answers: [
+        ("ДА", "Гуш-гуш!", .cuddleRat), ("НЕ", "Добре, после.", .nothing)], needsRat: true),
 ]
 
 // MARK: - Прозорче с въпрос
@@ -190,7 +210,8 @@ extension Game {
         }
         guard idle, time > nextQuestion, want == nil, clipPanel == nil, shopPanel == nil, !pet.working else { return }
         nextQuestion = time + Double.random(in: 10 * 60...20 * 60)
-        let i = Int.random(in: 0..<questions.count)
+        let pool = questions.indices.filter { !questions[$0].needsRat || hasRat }
+        guard let i = pool.randomElement() else { return }
         ask(questions[i], index: i)
     }
 
@@ -234,12 +255,22 @@ extension Game {
             annoy(a, reason: "ми отговори „\(q.answers[i].0.lowercased())“")
             start(.angry, length: 2)
             glitchUntil = time + 0.5
-        case .work: if !pet.working { toggleWork() }
+        case .work: if !pet.working && !goingToWork { toggleWork() }
         case .shop: openShop()
         case .clip: playClip()
-        case .play: toggleFetch()
+        case .play: if fetchPhase == .off { toggleFetch() }
         case .nothing: break
         case .comeOut: comeOutOfHiding()
+        case .sleep: goToSleep()
+        case .seek: startSeek()
+        case .laser: if laserPanel == nil { toggleLaser() }
+        case .balloon: if balloonPanel == nil { toggleBalloon() }
+        case .feedRat: if hasRat && !pet.working { cancelErrands(); runErrands([.feedRat]) }
+        case .cuddleRat: if hasRat && !pet.working { cancelErrands(); runErrands([.cuddleRat]) }
+        case .jump: if !busyMoving && !tryJump() { say("Няма къде да скоча… нарисувай ми нещо!", seconds: 3) }
+        case .draw: startDrawing()
+        case .acceptName: acceptName()
+        case .nextName: askName(pendingNameFor)
         }
         addXP(2)
     }
@@ -447,16 +478,16 @@ extension Game {
     func updateAutoWork(_ idle: Bool) {
         if autoWorking && pet.working && time - autoWorkStart > 25 * 60 {
             autoWorking = false
-            pet.working = false
             say("Стига толкова монтаж за сега.", seconds: 3)
+            stopWork()
         }
-        if !pet.working { autoWorking = false }
+        if !pet.working && !goingToWork { autoWorking = false }
         guard idle, !pet.working, time > nextAutoWork, pet.energy > 40, toiletPhase == .off,
-              fetchPhase == .off, !jumping, questionPanel == nil else { return }
+              fetchPhase == .off, !jumping, questionPanel == nil, errands.isEmpty, !playingGame else { return }
         nextAutoWork = time + Double.random(in: 20 * 60...40 * 60)
         if pet.work < 60 || Bool.random() {
             toggleWork()
-            if pet.working {
+            if goingToWork {
                 autoWorking = true
                 autoWorkStart = time
                 say("Отивам да монтирам малко…", seconds: 3)

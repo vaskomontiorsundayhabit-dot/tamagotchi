@@ -150,13 +150,16 @@ final class MessView: NSView {
 
 extension Game {
     func updateLife(_ step: Double) {
-        let idle = !pet.dead && !pet.asleep && catchPanel == nil && !drawing && window.isVisible && hidePhase == .off
+        let idle = !pet.dead && !pet.asleep && !drawing && window.isVisible && hidePhase == .off
         updateWant(idle)
         updateToilet(step, idle: idle)
         updateClients(idle)
         updateDayTalk(idle && toiletPhase == .off)
         updateQuestions(idle && toiletPhase == .off && !jumping)
         updateAutoWork(idle)
+        updateRatCare(idle && toiletPhase == .off)
+        updateNames(idle && toiletPhase == .off && !jumping)
+        updateTired(idle)
         if time - lastEnclosureCheck > 2 {
             lastEnclosureCheck = time
             checkEnclosure()
@@ -247,7 +250,8 @@ extension Game {
     func updateToilet(_ step: Double, idle: Bool) {
         switch toiletPhase {
         case .off:
-            guard idle, time > nextToilet, !pet.working, fetchPhase == .off, !rolling, !isDragging, !jumping else { return }
+            guard idle, time > nextToilet, !pet.working, fetchPhase == .off, !rolling, !isDragging, !jumping, errands.isEmpty,
+                  !playingGame, seekPhase == .off else { return }
             let pr = petScreenRect()
             guard let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame else { return }
             // винаги слиза долу, в по-близкия ъгъл

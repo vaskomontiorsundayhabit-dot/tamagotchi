@@ -16,6 +16,8 @@ let friendTalks: [(String, String)] = [
     ("Да избягаме зад монитора?", "Само ако там има пиксели."),
     ("Днес ще ставаме ли вайръл?", "Ако някой ни гледа…"),
 ]
+let friendJobLines = ["Щрак! Каква светлина!", "Още една от този ъгъл…", "Тази снимка е за корица!",
+                      "Не мърдай! Щрак!", "Обективът ми е запотен…", "Фокус… фокус… ЩРАК!", "Ще я пусна в портфолиото!"]
 let friendFights: [(String, String)] = [
     ("Ти ми изяде пиксела!", "Не съм! Ти си го изял!"),
     ("Моят клип е по-хубав!", "Хаха, твоят е в 480p!"),
@@ -31,23 +33,34 @@ final class FriendView: NSView {
     var face: Face = .normal
     var walking = false
     var facingLeft = false
+    var flashAt: Double = -10
     static let size = NSSize(width: 210, height: 190)
     static let scale: CGFloat = 1.5
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { game?.friendClicked() }
+    override func rightMouseDown(with event: NSEvent) {
+        guard let game else { return }
+        NSMenu.popUpContextMenu(game.friendMenu(), with: event, for: self)
+    }
 
     var feetY: CGFloat { 30 + CGFloat(canvasH) * FriendView.scale }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let t = game.time
-        let sp = buildSprite(level: 14, face: face, pose: walking ? .walk : .idle, frame: Int(t * (walking ? 7 : 2)), working: false)
+        let asleep = game.friendAsleep
+        let working = game.friendWorking && !asleep
+        let flashing = t - flashAt < 0.25
+        let pose: Pose = asleep ? .sleep : (walking ? .walk : (flashing ? .wave : .idle))
+        let f: Face = asleep ? .sleep : (working && !flashing ? .focus : face)
+        let sp = buildSprite(level: 14, face: f, pose: pose, frame: Int(t * (walking ? 7 : 2)), working: false)
         let s = FriendView.scale
         let ox = (bounds.width - CGFloat(canvasW) * s) / 2
-        // розов приятел: собствени цветове за тялото
+        let flip = walking && facingLeft
+        // розова приятелка: собствени цветове за тялото
         let pink = NSColor(hex: 0xff8fab)
-        drawGrid(sp.grid, x: ox, y: 30, s: s, flip: walking && facingLeft, palette: { c in
+        drawGrid(sp.grid, x: ox, y: 30, s: s, flip: flip, palette: { c in
             switch c {
             case "B": return pink
             case "D": return pink.blended(withFraction: 0.22, of: .black)
@@ -57,10 +70,40 @@ final class FriendView: NSView {
             default: return game.color(c)
             }
         })
-        if let text, t < textUntil {
+        let cx = ox + CGFloat(sp.cx) * s
+        let midY = 30 + CGFloat(sp.top + sp.bottom) / 2 * s
+        if working {
+            // фотоапарат в ръцете ѝ
+            let cam = grid([
+                "..KKK.....",
+                "KKKKKKKKKK",
+                "KSSSKKKSSK",
+                "KSSKCCKSSK",
+                "KSSKCCKSSK",
+                "KSSSKKSSSK",
+                "KKKKKKKKKK",
+            ])
+            let camX = facingLeft ? cx - 34 : cx + 4
+            drawGrid(cam, x: camX, y: midY - 6, s: 3, palette: game.color)
+            if flashing {
+                NSColor(white: 1, alpha: 0.85).setFill()
+                NSBezierPath(ovalIn: NSRect(x: camX + 6, y: midY - 22, width: 20, height: 20)).fill()
+            }
+        }
+        if asleep {
+            let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .heavy),
+                                                    .foregroundColor: NSColor(hex: 0xff8fab)]
+            for i in 0..<2 {
+                let ph = (t * 0.5 + Double(i) / 2).truncatingRemainder(dividingBy: 1)
+                ("z" as NSString).draw(at: NSPoint(x: cx + 20 + CGFloat(ph) * 14, y: 30 + CGFloat(sp.minY) * s - CGFloat(ph) * 20),
+                                       withAttributes: a)
+            }
+        }
+        let shown = text.flatMap { t < textUntil ? $0 : nil } ?? (game.friendHover ? game.friendName : nil)
+        if let shown {
             let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 9, weight: .bold),
                                                     .foregroundColor: NSColor.white]
-            let str = text.uppercased() as NSString
+            let str = shown.uppercased() as NSString
             let size = str.boundingRect(with: NSSize(width: bounds.width - 16, height: 60), options: [.usesLineFragmentOrigin],
                                         attributes: a).size
             let w = ceil(size.width) + 10, h = ceil(size.height) + 6
@@ -68,34 +111,6 @@ final class FriendView: NSView {
             NSColor(hex: 0x6a1b3a, alpha: 0.95).setFill(); r.fill()
             str.draw(with: r.insetBy(dx: 5, dy: 3), options: [.usesLineFragmentOrigin], attributes: a)
         }
-    }
-}
-
-final class RatView: NSView {
-    weak var game: Game?
-    var facingLeft = false
-    var running = false
-    static let size = NSSize(width: 46, height: 26)
-    override var isFlipped: Bool { true }
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) { game?.sfx("Purr"); game?.say("Това е моят плъх Пикселчо!", seconds: 2) }
-
-    override func draw(_ dirtyRect: NSRect) {
-        guard let game else { return }
-        let frame = Int(game.time * (running ? 12 : 3))
-        var g = grid([
-            "....KK..........",
-            "...KEEK.........",
-            "..KEEEEKKKK.....",
-            ".KEWKEEEEEEKK...",
-            "KREEEEEEEEEEEK.P",
-            ".KEEEEEEEEEEK.P.",
-            "..KKK.KK.KKKPP..",
-        ])
-        if frame % 2 == 1 { g[6] = Array("...KK.KK..KK.P..") }
-        drawGrid(g, x: 0, y: 2, s: 3 - 0.25, flip: !facingLeft, palette: { c in
-            c == "R" ? NSColor(hex: 0xff8fab) : game.color(c)
-        })
     }
 }
 
@@ -160,15 +175,9 @@ extension Game {
             say("Клиентът е бесен! Изтървах срока за \(job)!", seconds: 4)
             return
         }
-        guard pet.orderText == nil, idle, time > nextOrder else { return }
-        let job = clientJobs.randomElement()!
-        pet.orderText = job
-        pet.orderDeadline = Date().addingTimeInterval(Double.random(in: 45 * 60...90 * 60))
-        pet.orderReward = Int.random(in: 4...15) * 10
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        sfx("Glass")
-        say("Нов клиент: \(job) до \(f.string(from: pet.orderDeadline!))! Награда \(pet.orderReward) монети.", seconds: 5)
+        updateLetter()
+        guard pet.orderText == nil, letter == nil, idle, time > nextOrder else { return }
+        sendLetter()
     }
 
     /// Готово видео: ако има поръчка в срок, клиентът плаща.
@@ -234,13 +243,16 @@ extension Game {
             return
         }
         toggleWork()
-        if pet.working {
+        if goingToWork {
             let line = Bool.random() ? "„\(name)“? " + fileDropLines.randomElement()! : fileDropLines.randomElement()!
             say(line, seconds: 3)
         }
     }
 
-    // --- приятел ---
+    // --- приятелка: фотограф (храни се, спи, работи, кръщава се) ---
+
+    var friendAsleep: Bool { pet.owned.contains("friend") && (friendSleeping || pet.asleep) }
+    var friendHover: Bool { friendPanel?.frame.insetBy(dx: 50, dy: 30).contains(NSEvent.mouseLocation) ?? false }
 
     func updateFriend(_ step: Double) {
         let has = pet.owned.contains("friend") && window.isVisible
@@ -257,14 +269,51 @@ extension Game {
             p.orderFrontRegardless()
             friendPanel = p
             friendView = v
-            friendSay("Здрасти! Аз съм Пиксчочка!", 3)
+            friendSay(UserDefaults.standard.string(forKey: "friendName") == nil ? "Здрасти! Как ще ме кръстите?"
+                      : "Здрасти! Аз съм \(friendName)!", 3)
         }
         guard let p = friendPanel, let v = friendView else { return }
         let pr = petScreenRect()
         let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
         let y = vf.minY - (FriendView.size.height - v.feetY)
         var o = p.frame.origin
-        if let target = friendTarget {
+
+        // гладува бавно; спи, когато спи и Пиксчо
+        if !friendAsleep { friendFull = max(0, friendFull - step / 180) }
+        if friendFull < 30 && time > nextFriendHungry && !friendAsleep {
+            nextFriendHungry = time + Double.random(in: 4 * 60...7 * 60)
+            friendSay("Гладна съм! Дай ми пиксел!", 3)
+        }
+        // работа: снима
+        if friendWorking && !friendAsleep {
+            friendWorkSeconds += step
+            if time > nextFriendFlash {
+                nextFriendFlash = time + Double.random(in: 4...9)
+                v.flashAt = time
+                sfx("Tink", every: 3)
+            }
+            if friendWorkSeconds >= 60 {
+                friendWorkSeconds -= 60
+                earnCoins(1)
+                friendShots += 1
+                if friendShots % 15 == 0 {
+                    earnCoins(15)
+                    friendSay("Готова фотосесия! +15 монети", 3.5)
+                }
+            }
+            if time > nextFriendLine && time > v.textUntil {
+                nextFriendLine = time + Double.random(in: 70...160)
+                friendSay(friendJobLines.randomElement()!, 3)
+            }
+            if time - friendWorkStart > 20 * 60 && !pet.working { friendWorking = false; friendSay("Стига снимки за днес.", 2.5) }
+        } else if !friendAsleep && !friendWorking && time > nextFriendWork && friendFull > 20 {
+            nextFriendWork = time + Double.random(in: 15 * 60...30 * 60)
+            if pet.working || Bool.random() { startFriendWork() }
+        }
+
+        if friendAsleep {
+            v.walking = false
+        } else if let target = friendTarget {
             // тича към пиксел-храната
             let dx = target.x - o.x, dy = target.y - o.y
             let d = hypot(dx, dy)
@@ -275,9 +324,10 @@ extension Game {
                 friendTarget = nil
                 if let f = friendFood, foods.contains(where: { $0 === f }) {
                     f.remove(); foods.removeAll { $0 === f }
+                    friendFull = min(100, friendFull + 30)
                     friendSay("Ням! Мое е!", 2)
                     say("ЕЙ! Това беше мое!", seconds: 2.5)
-                    annoy(5, reason: "приятелят ми ми открадна пиксела")
+                    annoy(5, reason: "приятелката ми ми открадна пиксела")
                     sfx("Pop")
                 }
                 friendFood = nil
@@ -292,14 +342,17 @@ extension Game {
             v.walking = abs(dx) > 3 || abs(o.y - y) > 3
             if abs(dx) > 3 { v.facingLeft = dx < 0; o.x += (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(50 * step)) }
             if abs(o.y - y) > 3 { o.y += (y > o.y ? 1 : -1) * min(abs(y - o.y), CGFloat(300 * step)) } else { o.y = y }
+            if !v.walking && friendWorking { v.facingLeft = pr.midX < o.x + FriendView.size.width / 2 }
         }
         p.setFrameOrigin(o)
         v.needsDisplay = true
+        let hit = friendHover
+        if p.ignoresMouseEvents == hit { p.ignoresMouseEvents = !hit }
 
-        guard time > nextFriendAct, !pet.asleep, hidePhase == .off else { return }
+        guard time > nextFriendAct, !pet.asleep, !friendAsleep, hidePhase == .off else { return }
         nextFriendAct = time + Double.random(in: 60...150)
         let r = Int.random(in: 0..<10)
-        if r < 2, let food = foods.randomElement() {
+        if (r < 2 || friendFull < 30), let food = foods.randomElement() {
             friendFood = food
             friendTarget = NSPoint(x: food.panel.frame.midX - FriendView.size.width / 2, y: food.panel.frame.minY - v.feetY + 40)
             friendSay("Пиксел!", 1.5)
@@ -310,11 +363,22 @@ extension Game {
         } else if r < 5 {
             friendSay("Прегръдка!", 2); start(.love, length: 2)
             sfx("Purr")
+        } else if r < 6 && friendWorking {
+            friendSay("Усмихни се, \(pet.name)! Щрак!", 2.5)
+            v.flashAt = time
+            pendingReply = ("Ееей, дай да видя снимката!", time + 2.5, false)
         } else {
             let (a, b) = friendTalks.randomElement()!
             friendSay(a, 3); v.face = .happy
             pendingReply = (b, time + 2.5, false)
         }
+    }
+
+    func startFriendWork() {
+        guard !friendAsleep else { return }
+        friendWorking = true
+        friendWorkStart = time
+        friendSay(["Вадя фотоапарата!", "Време за фотосесия!", "Щрак-щрак, почвам!"].randomElement()!, 2.5)
     }
 
     func friendSay(_ text: String, _ seconds: Double) {
@@ -326,79 +390,79 @@ extension Game {
         guard let r = pendingReply, time > r.at else { return }
         pendingReply = nil
         if r.angry { start(.angry, length: 2) }
-        say(r.text, seconds: 3)
+        if hidePhase == .off && seekPhase == .off { say(r.text, seconds: 3) }
         friendView?.face = .normal
     }
 
     func friendClicked() {
-        friendSay(["Хи-хи!", "Аз съм приятелят на Пиксчо!", "Гъдел!", "Кажи му да ми даде пиксел!"].randomElement()!, 2.5)
+        sfx("Purr")
+        if friendAsleep {
+            friendSay("Ммм… остави ме да спя…", 2)
+            return
+        }
+        if friendFull < 30 { friendSay("Гладна съм… пусни ми пиксел!", 2.5); return }
+        friendSay(["Хи-хи!", "Аз съм приятелката на \(pet.name)!", "Гъдел!", "Кажи му да ми даде пиксел!",
+                   "Искаш ли снимка?"].randomElement()!, 2.5)
+    }
+
+    func friendMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        func item(_ title: String, _ sel: Selector) {
+            let it = NSMenuItem(title: title, action: sel, keyEquivalent: "")
+            it.target = self
+            menu.addItem(it)
+        }
+        let info = NSMenuItem(title: "\(friendName) · фотограф · ситост \(Int(friendFull))% · снимки \(friendShots)", action: nil,
+                              keyEquivalent: "")
+        info.isEnabled = false
+        menu.addItem(info)
+        menu.addItem(.separator())
+        item(friendWorking ? "Спри снимането" : "Снимай (работи)", #selector(friendToggleWork))
+        item(friendSleeping ? "Събуди" : "Приспи", #selector(friendToggleSleep))
+        item("Нахрани с пиксел", #selector(friendFeed))
+        item("Прегърни \(pet.name)", #selector(friendHug))
+        item("Смени името…", #selector(renameFriend))
+        return menu
+    }
+
+    @objc func friendToggleWork() {
+        if friendWorking { friendWorking = false; friendSay("Прибирам фотоапарата.", 2); return }
+        if friendAsleep { friendSay("Спя…", 1.5); return }
+        startFriendWork()
+    }
+
+    @objc func friendToggleSleep() {
+        friendSleeping.toggle()
+        if friendSleeping { friendWorking = false; friendSay("Лека нощ…", 2) } else { friendSay("Добро утро!", 2) }
+    }
+
+    @objc func friendFeed() {
+        if friendAsleep { friendSay("Спя…", 1.5); return }
+        if friendFull > 90 { friendSay("Пълна съм!", 2); return }
+        friendFull = min(100, friendFull + 30)
+        friendSay("Ням! Благодаря!", 2)
+        sfx("Pop")
+    }
+
+    @objc func friendHug() {
+        if friendAsleep { friendSay("Спя…", 1.5); return }
+        friendSay("Прегръдка!", 2)
+        start(.love, length: 2)
+        say("Ооо, и аз те обичам, \(friendName)!", seconds: 2.5)
         sfx("Purr")
     }
 
-    // --- пиксел плъх ---
-
-    func updateRat(_ step: Double) {
-        let has = pet.owned.contains("rat") && window.isVisible
-        if !has {
-            ratPanel?.orderOut(nil); ratPanel = nil; ratView = nil; chasing = false
-            return
-        }
-        let pr = petScreenRect()
-        let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
-        if ratPanel == nil {
-            let p = overlayPanel(NSRect(x: pr.midX + 80, y: vf.minY, width: RatView.size.width, height: RatView.size.height), key: false)
-            p.level = .floating
-            let v = RatView(frame: NSRect(origin: .zero, size: RatView.size))
-            v.game = self
-            p.contentView = v
-            p.orderFrontRegardless()
-            ratPanel = p
-            ratView = v
-        }
-        guard let p = ratPanel, let v = ratView else { return }
-        var o = p.frame.origin
-        o.y = vf.minY
-        if chasing {
-            // бяга от Пиксчо
-            let away: CGFloat = o.x + 20 > pr.midX ? 1 : -1
-            var nx = o.x + away * CGFloat(170 * step)
-            if nx < vf.minX + 5 || nx > vf.maxX - 50 { nx = o.x - away * CGFloat(400 * step) }
-            o.x = nx
-            v.facingLeft = away < 0
-            v.running = true
-            // Пиксчо тича след него
-            let target = NSPoint(x: o.x + 20 - bodyCenterOffset, y: window.frame.minY)
-            _ = moveWindow(toward: target, speed: CGFloat(160 * step))
-            walking = true
-            if abs(pr.midX - (o.x + 20)) < pr.width / 2 || time > chaseUntil {
-                chasing = false
-                walking = false
-                let caught = abs(pr.midX - (o.x + 20)) < pr.width / 2
-                say(caught ? "Хванах те! Добро плъхче!" : "Избяга ми! Пак ще те гоня!", seconds: 2.5)
-                if caught { start(.love, length: 2); sfx("Purr") }
-                saveWindowPosition()
-            }
-        } else {
-            if ratTarget == nil || abs(ratTarget! - o.x) < 3 {
-                ratTarget = Double.random(in: 0..<1) < 0.02 ? CGFloat.random(in: (vf.minX + 10)...(vf.maxX - 60)) : nil
-            }
-            v.running = false
-            if let tx = ratTarget {
-                let dx = tx - o.x
-                v.facingLeft = dx < 0
-                v.running = true
-                o.x += (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(70 * step))
-            }
-            let onFloor = abs(feetScreenY - vf.minY) < 6
-            if time > nextChase && onFloor && !pet.asleep && !pet.working && !busyMoving && !isDragging && hidePhase == .off {
-                nextChase = time + Double.random(in: 120...300)
-                chasing = true
-                chaseUntil = time + 8
-                say("Плъхче! Ела тук!", seconds: 2)
-                sfx("Pop")
-            }
-        }
-        p.setFrameOrigin(o)
-        v.needsDisplay = true
+    /// Пусна пиксел върху приятелката.
+    func tryFeedFriend(_ food: FoodPixel) -> Bool {
+        guard let p = friendPanel, !friendAsleep else { return false }
+        let f = food.panel.frame
+        guard p.frame.insetBy(dx: 50, dy: 30).contains(NSPoint(x: f.midX, y: f.midY)) else { return false }
+        food.remove()
+        foods.removeAll { $0 === food }
+        friendFull = min(100, friendFull + 30)
+        friendSay("Ням! Благодаря!", 2)
+        sfx("Pop")
+        return true
     }
 }

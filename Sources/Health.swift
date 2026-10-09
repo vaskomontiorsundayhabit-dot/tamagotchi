@@ -252,7 +252,7 @@ extension Game {
 
     func updateDrunkActs() {
         guard isDrunk, window.isVisible, time > nextDrunkAct, !pet.asleep, !pet.dead, !isDragging, !busyMoving,
-              catchPanel == nil, clipPanel == nil, shopPanel == nil, !drawing else { return }
+              clipPanel == nil, shopPanel == nil, !drawing else { return }
         nextDrunkAct = time + (isHyper ? Double.random(in: 8...18) : Double.random(in: 15...30))
         var acts = ["closeup", "confetti", "shout", "rain", "snack"]
         if !pet.working { acts += ["zoomies", "zoomies", "roll", "jump", "dance"] }

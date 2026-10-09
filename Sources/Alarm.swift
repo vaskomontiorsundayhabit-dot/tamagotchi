@@ -2,7 +2,7 @@
 
 import AppKit
 
-enum HidePhase { case off, running, hidden, peeking }
+enum HidePhase { case off, grabRat, running, hidden, peeking }
 
 let peekLines = ["Отиде ли си?", "Тихо ли е вече?", "Страх ме е…", "Някой още ли звъни?",
                  "Ще изляза само ако е чисто…", "Пссст… опасно ли е?", "Аз не съм тук.", "Чувам те, звънче!"]
@@ -222,23 +222,39 @@ extension Game {
         if pet.working { pet.working = false }
         if monitorDetached { reattachMonitor() }
         endFetch()
+        clearForGame()
+        cancelErrands()
+        if seekPhase != .off { endSeek() }
         closeQuestion()
         hideHome = window.frame.origin
+        walkTarget = nil
+        chasing = false
+        annoy(10, reason: "звънеше тревога")
+        glitchUntil = time + 0.5
+        if ratIsOut && !carryingRat {
+            // първо тича да грабне плъха за опашката
+            hidePhase = .grabRat
+            say(["ТРЕВОГА! \(ratLabel.uppercased()), ЕЛА!", "АААА! Къде е \(ratLabel)?!", "Опасност! Взимам \(ratLabel) и бягам!"]
+                .randomElement()!, seconds: 2)
+            return
+        }
+        beginHideRun()
+        say(["ТРЕВОГА! Крия се!", "АААА! Бягам!", "Опасност! Не ме търсете!"].randomElement()!, seconds: 2)
+    }
+
+    private func beginHideRun() {
         let pr = petScreenRect()
         let sf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.frame ?? .zero
         hideLeft = pr.midX - sf.minX < sf.maxX - pr.midX
         hideScreen = sf
         hidePhase = .running
-        walkTarget = nil
-        annoy(10, reason: "звънеше тревога")
-        glitchUntil = time + 0.5
-        say(["ТРЕВОГА! Крия се!", "АААА! Бягам!", "Опасност! Не ме търсете!"].randomElement()!, seconds: 2)
     }
 
     func comeOutOfHiding() {
         guard hidePhase != .off else { return }
         closeQuestion()
         hidePhase = .off
+        bubbleText = nil
         jump(toOrigin: hideHome)
         anger = (anger - 10).clamped()
         say(["Чисто ли е? Излизам!", "Уф, мина ли? Връщам се!", "Може ли вече? Идвам!"].randomElement()!, seconds: 2.5)
@@ -248,9 +264,9 @@ extension Game {
     private func hideX(peek: Bool) -> CGFloat {
         let bodyW = view.bodyX1 - view.bodyX0
         if hideLeft {
-            return hideScreen.minX - view.bodyX1 - 8 + (peek ? bodyW * 0.45 : 0)
+            return hideScreen.minX - view.bodyX1 - 8 + (peek ? bodyW * 0.25 : 0)
         }
-        return hideScreen.maxX - view.bodyX0 + 8 - (peek ? bodyW * 0.45 : 0)
+        return hideScreen.maxX - view.bodyX0 + 8 - (peek ? bodyW * 0.25 : 0)
     }
 
     func updateHiding(_ step: Double) {
@@ -258,12 +274,21 @@ extension Game {
         switch hidePhase {
         case .off:
             return
+        case .grabRat:
+            guard ratIsOut, let rp = ratPanel else { beginHideRun(); return }
+            if walkTo(feet: NSPoint(x: rp.frame.midX, y: rp.frame.minY), speed: 900, step) {
+                carryingRat = true
+                ratSay("ЦИИИК!", 1.5)
+                sfx("Pop")
+                beginHideRun()
+            }
         case .running:
             walking = true
             facingLeft = hideLeft
             if moveWindow(toward: NSPoint(x: hideX(peek: false), y: y), speed: CGFloat(700 * step)) {
                 walking = false
                 hidePhase = .hidden
+                bubbleText = nil
                 // наднича след 2, после след 4, после след 6 минути…
                 peekCount = 1
                 nextPeek = time + 120
@@ -277,19 +302,9 @@ extension Game {
                 facingLeft = !hideLeft
             }
         case .peeking:
+            // наднича мълчаливо; излиза със звънчето или с клик върху него
             _ = moveWindow(toward: NSPoint(x: hideX(peek: true), y: y), speed: CGFloat(160 * step))
-            if bubbleText == nil && questionPanel == nil {
-                if time > nextHideAsk {
-                    nextHideAsk = time + 40
-                    ask(Question(text: "Чисто ли е? Може ли да изляза?", answers: [
-                        ("ДА", "Ура! Излизам!", .comeOut), ("НЕ", "Добре… оставам скрит.", .nothing),
-                    ]), index: -1)
-                    peekUntil = max(peekUntil, time + 30)
-                } else {
-                    say(pick(peekLines, avoiding: &lastLine), seconds: 2.5)
-                }
-            }
-            if time > peekUntil && questionPanel == nil {
+            if time > peekUntil {
                 hidePhase = .hidden
                 peekCount += 1
                 nextPeek = time + 120 * Double(peekCount)

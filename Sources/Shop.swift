@@ -176,6 +176,26 @@ let iconBattle = grid([
     ".KBBBBK.",
     "..KKKK..",
 ])
+let iconLaser = grid([
+    "........",
+    "..RR....",
+    ".RRRR...",
+    ".RRRR...",
+    "..RR....",
+    "....E...",
+    ".....E..",
+    "......EE",
+])
+let iconBalloon = grid([
+    "..KKKK..",
+    ".KRRRRK.",
+    "KRWRRRRK",
+    "KRRRRRRK",
+    ".KRRRRK.",
+    "..KRRK..",
+    "...KK...",
+    "....K...",
+])
 let iconSeek = grid([
     "EEEE....",
     "ESSE....",
