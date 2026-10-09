@@ -155,7 +155,7 @@ extension Game {
         // приказки, когато си стои
         if idle && !pet.working && bubbleText == nil && time > nextIdleLine {
             nextIdleLine = time + Double.random(in: 3 * 60...6 * 60)
-            say(pick(idleLines, avoiding: &lastLine), seconds: 4)
+            say(pick(idleLines + moreIdleLines, avoiding: &lastLine), seconds: 4)
         }
 
         for m in messes { m.view.needsDisplay = true }

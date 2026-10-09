@@ -126,6 +126,16 @@ let iconPiggy = grid([
     ".P.PP.P.",
     "........",
 ])
+let iconBag = grid([
+    "..KKKK..",
+    ".K....K.",
+    "OOOOOOOO",
+    "OYYYYYYO",
+    "OYYKKYYO",
+    "OYYYYYYO",
+    "OYYYYYYO",
+    "OOOOOOOO",
+])
 let neckBowtie = grid([
     "RR.RR",
     "RRKRR",

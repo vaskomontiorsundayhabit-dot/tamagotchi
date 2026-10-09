@@ -106,7 +106,7 @@ extension Game {
     func whatsWrong() -> String {
         if enclosed { return "Затвори ме! Страх ме е!" }
         if let w = want { return "Сърдит съм, защото искам \(wantText(w)) и никой не ми дава!" }
-        if questionPanel != nil { return "Не ми отговаряш на въпроса!" }
+        if questionPanel != nil || unansweredQuestion != nil { return "Не ми отговаряш на въпроса!" }
         if pet.fullness < 25 { return "Гладен съм! Затова съм сърдит!" }
         if pet.energy < 20 { return "Уморен съм и ми се спи!" }
         if let r = angerReason, time - angerReasonTime < 20 * 60 { return "Сърдит съм, защото \(r)!" }
@@ -178,6 +178,7 @@ extension Game {
                 v.needsDisplay = true
                 if questionNags >= 3 {
                     closeQuestion()
+                    unansweredQuestion = questionIndex
                     annoy(15)
                     say("Добре, не ми говори! Сърдит съм!", seconds: 3)
                     nextQuestion = time + Double.random(in: 10 * 60...20 * 60)
@@ -189,10 +190,12 @@ extension Game {
         }
         guard idle, time > nextQuestion, want == nil, clipPanel == nil, shopPanel == nil, !pet.working else { return }
         nextQuestion = time + Double.random(in: 10 * 60...20 * 60)
-        ask(questions.randomElement()!)
+        let i = Int.random(in: 0..<questions.count)
+        ask(questions[i], index: i)
     }
 
-    func ask(_ q: Question) {
+    func ask(_ q: Question, index: Int) {
+        questionIndex = index
         let v = QuestionView(frame: NSRect(origin: .zero, size: QuestionView.size))
         v.game = self
         v.question = q
@@ -218,6 +221,7 @@ extension Game {
     func answerQuestion(_ i: Int) {
         guard let q = questionView?.question, i < q.answers.count else { return }
         closeQuestion()
+        unansweredQuestion = nil
         let (_, reply, effect) = q.answers[i]
         say(reply, seconds: 3)
         switch effect {
@@ -450,7 +454,7 @@ final class MonitorView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let sp = buildSprite(level: game.bodyCells, face: .focus, pose: .type, frame: Int(game.time * 2), working: true,
-                             worn: game.pet.owned.filter { $0 == "monitor2" })
+                             worn: game.pet.owned.filter { $0 == "monitor2" }, variant: game.bodyVariant)
         let s = PetView.scale
         for y in sp.monY..<(sp.monY + sp.monH) {
             for x in sp.monX..<(sp.monX + sp.monW) {

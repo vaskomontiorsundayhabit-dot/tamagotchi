@@ -60,7 +60,7 @@ func cellNoise(_ x: Int, _ y: Int) -> Double {
 }
 
 /// Редът, в който се добавят пикселите: всеки нов е до тялото и възможно най-близо до средата.
-func makeBlobOrder(_ count: Int) -> [(Int, Int)] {
+func makeBlobOrder(_ count: Int, seed: Int = 0) -> [(Int, Int)] {
     func key(_ x: Int, _ y: Int) -> Int { (x + 500) * 1000 + (y + 500) }
     // започва като квадратче 3×3, като сегашния Пиксчо
     var cells: [(Int, Int)] = []
@@ -77,7 +77,7 @@ func makeBlobOrder(_ count: Int) -> [(Int, Int)] {
                 if set.contains(key(c.0, c.1)) { continue }
                 let nb = dirs.filter { set.contains(key(c.0 + $0.0, c.1 + $0.1)) }.count
                 let sc = pow(Double(c.0) - cx, 2) + pow(Double(c.1) - cy, 2) * 1.45
-                    + cellNoise(c.0, c.1) * 1.4 - Double(nb) * 0.45
+                    + cellNoise(c.0 + seed * 7919, c.1 - seed * 104_729) * 1.4 - Double(nb) * 0.45
                 if let b = best {
                     if sc < b.0 || (sc == b.0 && (c.0 < b.1 || (c.0 == b.1 && c.1 < b.2))) { best = (sc, c.0, c.1) }
                 } else {
@@ -114,10 +114,10 @@ struct Sprite {
     var monX = 0, monY = 0, monW = 0, monH = 0   // мониторът (ако работи)
 }
 
-func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, worn: [String] = []) -> Sprite {
+func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, worn: [String] = [], variant: Int = 0) -> Sprite {
     var g = Grid(repeating: Array(repeating: ".", count: canvasW), count: canvasH)
     let count = max(1, min(256, level))
-    let cells = blobOrder.prefix(8 + count)
+    let cells = shapeOrder(variant: variant).prefix(8 + count)
     let minCX = cells.map { $0.0 }.min()!, maxCX = cells.map { $0.0 }.max()!
     let minCY = cells.map { $0.1 }.min()!, maxCY = cells.map { $0.1 }.max()!
     let bw = (maxCX - minCX + 1) * cellSize, bh = (maxCY - minCY + 1) * cellSize
@@ -806,7 +806,7 @@ final class PetView: NSView {
 
         let sp = buildSprite(level: game.bodyCells, face: game.currentFace(), pose: pose,
                              frame: pose == .walk || game.isDragging ? Int(t * 8) : frame, working: atDesk,
-                             worn: pet.worn + pet.owned.filter { $0 == "monitor2" })
+                             worn: pet.worn + pet.owned.filter { $0 == "monitor2" }, variant: game.bodyVariant)
 
         var dy: CGFloat = 0
         if pet.dead {
@@ -886,7 +886,7 @@ final class PetView: NSView {
         var timers: [String] = []
         if game.isDrunk { timers.append("КАФЕ " + clock(game.drunkUntil - t)) }
         if game.isSick, let until = pet.sickUntil { timers.append("БОЛЕН " + clock(until.timeIntervalSinceNow)) }
-        if !timers.isEmpty { drawTimer(timers.joined(separator: "  "), centerX: centerX, y: oy + CGFloat(sp.groundY + 1) * s + 3) }
+        _ = timers
 
         // сополи, когато е болен
         if game.isSick && !pet.dead {
@@ -932,7 +932,7 @@ final class PetView: NSView {
                 let size: CGFloat = i % 2 == 0 ? 6 : 4
                 NSColor(hex: 0x2b2b3a, alpha: 0.9).setFill()
                 NSRect(x: px - size / 2 - 1, y: py - size / 2 - 1, width: size + 2, height: size + 2).fill()
-                NSColor(hex: i % 3 == 0 ? 0xfff0a6 : bodyYellow).setFill()
+                NSColor(hex: i % 3 == 0 ? 0xfff0a6 : game.bodyColor).setFill()
                 NSRect(x: px - size / 2, y: py - size / 2, width: size, height: size).fill()
             }
         }
@@ -1289,8 +1289,10 @@ final class RetroView: NSView {
     static let cell: CGFloat = 36
     static let invCell: CGFloat = 30
     static let pad: CGFloat = 12
-    static let width = pad * 2 + cell * 8
-    static let height: CGFloat = 244
+    static let width = pad * 2 + cell * 9
+    static let height: CGFloat = 162
+    static let heightWithInventory: CGFloat = 244
+    var showInventory = false
 
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -1325,7 +1327,7 @@ final class RetroView: NSView {
 
     private func hit(_ p: NSPoint) -> (Int, Int)? {
         for row in 0...2 {
-            let n = [stats.count, actions.count, inventory.count][row]
+            let n = [stats.count, actions.count, showInventory ? inventory.count : 0][row]
             for i in 0..<n where cellRect(row, i).contains(p) { return (row, i) }
         }
         return nil
@@ -1347,6 +1349,7 @@ final class RetroView: NSView {
             return
         }
         guard h.0 == 1, let sel = actions[h.1].action else { return }
+        if sel == #selector(Game.toggleInventory) { game.toggleInventory(); return }
         game.closeRetro()
         game.perform(sel)
     }
@@ -1412,6 +1415,7 @@ final class RetroView: NSView {
         }
 
         // инвентар: купените неща (облеклото се слага/сваля с клик)
+        if showInventory {
         let grey: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 9, weight: .heavy),
                                                    .foregroundColor: NSColor(hex: 0x8d99ae)]
         ("ИНВЕНТАР" as NSString).draw(at: NSPoint(x: 14, y: 136), withAttributes: grey)
@@ -1427,9 +1431,10 @@ final class RetroView: NSView {
             let s = min(2.5, 22 / max(w, h))
             drawGrid(item.icon, x: r.midX - w * s / 2, y: r.midY - h * s / 2, s: s, palette: game.color)
         }
+        }
 
         // надпис за посоченото
-        var label = "ПОСОЧИ ИКОНКА"
+        var label = game.timersText().isEmpty ? "ПОСОЧИ ИКОНКА" : game.timersText()
         if let h = hover {
             if h.0 == 2 {
                 let item = inventory[h.1]
@@ -1608,7 +1613,7 @@ final class CatchView: NSView {
         if let since = stuckSince {
             // гръмнал е и е залепнал за стъклото на екрана, после бавно се свлича
             let p = CGFloat(min(1, (time - since) / 2.8))
-            let sp = buildSprite(level: level, face: .angry, pose: .wave, frame: 0, working: false, worn: game.pet.worn)
+            let sp = buildSprite(level: level, face: .angry, pose: .wave, frame: 0, working: false, worn: game.pet.worn, variant: game.bodyVariant)
             let s: CGFloat = max(5, 200 / CGFloat(sp.right - sp.left + 1))
             let ox = stuckAt.x - CGFloat(sp.cx) * s
             let oy = stuckAt.y - CGFloat(sp.top) * s + p * p * bounds.height * 0.5
@@ -1626,7 +1631,7 @@ final class CatchView: NSView {
                              width: CGFloat(sp.maxX - sp.minX + 1) * s, height: CGFloat(sp.maxY - sp.minY + 1) * s)
             drawGlitchy(sp.grid, x: ox, y: oy, s: s, palette: game.color, glitch: Int(time * 8) % 3 == 0, noiseRect: box)
         } else {
-            let sp = buildSprite(level: level, face: over ? .sad : .happy, pose: .wave, frame: Int(time * 4), working: false, worn: game.pet.worn)
+            let sp = buildSprite(level: level, face: over ? .sad : .happy, pose: .wave, frame: Int(time * 4), working: false, worn: game.pet.worn, variant: game.bodyVariant)
             let s = petScale
             let ox = playerX - CGFloat(sp.cx) * s
             let oy = groundY - CGFloat(sp.groundY + 1) * s
@@ -1689,7 +1694,7 @@ final class AlertView: NSView {
         NSColor(hex: 0x0b0b14, alpha: min(0.75, t * 2)).setFill(); bounds.fill()
 
         let sp = buildSprite(level: game.pet.level, face: happy ? .happy : .angry, pose: .wave, frame: Int(game.time * 4),
-                             working: false, worn: game.pet.worn)
+                             working: false, worn: game.pet.worn, variant: game.bodyVariant)
         let s: CGFloat = min(14, 260 / CGFloat(sp.maxY - sp.minY + 1))
         let shake = happy ? 0 : CGFloat(Int.random(in: -3...3))
         let ox = bounds.midX - CGFloat(sp.cx) * s + shake
@@ -1765,7 +1770,7 @@ final class ClipView: NSView {
     /// Рисува Пиксчо с краката на дадена линия.
     private func pet(_ game: Game, face: Face, pose: Pose, frame: Int, x: CGFloat, ground: CGFloat,
                      height: CGFloat = 90, glitch: Bool = false) {
-        let sp = buildSprite(level: game.pet.level, face: face, pose: pose, frame: frame, working: false, worn: game.pet.worn)
+        let sp = buildSprite(level: game.pet.level, face: face, pose: pose, frame: frame, working: false, worn: game.pet.worn, variant: game.bodyVariant)
         let s = min(3, height / CGFloat(sp.maxY - sp.minY + 1))
         let ox = x - CGFloat(sp.cx) * s
         let oy = ground - CGFloat(sp.groundY + 1) * s
@@ -2115,6 +2120,9 @@ final class Game: NSObject, NSApplicationDelegate {
     var jumpDuration: Double = 1
     var jumpHeight: CGFloat = 80
     var autoWorking = false
+    var unansweredQuestion: Int?
+    var questionIndex = 0
+    var inventoryOpen = false
     var monitorDetached = false
     var monitorPanel: NSPanel?
     var deskOrigin = NSPoint.zero
@@ -2165,6 +2173,7 @@ final class Game: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         load()
+        loadMood()
         loadDrawing()
         setUpDrawLayer()
 
@@ -2243,7 +2252,7 @@ final class Game: NSObject, NSApplicationDelegate {
 
         if pet.working && time > nextWorkLine {
             nextWorkLine = time + Double.random(in: 60...150)
-            if bubbleText == nil { say(pick(editingLines, avoiding: &lastLine), seconds: 4) }
+            if bubbleText == nil { say(pick(editingLines + moreEditingLines, avoiding: &lastLine), seconds: 4) }
         }
 
         if time > nextNag {
@@ -2329,7 +2338,7 @@ final class Game: NSObject, NSApplicationDelegate {
         case "K": return NSColor(hex: 0x2b2b3a)
         case "B", "D", "L", "A":
             if pet.dead { return NSColor(hex: c == "D" ? 0xc8c8d8 : 0xe8e8f0, alpha: 0.85) }
-            var body = NSColor(hex: bodyYellow)
+            var body = NSColor(hex: bodyColor)
             if pet.health < 40 { body = body.blended(withFraction: 0.6, of: NSColor(hex: 0xb5c49a)) ?? body }
             if action == .angry || anger > 60 { body = body.blended(withFraction: 0.35, of: NSColor(hex: 0xe63946)) ?? body }
             if c == "D" { return body.blended(withFraction: 0.22, of: .black) ?? body }
@@ -2538,7 +2547,7 @@ final class Game: NSObject, NSApplicationDelegate {
             annoy(12, reason: "ме буташ, докато спя")
             start(.angry, length: 2)
             glitchUntil = time + 0.5
-            say(pick(angryLines, avoiding: &lastLine), seconds: 2.5)
+            say(pick(angryLines + moreAngryLines, avoiding: &lastLine), seconds: 2.5)
             return
         }
         if clickTimes.count >= 5 {
@@ -2551,6 +2560,12 @@ final class Game: NSObject, NSApplicationDelegate {
             say(pick(annoyedLines, avoiding: &lastLine), seconds: 3)
             return
         }
+        if let qi = unansweredQuestion, questionPanel == nil, qi < questions.count {
+            start(.angry, length: 1.5)
+            say("Сърдит съм, защото не ми отговори! Питам пак:", seconds: 3)
+            ask(questions[qi], index: qi)
+            return
+        }
         if anger > 35 && !pet.working {
             // сърдит е: казва какво му е
             start(.angry, length: 1.5)
@@ -2559,14 +2574,14 @@ final class Game: NSObject, NSApplicationDelegate {
             return
         }
         if pet.working {
-            say(pick(editingLines, avoiding: &lastLine), seconds: 4)
+            say(pick(editingLines + moreEditingLines, avoiding: &lastLine), seconds: 4)
             nextWorkLine = time + Double.random(in: 60...150)
             return
         }
         pet.fun = (pet.fun + 4).clamped()
         anger = (anger - 3).clamped()
         start(.love, length: 1.6)
-        say(pick(happyLines, avoiding: &lastLine), seconds: 1.8)
+        say(pick(happyLines + moreHappyLines, avoiding: &lastLine), seconds: 1.8)
         fulfill(.pet)
     }
 
@@ -2853,8 +2868,10 @@ final class Game: NSObject, NSApplicationDelegate {
 
     @objc func openRetro() {
         closeRetro()
-        let v = RetroView(frame: NSRect(x: 0, y: 0, width: RetroView.width, height: RetroView.height))
+        let height = inventoryOpen ? RetroView.heightWithInventory : RetroView.height
+        let v = RetroView(frame: NSRect(x: 0, y: 0, width: RetroView.width, height: height))
         v.game = self
+        v.showInventory = inventoryOpen
         let asleep = pet.asleep, dead = pet.dead
         v.stats = [
             RetroButton(icon: iconFood, label: "Ситост", value: pet.fullness, action: nil),
@@ -2878,21 +2895,41 @@ final class Game: NSObject, NSApplicationDelegate {
                 RetroButton(icon: iconPill, label: "Лекарство", value: nil, action: asleep ? nil : #selector(medicine)),
                 RetroButton(icon: iconShop, label: "Магазин", value: nil, action: #selector(openShop)),
                 RetroButton(icon: iconPencil, label: "Рисувай платформи", value: nil, action: #selector(startDrawing)),
+                RetroButton(icon: iconBag, label: inventoryOpen ? "Скрий инвентара" : "Инвентар", value: nil,
+                            action: #selector(toggleInventory)),
             ]
         }
         v.inventory = shopItems.filter { $0.kind != .use && pet.owned.contains($0.id) }
         let pr = petScreenRect()
         let vf = (window.screen ?? NSScreen.main)?.visibleFrame ?? .zero
         var o = NSPoint(x: pr.midX - RetroView.width / 2, y: pr.maxY + 6)
-        if o.y + RetroView.height > vf.maxY { o.y = pr.minY - RetroView.height - 6 }
+        if o.y + height > vf.maxY { o.y = pr.minY - height - 6 }
         o.x = min(max(o.x, vf.minX + 4), vf.maxX - RetroView.width - 4)
-        o.y = min(max(o.y, vf.minY + 4), vf.maxY - RetroView.height - 4)
+        o.y = min(max(o.y, vf.minY + 4), vf.maxY - height - 4)
         let p = overlayPanel(NSRect(origin: o, size: v.frame.size), key: false)
         p.contentView = v
         p.acceptsMouseMovedEvents = true
         p.orderFrontRegardless()
         retroPanel = p
         retroLastInside = time
+    }
+
+    @objc func toggleInventory() {
+        inventoryOpen.toggle()
+        openRetro()
+    }
+
+    /// Таймерите (кафе, болест, коремче) за менюто.
+    func timersText() -> String {
+        func clock(_ seconds: Double) -> String {
+            let s = max(0, Int(seconds))
+            return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s % 3600 / 60, s % 60) : String(format: "%d:%02d", s / 60, s % 60)
+        }
+        var parts: [String] = []
+        if isDrunk { parts.append("КАФЕ " + clock(drunkUntil - time)) }
+        if isSick, let until = pet.sickUntil { parts.append("БОЛЕН " + clock(until.timeIntervalSinceNow)) }
+        if pet.overfull > 0.5 { parts.append("КОРЕМЧЕ " + clock(pet.overfull / 10 * 60)) }
+        return parts.joined(separator: "  ")
     }
 
     func closeRetro() {
@@ -2973,6 +3010,7 @@ final class Game: NSObject, NSApplicationDelegate {
         }
         item("\(pet.name) · ниво \(pet.level) · опит \(pet.xp)/\(pet.xpNeeded) · видеа \(pet.videos)", nil)
         item("Монети: \(pet.coins)", nil)
+        if !timersText().isEmpty { item(timersText().capitalized, nil) }
         if let w = want { item("Иска: \(wantText(w))", nil) }
         menu.addItem(.separator())
         item("Магазин…", #selector(openShop))
@@ -3189,6 +3227,7 @@ final class Game: NSObject, NSApplicationDelegate {
     // --- запазване ---
 
     func save() {
+        saveMood()
         pet.lastUpdate = Date()
         if let data = try? JSONEncoder().encode(pet) {
             UserDefaults.standard.set(data, forKey: "pet")
