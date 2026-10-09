@@ -32,6 +32,15 @@ let iconTea = grid([
     "........",
 ])
 
+/// Пиксел, паднал от тялото при лудост: лети, лежи на земята и се връща.
+struct LostPixel {
+    var cx: Int
+    var cy: Int
+    var start: Double
+    var vx: CGFloat
+    var vy: CGFloat
+}
+
 /// Отхапано парче от прозорец (само рисунка отгоре; истинската програма не се пипа).
 final class BiteMark: NSObject {
     let panel: NSPanel
@@ -159,6 +168,22 @@ extension Game {
         }
 
         updateDrunkActs()
+        // повръщане от много кафе
+        if vomitAt > 0 && time > vomitAt && !pet.asleep {
+            vomitAt = 0
+            vomitUntil = time + 2.5
+            say("Бле… прекалих с кафето…", seconds: 2.5)
+        }
+        if vomitUntil > 0 && time > vomitUntil {
+            vomitUntil = 0
+            let pr = petScreenRect()
+            let feet = window.frame.maxY - view.feetY
+            messes.append(MessPixel(poop: false, vomit: true, at: NSPoint(x: pr.midX + (facingLeft ? -60 : 14), y: feet - 2), game: self))
+            pet.fullness = (pet.fullness - 30).clamped()
+            pet.overfull = 0
+            drunkUntil = max(time + 60, drunkUntil - 3 * 60)
+            say("Уф… по-добре съм. Почисти, моля.", seconds: 3)
+        }
         if isDrunk && bubbleText == nil && time > nextDrunkLine {
             nextDrunkLine = time + Double.random(in: 15...30)
             say(pick(drunkLines, avoiding: &lastLine), seconds: 2.5)
@@ -218,6 +243,7 @@ extension Game {
         }
         say(text, seconds: 3.5)
         if n >= 3 { glitchUntil = time + 1.5 }
+        if n >= 5 { vomitAt = time + 3 }
     }
 
     // --- лудости от много кафе ---

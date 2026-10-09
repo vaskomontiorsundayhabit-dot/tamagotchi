@@ -98,7 +98,7 @@ let blobOrder = makeBlobOrder(8 + 250 + 6)
 // MARK: - Спрайт
 
 enum Face { case normal, blink, happy, sad, angry, sleep, eatOpen, eatShut, sick, dead, focus, crazy }
-enum Pose { case idle, wave, walk, type, sleep }
+enum Pose { case idle, wave, walk, type, sleep, wobble, dance }
 
 let canvasW = 132
 let canvasH = 104
@@ -261,6 +261,8 @@ func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, 
                 case .sleep: y = ay + i
                 case .walk: if (frame % 2 == 0) != (side < 0) { y = ay }
                 case .type: if side > 0 { y = ay + 2 - (i == 6 && frame % 2 == 0 ? 1 : 0) }
+                case .wobble: y = ay + ((frame + (side < 0 ? 0 : 1)) % 2 == 0 ? (i + 1) / 2 : -(i + 1) / 2)
+                case .dance: y = ay - ((frame + (side < 0 ? 0 : 1)) % 2 == 0 ? i : 0)
                 case .idle: break
                 }
                 put(&g, x, y, "K")
@@ -270,14 +272,28 @@ func buildSprite(level: Int, face: Face, pose: Pose, frame: Int, working: Bool, 
         arm(1)
         let spread = max(3, bw / 5)
         for (i, lx0) in [cx - spread - 1, cx + spread].enumerated() {
-            let lift = pose == .walk && frame % 2 == i ? 1 : 0
+            var lift = pose == .walk && frame % 2 == i ? 1 : 0
+            if pose == .dance && frame % 2 == i { lift = 3 }
             let start = max(bottomOf(lx0), bottomOf(lx0 + 1)) + 2
             let end = groundY - lift
+            let out = i == 0 ? -1 : 1
+            var xo = 0
             if start <= end {
-                for y in start...end { put(&g, lx0, y, "K"); put(&g, lx0 + 1, y, "K") }
+                for y in start...end {
+                    let k = y - start
+                    xo = 0
+                    if pose == .wobble {
+                        // треперещи, подгъващи се крака
+                        xo = (k / 2 + frame + i) % 2 == 0 ? 0 : out
+                    } else if pose == .dance && frame % 2 == i {
+                        // ритва встрани
+                        xo = out * k / 2
+                    }
+                    put(&g, lx0 + xo, y, "K"); put(&g, lx0 + 1 + xo, y, "K")
+                }
             }
-            if i == 0 { put(&g, lx0 - 1, end, "K"); put(&g, lx0 - 2, end, "K") }
-            else { put(&g, lx0 + 2, end, "K"); put(&g, lx0 + 3, end, "K") }
+            if i == 0 { put(&g, lx0 - 1 + xo, end, "K"); put(&g, lx0 - 2 + xo, end, "K") }
+            else { put(&g, lx0 + 2 + xo, end, "K"); put(&g, lx0 + 3 + xo, end, "K") }
         }
     }
 
@@ -862,12 +878,15 @@ final class PetView: NSView {
         if pet.asleep || pet.dead { pose = .sleep }
         else if game.isDragging { pose = .wave }
         else if game.walking { pose = .walk }
-        else if game.action == .love || game.action == .levelUp || game.action == .wave { pose = .wave }
+        else if game.action == .wave { pose = .dance }
+        else if game.action == .love || game.action == .levelUp { pose = .wave }
+        else if game.isDrunk && !atDesk { pose = .wobble }
         else if atDesk { pose = .type }
         else { pose = .idle }
 
         let sp = buildSprite(level: game.bodyCells, face: game.currentFace(), pose: pose,
-                             frame: pose == .walk || game.isDragging ? Int(t * 8) : frame, working: atDesk,
+                             frame: pose == .walk || pose == .wobble || pose == .dance || game.isDragging ? Int(t * 7) : frame,
+                             working: atDesk,
                              worn: pet.worn, variant: game.bodyVariant, monitors: game.monitorCount,
                              monitorLevel: pet.monitorLevel, redEyes: game.redEyes)
 
@@ -944,7 +963,8 @@ final class PetView: NSView {
             let cx = centerX, cy = vy(sp.bottom)
             let tr = NSAffineTransform()
             tr.translateX(by: cx, yBy: cy)
-            tr.rotate(byRadians: CGFloat(sin(t * 2.2)) * 0.22)
+            // клати се с краката: тялото само леко се люшка встрани
+            tr.translateX(by: CGFloat(sin(t * 2.2)) * 4, yBy: abs(CGFloat(sin(t * 4.4))) * 2)
             tr.translateX(by: -cx, yBy: -cy)
             tr.concat()
         }
@@ -958,12 +978,62 @@ final class PetView: NSView {
             }
             monGrid = mg
         }
+        // от лудост пикселите му падат и после си ги събира
+        let bodyChars: Set<Character> = ["B", "D", "L", "A"]
+        if game.isHyper && t > game.nextPixelLoss && sp.bottom > sp.top {
+            game.nextPixelLoss = t + Double.random(in: 1.2...2.5)
+            var pts: [(Int, Int)] = []
+            for y in sp.top...sp.bottom { for x in sp.left...sp.right where bodyChars.contains(petGrid[y][x]) { pts.append((x, y)) } }
+            for _ in 0..<Int.random(in: 2...4) {
+                guard let p = pts.randomElement() else { break }
+                let cx0 = sp.left + (p.0 - sp.left) / cellSize * cellSize
+                let cy0 = sp.top + (p.1 - sp.top) / cellSize * cellSize
+                game.lostPixels.append(LostPixel(cx: cx0, cy: cy0, start: t, vx: CGFloat.random(in: -150...150),
+                                                 vy: CGFloat.random(in: -240 ... -120)))
+            }
+            if game.bubbleText == nil && Int.random(in: 0..<4) == 0 {
+                game.say(["Пикселите ми падат!", "Чакайте ме, събирам се!", "Разпадам се от кафе!"].randomElement()!, seconds: 2)
+            }
+        }
+        game.lostPixels.removeAll { t - $0.start > 3 }
+        for lp in game.lostPixels {
+            for y in lp.cy..<(lp.cy + cellSize) where y >= 0 && y < canvasH {
+                for x in lp.cx..<(lp.cx + cellSize) where x >= 0 && x < canvasW && bodyChars.contains(petGrid[y][x]) {
+                    petGrid[y][x] = "."
+                }
+            }
+        }
         drawGlitchy(petGrid, x: ox, y: oy + dy, s: s, flip: flip, palette: game.color,
                     glitch: game.glitching || (game.isHyper && Int(t * 10) % 3 != 0), noiseRect: box)
         if game.rolling || sway { ctx?.restoreGraphicsState() }
         if game.isHyper { ctx?.restoreGraphicsState() }
         if closeUp { ctx?.restoreGraphicsState() }
         if let mg = monGrid { drawGrid(mg, x: ox, y: oy + dy, s: s, flip: flip, palette: game.color) }
+
+        // летящите пиксели
+        let cs = CGFloat(cellSize) * s
+        for lp in game.lostPixels {
+            let a = CGFloat(t - lp.start)
+            let home = NSPoint(x: min(vx(lp.cx), vx(lp.cx + cellSize - 1)), y: vy(lp.cy))
+            let ground = feetY - cs
+            let land = NSPoint(x: home.x + lp.vx, y: min(ground, home.y + lp.vy + 500))
+            var p: NSPoint
+            if a < 1 { p = NSPoint(x: home.x + lp.vx * a, y: min(ground, home.y + lp.vy * a + 500 * a * a)) }
+            else if a < 2 { p = land }
+            else { let k = a - 2; p = NSPoint(x: land.x + (home.x - land.x) * k, y: land.y + (home.y - land.y) * k) }
+            NSColor(hex: 0x2b2b3a).setFill(); NSRect(x: p.x - 1, y: p.y - 1, width: cs + 2, height: cs + 2).fill()
+            (game.color("B") ?? .yellow).setFill(); NSRect(x: p.x, y: p.y, width: cs, height: cs).fill()
+        }
+
+        // повръщане
+        if t < game.vomitUntil {
+            let mxv = vx(sp.mouthX) + (game.facingLeft ? -6 : 6), myv = vy(sp.mouthY)
+            for i in 0..<10 {
+                let ph = CGFloat((t * 2.5 + Double(i) * 0.1).truncatingRemainder(dividingBy: 1))
+                NSColor(hex: i % 2 == 0 ? 0x8ac926 : 0xa7c957).setFill()
+                NSRect(x: mxv + (game.facingLeft ? -1 : 1) * ph * 26, y: myv + ph * (feetY - myv), width: 5, height: 5).fill()
+            }
+        }
 
         // конфети от пиксели
         if t - game.confettiStart < 2.5 {
@@ -2250,6 +2320,10 @@ final class Game: NSObject, NSApplicationDelegate {
     var zoomiesUntil: Double = 0
     var confettiStart: Double = -10
     var monitorGrabOffset = NSPoint.zero
+    var lostPixels: [LostPixel] = []
+    var nextPixelLoss: Double = 0
+    var vomitAt: Double = 0
+    var vomitUntil: Double = 0
 
     var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off || jumping }
 
@@ -2495,6 +2569,7 @@ final class Game: NSObject, NSApplicationDelegate {
         case .angry: return .angry
         case .none: break
         }
+        if time < vomitUntil { return .eatOpen }
         if isSick { return .sick }
         if isHyper { return .crazy }
         if isDrunk { return Int(time * 3) % 4 == 0 ? .blink : .happy }
@@ -2505,7 +2580,8 @@ final class Game: NSObject, NSApplicationDelegate {
         if pet.health < 40 { return .sick }
         if pet.working { return time < blinkUntil ? .blink : .focus }
         if pet.fullness < 25 || pet.fun < 25 { return .sad }
-        return time < blinkUntil ? .blink : .normal
+        // на кафе не мига
+        return time < blinkUntil && recentCoffees == 0 ? .blink : .normal
     }
 
     // --- движение ---
@@ -3049,6 +3125,7 @@ final class Game: NSObject, NSApplicationDelegate {
         }
         var parts: [String] = []
         if isDrunk { parts.append("КАФЕ ×\(recentCoffees) " + clock(drunkUntil - time)) }
+        else if recentCoffees > 0 { parts.append("КАФЕ ×\(recentCoffees) (БОДЪР)") }
         if isSick, let until = pet.sickUntil { parts.append("БОЛЕН " + clock(until.timeIntervalSinceNow)) }
         if pet.overfull > 0.5 { parts.append("КОРЕМЧЕ " + clock(pet.overfull / 10 * 60)) }
         return parts.joined(separator: "  ")

@@ -82,7 +82,7 @@ extension Game {
         angerReason = m.angerReason
         angerReasonTime = time
         drunkUntil = time + max(0, m.drunkLeft - away)
-        coffeeTimes = m.coffeeAgo.map { time - $0 - away }.filter { time - $0 < 30 * 60 }
+        coffeeTimes = m.coffeeAgo.map { time - $0 - away }.filter { time - $0 < 60 * 60 }
         if let s = m.want, let w = decodeWant(s), away < 20 * 60 {
             want = w
             wantSince = time - m.wantAge - away

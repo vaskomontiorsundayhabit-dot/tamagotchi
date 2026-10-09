@@ -71,19 +71,21 @@ enum ToiletPhase { case off, going, doing, returning }
 
 final class MessPixel: NSObject {
     let poop: Bool
+    let vomit: Bool
     let panel: NSPanel
     let view: MessView
     let created: Double
 
-    init(poop: Bool, at origin: NSPoint, game: Game) {
+    init(poop: Bool, vomit: Bool = false, at origin: NSPoint, game: Game) {
         self.poop = poop
+        self.vomit = vomit
         created = game.time
-        let size = poop ? NSSize(width: 30, height: 26) : NSSize(width: 44, height: 12)
+        let size = poop ? NSSize(width: 30, height: 26) : (vomit ? NSSize(width: 46, height: 16) : NSSize(width: 44, height: 12))
         panel = overlayPanel(NSRect(origin: origin, size: size), key: false)
         view = MessView(frame: NSRect(origin: .zero, size: size))
         super.init()
         panel.level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue - 1)
-        panel.ignoresMouseEvents = !poop
+        panel.ignoresMouseEvents = !poop && !vomit
         view.mess = self
         view.game = game
         panel.contentView = view
@@ -106,6 +108,19 @@ final class MessView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         guard let mess, let game else { return }
+        if mess.vomit {
+            // зелена локвичка от кафе
+            NSColor(hex: 0x8ac926).setFill()
+            NSBezierPath(ovalIn: NSRect(x: 2, y: 5, width: 42, height: 10)).fill()
+            NSColor(hex: 0xa7c957).setFill()
+            for (x, y) in [(8, 2), (20, 4), (30, 1), (36, 6)] {
+                NSRect(x: CGFloat(x), y: CGFloat(y), width: 5, height: 5).fill()
+            }
+            NSColor(hex: 0x5c3a1e).setFill()
+            NSRect(x: 14, y: 8, width: 3, height: 3).fill()
+            NSRect(x: 26, y: 9, width: 3, height: 3).fill()
+            return
+        }
         if mess.poop {
             let g = grid([
                 "...UU...",
@@ -159,7 +174,7 @@ extension Game {
         }
 
         for m in messes { m.view.needsDisplay = true }
-        let gone = messes.filter { !$0.poop && time - $0.created > 30 }
+        let gone = messes.filter { !$0.poop && !$0.vomit && time - $0.created > 30 }
         gone.forEach { $0.remove() }
         messes.removeAll { m in gone.contains { $0 === m } }
     }
