@@ -150,7 +150,7 @@ final class MessView: NSView {
 
 extension Game {
     func updateLife(_ step: Double) {
-        let idle = !pet.dead && !pet.asleep && catchPanel == nil && !drawing
+        let idle = !pet.dead && !pet.asleep && catchPanel == nil && !drawing && window.isVisible && hidePhase == .off
         updateWant(idle)
         updateToilet(step, idle: idle)
         updateQuestions(idle && toiletPhase == .off && !jumping)
@@ -182,6 +182,8 @@ extension Game {
     // --- желания ---
 
     func updateWant(_ idle: Bool) {
+        // докато е скрит, не мрънка
+        if !window.isVisible || hidePhase != .off { lastWantNag = time; return }
         if let w = want {
             let minutes = (time - wantSince) / 60
             if time - lastWantNag > 60 {

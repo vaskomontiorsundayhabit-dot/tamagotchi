@@ -1266,7 +1266,10 @@ final class FoodView: NSView {
     override func mouseDragged(with event: NSEvent) {
         guard let start = dragStart, let window else { return }
         let p = NSEvent.mouseLocation
-        if abs(p.x - start.x) + abs(p.y - start.y) > 3 { moved = true }
+        if abs(p.x - start.x) + abs(p.y - start.y) > 3 {
+            if !moved, let food { game?.showBin(near: food) }
+            moved = true
+        }
         window.setFrameOrigin(NSPoint(x: windowStart.x + p.x - start.x, y: windowStart.y + p.y - start.y))
     }
 
@@ -2325,7 +2328,28 @@ final class Game: NSObject, NSApplicationDelegate {
     var vomitAt: Double = 0
     var vomitUntil: Double = 0
 
-    var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off || jumping }
+    // кофа, звънче, криене
+    var binPanel: NSPanel?
+    var binView: BinView?
+    var binHideAt: Double = 0
+    var bellPanel: NSPanel?
+    var bellView: BellView?
+    var lastDing: Double = -10
+    var lastAlarm: Double = -10
+    var hidePhase = HidePhase.off
+    var hideHome = NSPoint.zero
+    var hideLeft = true
+    var hideScreen = NSRect.zero
+    var nextPeek: Double = 0
+    var peekUntil: Double = 0
+    var nextHideAsk: Double = 0
+    var hiddenSince: Date?
+    var bellOn: Bool {
+        get { UserDefaults.standard.object(forKey: "bellOn") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "bellOn") }
+    }
+
+    var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off || jumping || hidePhase != .off }
 
     // обновяване
     static let updateRepo = "vaskomontiorsundayhabit-dot/tamagotchi"
@@ -2357,6 +2381,7 @@ final class Game: NSObject, NSApplicationDelegate {
         loadMood()
         loadDrawing()
         setUpDrawLayer()
+        setUpBell()
 
         window = overlayPanel(NSRect(origin: .zero, size: PetView.size), key: false)
         window.level = .floating
@@ -2446,7 +2471,7 @@ final class Game: NSObject, NSApplicationDelegate {
             if let need = currentNeed() { say(need, seconds: 4) }
         }
 
-        if foodPixelsOn && time > nextFoodSpawn {
+        if foodPixelsOn && window.isVisible && time > nextFoodSpawn {
             nextFoodSpawn = time + (pet.owned.contains("magnet") ? Double.random(in: 60...150) : Double.random(in: 2 * 60...5 * 60))
             if foods.count < 10 { spawnFoodNow() }
         }
@@ -2457,6 +2482,9 @@ final class Game: NSObject, NSApplicationDelegate {
         updateWalk(step)
         updateLife(step)
         updateHealth(step)
+        updateHiding(step)
+        updateBin()
+        bellView?.needsDisplay = true
         updateDragYell()
         if monitorDetached && !pet.working && !isDragging && !jumping { reattachMonitor() }
         monitorPanel?.contentView?.needsDisplay = true
@@ -2569,6 +2597,7 @@ final class Game: NSObject, NSApplicationDelegate {
         case .angry: return .angry
         case .none: break
         }
+        if hidePhase != .off { return .sad }
         if time < vomitUntil { return .eatOpen }
         if isSick { return .sick }
         if isHyper { return .crazy }
@@ -2814,6 +2843,7 @@ final class Game: NSObject, NSApplicationDelegate {
     }
 
     func foodDropped(_ food: FoodPixel) {
+        if tryBin(food) { return }
         let f = food.panel.frame
         let center = NSPoint(x: f.midX, y: f.midY)
         if window.isVisible && petScreenRect().insetBy(dx: -14, dy: -14).contains(center) {
@@ -3038,7 +3068,7 @@ final class Game: NSObject, NSApplicationDelegate {
     // съобщение на целия екран
 
     func showAlert(_ title: String, _ subtitle: String, happy: Bool = false) {
-        guard let screen = window.screen ?? NSScreen.main else { return }
+        guard window.isVisible, hidePhase == .off, let screen = window.screen ?? NSScreen.main else { return }
         let p = overlayPanel(screen.frame, key: false)
         p.ignoresMouseEvents = happy
         let v = AlertView(frame: NSRect(origin: .zero, size: screen.frame.size))
@@ -3224,6 +3254,7 @@ final class Game: NSObject, NSApplicationDelegate {
         item("Повикай в ъгъла", #selector(callHome))
         item("Разхожда се", #selector(toggleWander), on: wander)
         item("Пиксели-храна по екрана", #selector(toggleFoodPixels), on: foodPixelsOn)
+        item("Звънче за тревога на екрана", #selector(toggleBell), on: bellOn)
         if foodPixelsOn { item("Пусни пиксел сега", #selector(spawnFoodNow), enabled: foods.count < 12) }
         item("Смени името…", #selector(rename))
         if #available(macOS 13.0, *) {
@@ -3239,6 +3270,7 @@ final class Game: NSObject, NSApplicationDelegate {
     @objc func toggleWindow() {
         if window.isVisible { window.orderOut(nil); closeRetro() } else { window.orderFrontRegardless() }
         UserDefaults.standard.set(!window.isVisible, forKey: "hidden")
+        noteHidden(!window.isVisible)
     }
 
     @objc func toggleWander() { wander.toggle(); walkTarget = nil }

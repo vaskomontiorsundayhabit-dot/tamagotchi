@@ -14,7 +14,7 @@ let dragWorkLines = [
 ]
 let drawRequests = ["сърце", "къща", "дърво", "стълбичка", "слънце", "котка", "ракета", "цвете", "кораб", "звезда"]
 
-enum Reaction { case happy, angry(Double), work, shop, clip, play, nothing }
+enum Reaction { case happy, angry(Double), work, shop, clip, play, nothing, comeOut }
 
 struct Question {
     let text: String
@@ -195,6 +195,7 @@ extension Game {
     }
 
     func ask(_ q: Question, index: Int) {
+        guard window.isVisible else { return }
         questionIndex = index
         let v = QuestionView(frame: NSRect(origin: .zero, size: QuestionView.size))
         v.game = self
@@ -238,6 +239,7 @@ extension Game {
         case .clip: playClip()
         case .play: toggleFetch()
         case .nothing: break
+        case .comeOut: comeOutOfHiding()
         }
         addXP(2)
     }
