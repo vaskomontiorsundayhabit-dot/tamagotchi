@@ -350,6 +350,7 @@ extension Game {
             }
         }
         if !pet.asleep && action == .none { start(.love, length: 1.2) }
+        fulfill(.buy(item.id))
         save()
     }
 

@@ -598,13 +598,13 @@ struct Pet: Codable {
         let m = dt / 60
         if asleep {
             working = false
-            fullness -= 0.25 * m
+            fullness -= 0.25 * m * (1 + Double(level) / 100)
             fun -= 0.2 * m
             energy += 4 * m
             work -= 0.15 * m
             if energy >= 100 { energy = 100; asleep = false }
         } else if working && !offline {
-            fullness -= 0.6 * m
+            fullness -= 0.6 * m * (1 + Double(level) / 100)
             fun -= 0.3 * m
             energy -= 1.0 * m
             work += 5 * m
@@ -612,7 +612,7 @@ struct Pet: Codable {
             if energy <= 10 { working = false }
         } else {
             working = false
-            fullness -= 0.5 * m
+            fullness -= 0.5 * m * (1 + Double(level) / 100)
             fun -= 0.7 * m
             energy -= 0.4 * m
             work -= 0.35 * m
@@ -972,6 +972,9 @@ final class FoodPixel: NSObject {
     let color: Int
     let panel: NSPanel
     let view: FoodView
+    var flying = false
+    var flyFrom = NSPoint.zero
+    var flyStart: Double = 0
 
     init(color: Int, at origin: NSPoint, game: Game) {
         self.color = color
@@ -1007,15 +1010,21 @@ final class FoodView: NSView {
         windowStart = window?.frame.origin ?? .zero
     }
 
+    private var moved = false
+
     override func mouseDragged(with event: NSEvent) {
         guard let start = dragStart, let window else { return }
         let p = NSEvent.mouseLocation
+        if abs(p.x - start.x) + abs(p.y - start.y) > 3 { moved = true }
         window.setFrameOrigin(NSPoint(x: windowStart.x + p.x - start.x, y: windowStart.y + p.y - start.y))
     }
 
     override func mouseUp(with event: NSEvent) {
         dragStart = nil
-        if let food { game?.foodDropped(food) }
+        guard let food, !food.flying else { return }
+        // клик: изстрелва се към Пиксчо; влачене: пуска се където си го оставил
+        if moved { game?.foodDropped(food) } else { game?.shootFood(food) }
+        moved = false
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -1515,6 +1524,7 @@ final class AlertView: NSView {
     var title = ""
     var subtitle = ""
     var started: Double = 0
+    var happy = false
 
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -1523,23 +1533,24 @@ final class AlertView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let t = game.time - started
-        NSColor(hex: 0x0b0b14, alpha: min(0.75, t * 2)).setFill(); bounds.fill()
+        NSColor(hex: happy ? 0x1d3557 : 0x0b0b14, alpha: min(happy ? 0.6 : 0.75, t * 2)).setFill(); bounds.fill()
 
-        let sp = buildSprite(level: game.pet.level, face: .angry, pose: .wave, frame: Int(game.time * 4), working: false, worn: game.pet.worn)
+        let sp = buildSprite(level: game.pet.level, face: happy ? .happy : .angry, pose: .wave, frame: Int(game.time * 4),
+                             working: false, worn: game.pet.worn)
         let s: CGFloat = min(14, 260 / CGFloat(sp.maxY - sp.minY + 1))
-        let shake = CGFloat(Int.random(in: -3...3))
+        let shake = happy ? 0 : CGFloat(Int.random(in: -3...3))
         let ox = bounds.midX - CGFloat(sp.cx) * s + shake
         let oy = bounds.midY - 40 - CGFloat(sp.groundY + 1) * s
         let box = NSRect(x: ox + CGFloat(sp.minX) * s, y: oy + CGFloat(sp.minY) * s,
                          width: CGFloat(sp.maxX - sp.minX + 1) * s, height: CGFloat(sp.maxY - sp.minY + 1) * s)
-        drawGlitchy(sp.grid, x: ox, y: oy, s: s, palette: game.color, glitch: Int(game.time * 6) % 3 != 0, noiseRect: box)
+        drawGlitchy(sp.grid, x: ox, y: oy, s: s, palette: game.color, glitch: !happy && Int(game.time * 6) % 3 != 0, noiseRect: box)
 
-        for (i, (text, size, hex)) in [(title, CGFloat(64), 0xe63946), (subtitle, CGFloat(26), 0xffffff)].enumerated() {
+        for (i, (text, size, hex)) in [(title, CGFloat(64), happy ? 0xffd23f : 0xe63946), (subtitle, CGFloat(26), 0xffffff)].enumerated() {
             let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: size, weight: .heavy),
                                                     .foregroundColor: NSColor(hex: hex)]
             let str = text as NSString
             let w = str.size(withAttributes: a).width
-            let jx = i == 0 && Int(game.time * 10) % 4 == 0 ? CGFloat(Int.random(in: -6...6)) : 0
+            let jx = !happy && i == 0 && Int(game.time * 10) % 4 == 0 ? CGFloat(Int.random(in: -6...6)) : 0
             str.draw(at: NSPoint(x: (bounds.width - w) / 2 + jx, y: bounds.midY + (i == 0 ? 0 : 80)), withAttributes: a)
         }
         let hint = "КЛИКНИ, ЗА ДА ЗАТВОРИШ" as NSString
@@ -1868,11 +1879,12 @@ final class Game: NSObject, NSApplicationDelegate {
 
     // магазин, рисуване, желания, тоалетна
     var shopPanel: NSPanel?
-    var drawPanel: NSPanel?
-    var drawView: DrawLayer?
+    var drawPanels: [NSPanel] = []
+    var drawViews: [DrawLayer] = []
     var toolbarPanel: NSPanel?
     var drawing = false
-    var drawTool = DrawTool.marker
+    var pipetteOn = false
+    var brushSize = 2
     var drawColor = 0x2b2b3a
     var drawCells: [Int: Int] = [:]
     var newCellsThisSession = 0
@@ -1888,11 +1900,33 @@ final class Game: NSObject, NSApplicationDelegate {
     var toiletPoop = false
     var nextToilet: Double = 12 * 60
     var messes: [MessPixel] = []
+    var toiletReturnX: CGFloat = 0
+
+    // ядосване с причина, затваряне, въпроси, скокове, сам на работа
+    var angerReason: String?
+    var angerReasonTime: Double = 0
+    var enclosed = false
+    var lastScared: Double = 0
+    var lastEnclosureCheck: Double = 0
+    var questionPanel: NSPanel?
+    var questionView: QuestionView?
+    var questionAsked: Double = 0
+    var questionNags = 0
+    var nextQuestion: Double = 8 * 60
+    var jumping = false
+    var jumpFrom = NSPoint.zero
+    var jumpTo = NSPoint.zero
+    var jumpStart: Double = 0
+    var jumpDuration: Double = 1
+    var jumpHeight: CGFloat = 80
+    var autoWorking = false
+    var autoWorkStart: Double = 0
+    var nextAutoWork: Double = 15 * 60
 
     var videoLength: Double { pet.owned.contains("fastedit") ? 20 * 60 : 30 * 60 }
     var coinMultiplier: Int { pet.owned.contains("monitor2") ? 2 : 1 }
 
-    var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off }
+    var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off || jumping }
 
     // обновяване
     static let updateRepo = "vaskomontiorsundayhabit-dot/tamagotchi"
@@ -1952,6 +1986,7 @@ final class Game: NSObject, NSApplicationDelegate {
         RunLoop.main.add(timer, forMode: .common)
 
         say(pet.dead ? "…" : "Здрасти, аз съм \(pet.name)!", seconds: 3)
+        if !pet.dead { greet(); start(.love, length: 3) }
     }
 
     func applicationWillTerminate(_ notification: Notification) { save() }
@@ -1966,6 +2001,7 @@ final class Game: NSObject, NSApplicationDelegate {
         let workingBefore = pet.working
         // Мак-ът е спал → броим го като „офлайн“ време
         if dt > 30 { pet.tick(min(dt, 8 * 3600) * 0.3, offline: true) } else { pet.tick(dt) }
+        if dt > 30 * 60 && !pet.dead { greet(); start(.love, length: 3) }
         let step = min(dt, 0.5)
         time += step
 
@@ -2015,6 +2051,8 @@ final class Game: NSObject, NSApplicationDelegate {
         updateFetch(step)
         updateWalk(step)
         updateLife(step)
+        updateJump()
+        updateFlyingFood()
         applyGravity(step)
         updateMouse()
         updateRetro()
@@ -2144,6 +2182,7 @@ final class Game: NSObject, NSApplicationDelegate {
         guard let target = walkTarget else {
             walking = false
             if Double.random(in: 0..<1) < 0.06 * step {
+                if Double.random(in: 0..<1) < 0.4 && tryJump() { return }
                 let t = origin.x + CGFloat.random(in: -220...220)
                 walkTarget = min(max(t, vf.minX), vf.maxX - PetView.size.width)
             }
@@ -2239,7 +2278,6 @@ final class Game: NSObject, NSApplicationDelegate {
         save()
     }
 
-    func annoy(_ amount: Double) { anger = (anger + amount).clamped() }
 
     func finishedDrag() {
         walkTarget = nil
@@ -2254,18 +2292,27 @@ final class Game: NSObject, NSApplicationDelegate {
         clickTimes.removeAll { time - $0 > 3 }
         if pet.asleep {
             pet.fun = (pet.fun - 2).clamped()
-            annoy(20)
+            annoy(20, reason: "ме събуди")
             start(.angry, length: 2)
             glitchUntil = time + 0.5
             say(pick(angryLines, avoiding: &lastLine), seconds: 2.5)
             return
         }
-        if clickTimes.count >= 6 {
-            annoy(15)
+        if clickTimes.count >= 5 {
+            // много бързо цъкане: много се ядосва
+            annoy(30, reason: "ме цъкаш постоянно")
             clickTimes.removeAll()
-            start(.angry, length: 2)
-            glitchUntil = time + 0.6
-            say(pick(annoyedLines, avoiding: &lastLine), seconds: 2.5)
+            start(.angry, length: 3)
+            glitchUntil = time + 1.2
+            nextGlitch = time + 2
+            say(pick(annoyedLines, avoiding: &lastLine), seconds: 3)
+            return
+        }
+        if anger > 35 && !pet.working {
+            // сърдит е: казва какво му е
+            start(.angry, length: 1.5)
+            say(whatsWrong(), seconds: 4)
+            fulfill(.pet)
             return
         }
         if pet.working {
@@ -2282,7 +2329,7 @@ final class Game: NSObject, NSApplicationDelegate {
 
     @discardableResult
     func eat(color: Int) -> Bool {
-        if pet.fullness >= 90 {
+        if pet.fullness >= 90 && want != .color(color) {
             start(.angry, length: 1.2)
             say(["Не мога повече! Преядох!", "Не! Пълен съм!", "Махни това, ще се пръсна!"].randomElement()!, seconds: 2.5)
             return false
@@ -2499,7 +2546,8 @@ final class Game: NSObject, NSApplicationDelegate {
         v.started = time
         let mr = view.monitorRect
         let wf = window.frame
-        let monScreen = NSRect(x: wf.minX + mr.minX, y: wf.maxY - mr.maxY, width: mr.width, height: mr.height)
+        let monScreen = mr == .zero ? petScreenRect()
+            : NSRect(x: wf.minX + mr.minX, y: wf.maxY - mr.maxY, width: mr.width, height: mr.height)
         let vf = (window.screen ?? NSScreen.main)?.visibleFrame ?? .zero
         var o = NSPoint(x: monScreen.midX - ClipView.size.width / 2, y: monScreen.maxY + 10)
         o.x = min(max(o.x, vf.minX + 4), vf.maxX - ClipView.size.width - 4)
@@ -2535,13 +2583,14 @@ final class Game: NSObject, NSApplicationDelegate {
 
     // съобщение на целия екран
 
-    func showAlert(_ title: String, _ subtitle: String) {
+    func showAlert(_ title: String, _ subtitle: String, happy: Bool = false) {
         guard let screen = window.screen ?? NSScreen.main else { return }
         let p = overlayPanel(screen.frame, key: false)
         let v = AlertView(frame: NSRect(origin: .zero, size: screen.frame.size))
         v.game = self
         v.title = title
         v.subtitle = subtitle
+        v.happy = happy
         v.started = time
         p.contentView = v
         p.orderFrontRegardless()

@@ -3,7 +3,7 @@
 import AppKit
 
 enum Want: Equatable {
-    case color(Int), play, coffee, pet, platform, work
+    case color(Int), play, coffee, pet, platform, work, draw(String), buy(String)
 }
 
 let colorNames: [Int: String] = [
@@ -19,6 +19,8 @@ func wantText(_ w: Want) -> String {
     case .pet: return "да ме погалиш"
     case .platform: return "да ми нарисуваш нещо, на което да стъпя"
     case .work: return "да монтирам"
+    case .draw(let what): return "да ми нарисуваш \(what)"
+    case .buy(let id): return "да ми купиш \((shopItems.first { $0.id == id }?.name ?? id).lowercased())"
     }
 }
 
@@ -63,7 +65,7 @@ let clipDislikeLines = [
 ]
 let clipLikeLines = ["Знаех си!", "Ти си най-добрият зрител!", "Ще го кача навсякъде!", "Ура! Още ще монтирам!"]
 
-enum ToiletPhase { case off, going, doing }
+enum ToiletPhase { case off, going, doing, returning }
 
 // MARK: - Акото и локвичката
 
@@ -136,6 +138,19 @@ extension Game {
         let idle = !pet.dead && !pet.asleep && catchPanel == nil && !drawing
         updateWant(idle)
         updateToilet(step, idle: idle)
+        updateQuestions(idle && toiletPhase == .off && !jumping)
+        updateAutoWork(idle)
+        if time - lastEnclosureCheck > 2 {
+            lastEnclosureCheck = time
+            checkEnclosure()
+            if enclosed && time - lastScared > 20 {
+                lastScared = time
+                annoy(5, reason: "ме затвори")
+                glitchUntil = time + 0.6
+                start(.angry, length: 1.5)
+                say(pick(scaredLines, avoiding: &lastLine), seconds: 3)
+            }
+        }
 
         // приказки, когато си стои
         if idle && !pet.working && bubbleText == nil && time > nextIdleLine {
@@ -178,8 +193,14 @@ extension Game {
             return
         }
         guard idle, time > nextWant else { return }
-        var options: [Want] = [.play, .coffee, .pet, .platform]
-        if foodPixelsOn { options += [.color(foodColors.randomElement()!), .color(foodColors.randomElement()!)] }
+        var options: [Want] = [.play, .coffee, .pet, .platform, .draw(drawRequests.randomElement()!),
+                               .draw(drawRequests.randomElement()!)]
+        // иска конкретни неща от магазина (които още няма)
+        let notOwned = shopItems.filter { $0.kind != .use && !pet.owned.contains($0.id) && $0.price <= max(60, pet.coins + 40) }
+        if let item = notOwned.randomElement() { options.append(.buy(item.id)) }
+        options.append(.buy(["cake", "coffee", "gold"].randomElement()!))
+        // пиксел с цвят иска само когато е гладен
+        if foodPixelsOn && pet.fullness < 60 { options += [.color(foodColors.randomElement()!), .color(foodColors.randomElement()!)] }
         if !pet.working && pet.energy > 30 { options.append(.work) }
         let w = options.randomElement()!
         want = w
@@ -210,6 +231,7 @@ extension Game {
             let x = window.frame.minX
             toiletTarget = x - vf.minX > vf.maxX - x ? vf.minX + 10 : vf.maxX - PetView.size.width - 10
             toiletPhase = .going
+            toiletReturnX = x
             walkTarget = nil
             say("Трябва ми тоалетна! Веднага!", seconds: 2.5)
         case .going:
@@ -224,7 +246,6 @@ extension Game {
             }
         case .doing:
             if time - toiletStart > 3 {
-                toiletPhase = .off
                 nextToilet = time + Double.random(in: 10 * 60...20 * 60)
                 let pr = petScreenRect()
                 let feet = window.frame.maxY - view.feetY
@@ -235,6 +256,14 @@ extension Game {
                     messes.append(MessPixel(poop: false, at: NSPoint(x: pr.midX - 22, y: feet - 4), game: self))
                 }
                 say(toiletPoop ? "Ох, олекна ми! Почисти, моля." : "Ох, олекна ми!", seconds: 3)
+                toiletPhase = .returning
+            }
+        case .returning:
+            walking = true
+            let o = window.frame.origin
+            if moveWindow(toward: NSPoint(x: toiletReturnX, y: o.y), speed: CGFloat(90 * step)) {
+                walking = false
+                toiletPhase = .off
                 saveWindowPosition()
             }
         }
