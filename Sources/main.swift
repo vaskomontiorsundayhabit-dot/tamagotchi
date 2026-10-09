@@ -1165,7 +1165,14 @@ final class PetView: NSView {
         let size = str.boundingRect(with: NSSize(width: maxW - 14, height: 200),
                                     options: [.usesLineFragmentOrigin], attributes: attrs).size
         let w = ceil(size.width) + 14, h = ceil(size.height) + 10
-        let x = min(max(4, tailX - w / 2), bounds.width - w - 4)
+        var x = min(max(4, tailX - w / 2), bounds.width - w - 4)
+        // ако е зад ръба на екрана, балончето влиза навътре, за да се чете
+        if let win = window, let game {
+            let wf = win.frame
+            let sf = game.screenAt(NSPoint(x: wf.midX, y: wf.midY))?.frame ?? wf
+            let lo = max(4, sf.minX - wf.minX + 4), hi = min(bounds.width, sf.maxX - wf.minX) - w - 4
+            if lo <= hi { x = min(max(x, lo), hi) } else { x = lo }
+        }
         let y = max(2, bottom - h - 6)
         let rect = NSRect(x: x, y: y, width: w, height: h)
         NSColor(hex: 0x1b1b24, alpha: 0.95).setFill(); rect.fill()
@@ -2344,6 +2351,12 @@ final class Game: NSObject, NSApplicationDelegate {
     var peekUntil: Double = 0
     var nextHideAsk: Double = 0
     var hiddenSince: Date?
+    var peekCount = 0
+    var dreamPanel: NSPanel?
+    var dreamView: DreamView?
+    var nextDream: Double = 0
+    var dreamUntil: Double = 0
+    var sleepStart: Double = 0
     var bellOn: Bool {
         get { UserDefaults.standard.object(forKey: "bellOn") as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: "bellOn") }
@@ -2483,6 +2496,7 @@ final class Game: NSObject, NSApplicationDelegate {
         updateLife(step)
         updateHealth(step)
         updateHiding(step)
+        updateDreams()
         updateBin()
         bellView?.needsDisplay = true
         updateDragYell()

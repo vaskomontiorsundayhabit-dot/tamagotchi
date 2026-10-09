@@ -264,14 +264,16 @@ extension Game {
             if moveWindow(toward: NSPoint(x: hideX(peek: false), y: y), speed: CGFloat(700 * step)) {
                 walking = false
                 hidePhase = .hidden
-                nextPeek = time + Double.random(in: 4...8)
-                nextHideAsk = time + 25
+                // наднича след 2, после след 4, после след 6 минути…
+                peekCount = 1
+                nextPeek = time + 120
             }
         case .hidden:
             _ = moveWindow(toward: NSPoint(x: hideX(peek: false), y: y), speed: CGFloat(260 * step))
             if time > nextPeek {
                 hidePhase = .peeking
-                peekUntil = time + 3.5
+                peekUntil = time + 4
+                nextHideAsk = time + 1.5
                 facingLeft = !hideLeft
             }
         case .peeking:
@@ -289,7 +291,8 @@ extension Game {
             }
             if time > peekUntil && questionPanel == nil {
                 hidePhase = .hidden
-                nextPeek = time + Double.random(in: 8...15)
+                peekCount += 1
+                nextPeek = time + 120 * Double(peekCount)
             }
         }
     }
