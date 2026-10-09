@@ -681,7 +681,7 @@ struct Pet: Codable {
     mutating func tick(_ dt: Double, offline: Bool = false) {
         guard !dead, dt > 0 else { return }
         let m = dt / 60
-        tired = asleep ? max(0, tired - dt / 3600 * 4) : tired + dt / 3600
+        tired = asleep || offline ? max(0, tired - dt / 3600 * 4) : tired + dt / 3600
         if asleep {
             working = false
             fullness -= 0.25 * m * (1 + Double(level) / 100)
@@ -1914,6 +1914,7 @@ final class ClipView: NSView {
     var clip = 0
     var started: Double = 0
 
+    var fixedTime: Double?               // за запис на видео: точно това време
     static let length: Double = 7.8      // 0,9 с заглавие + 6 с сцена + 0,9 с край
     static let size = NSSize(width: 320, height: 240)
 
@@ -1956,7 +1957,7 @@ final class ClipView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
-        let raw = min(ClipView.length, game.time - started)
+        let raw = min(ClipView.length, fixedTime ?? (game.time - started))
         let t = max(0, min(6, raw - 0.9))      // време в самата сцена
         let b = bounds
         NSColor(hex: 0x1b1b24).setFill(); b.fill()
@@ -2164,7 +2165,7 @@ final class ClipView: NSView {
         NSGraphicsContext.current?.restoreGraphicsState()
 
         // накрая пита дали ти харесва
-        if game.time - started >= ClipView.length {
+        if fixedTime == nil && game.time - started >= ClipView.length {
             NSColor(hex: 0x0b0b14, alpha: 0.8).setFill(); screen.fill()
             text("ХАРЕСВА ЛИ ТИ?", b.midX, 80, size: 18, color: 0xffffff, center: true)
             for (r, label, color) in [(yesRect, "ДА", 0x52b788), (noRect, "НЕ", 0xe63946)] {
@@ -2357,6 +2358,7 @@ final class Game: NSObject, NSApplicationDelegate {
     var nextDream: Double = 0
     var dreamUntil: Double = 0
     var sleepStart: Double = 0
+    var compilationWriter: CompilationWriter?
     var bellOn: Bool {
         get { UserDefaults.standard.object(forKey: "bellOn") as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: "bellOn") }
@@ -2455,6 +2457,7 @@ final class Game: NSObject, NSApplicationDelegate {
             earnCoins(coins)
             say("Готово видео №\(pet.videos)! +40 опит, +\(coins) монети", seconds: 4)
             addXP(40)
+            exportCompilation()
         }
         if pet.working {
             pet.workCoinSeconds += step
@@ -3170,6 +3173,7 @@ final class Game: NSObject, NSApplicationDelegate {
         var parts: [String] = []
         if isDrunk { parts.append("КАФЕ ×\(recentCoffees) " + clock(drunkUntil - time)) }
         else if recentCoffees > 0 { parts.append("КАФЕ ×\(recentCoffees) (БОДЪР)") }
+        if pet.tired > 3 { parts.append("НЕДОСПАЛ \(Int(pet.tired)) Ч") }
         if isSick, let until = pet.sickUntil { parts.append("БОЛЕН " + clock(until.timeIntervalSinceNow)) }
         if pet.overfull > 0.5 { parts.append("КОРЕМЧЕ " + clock(pet.overfull / 10 * 60)) }
         return parts.joined(separator: "  ")
@@ -3263,6 +3267,7 @@ final class Game: NSObject, NSApplicationDelegate {
         item("Магазин…", #selector(openShop))
         item(drawing ? "Спри рисуването" : "Рисувай с пиксели (платформи)", drawing ? #selector(stopDrawingAction) : #selector(startDrawing))
         item("Изтрий всичко нарисувано", #selector(clearDrawingAction), enabled: !drawCells.isEmpty)
+        item("Видеата на Пиксчо (папка)…", #selector(openVideosFolder))
         menu.addItem(.separator())
         item(window.isVisible ? "Скрий" : "Покажи", #selector(toggleWindow))
         item("Повикай в ъгъла", #selector(callHome))

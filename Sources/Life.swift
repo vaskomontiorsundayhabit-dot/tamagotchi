@@ -183,7 +183,7 @@ extension Game {
 
     func updateWant(_ idle: Bool) {
         // докато е скрит, не мрънка
-        if !window.isVisible || hidePhase != .off { lastWantNag = time; return }
+        if !window.isVisible || hidePhase != .off || pet.asleep { lastWantNag = time; wantSince += 1.0 / 30; return }
         if let w = want {
             let minutes = (time - wantSince) / 60
             if time - lastWantNag > 60 {

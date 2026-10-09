@@ -23,7 +23,7 @@ final class DreamView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let t = game.time - started
-        let fade = CGFloat(min(1, t * 2, max(0, (game.dreamUntil - game.time) * 2)))
+        let fade = CGFloat(min(1, t * 3, max(0, (game.dreamUntil - game.time) * 3)))
 
         // облаче: голямо заоблено + малки балончета към главата му
         let cloud = NSRect(x: 6, y: 6, width: bounds.width - 12, height: 108)
@@ -129,25 +129,30 @@ final class DreamView: NSView {
 }
 
 extension Game {
+    /// Сънят се вижда, когато посочиш спящия Пиксчо с мишката (след 2 минути сън).
     func updateDreams() {
         guard pet.asleep, window.isVisible, hidePhase == .off else {
             sleepStart = 0
             closeDream()
             return
         }
-        if sleepStart == 0 { sleepStart = time; nextDream = time + 120 }
+        if sleepStart == 0 { sleepStart = time }
+        let canDream = time - sleepStart > 120
         if let p = dreamPanel, let v = dreamView {
             positionDream(p)
             v.needsDisplay = true
+            if view.hovering { dreamUntil = max(dreamUntil, time + 0.8) }
             if time > dreamUntil {
-                // след кошмар си мърмори
                 if v.dream == 5 && bubbleText == nil { say("Ммм… бомби… не…", seconds: 2.5) }
                 closeDream()
-                nextDream = time + Double.random(in: 60...180)
+            } else if time - v.started > 12 && view.hovering {
+                // сменя съня, ако го гледаш дълго
+                v.dream = (v.dream + 1 + Int.random(in: 0..<(dreams.count - 1))) % dreams.count
+                v.started = time
             }
             return
         }
-        guard time > nextDream else { return }
+        guard canDream, view.hovering else { return }
         let v = DreamView(frame: NSRect(origin: .zero, size: DreamView.size))
         v.game = self
         v.dream = Int.random(in: 0..<dreams.count)
@@ -160,7 +165,7 @@ extension Game {
         p.orderFrontRegardless()
         dreamPanel = p
         dreamView = v
-        dreamUntil = time + 12
+        dreamUntil = time + 0.8
     }
 
     func positionDream(_ p: NSPanel) {
