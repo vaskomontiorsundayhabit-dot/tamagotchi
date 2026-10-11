@@ -382,6 +382,7 @@ extension Game {
             saveWindowPosition()
             if backToDesk {
                 reattachMonitor()
+                resumeAfterBreak()
                 if pet.working { say("Обратно на работа! Не ме дърпай!", seconds: 2.5) }
             }
         }
@@ -504,7 +505,8 @@ extension Game {
             walking = false
             reattachMonitor()
             saveWindowPosition()
-            if pet.working { say("Обратно на работа! Не ме дърпай!", seconds: 2.5) }
+            if workBreak { resumeAfterBreak() }
+            else if pet.working { say("Обратно на работа! Не ме дърпай!", seconds: 2.5) }
         }
     }
 

@@ -65,6 +65,11 @@ final class RatView: NSView {
             }
         } else {
             drawGrid(g, x: x, y: y, s: s, flip: !facingLeft, palette: palette)
+            if game.time < game.ratToyUntil {
+                // играе си с топчето: то се търкаля пред него
+                let bx = (facingLeft ? x - 16 : x + w + 2) + CGFloat(sin(game.time * 6)) * 10
+                drawGrid(iconToy, x: bx, y: bounds.height - 18, s: 2, palette: game.color)
+            }
             if loot == 1 {
                 // откраднат пиксел в устата
                 let mx = facingLeft ? x - 4 : x + w - 2
@@ -262,8 +267,8 @@ extension Game {
         let v = CageView(frame: NSRect(origin: .zero, size: s))
         v.game = self
         p.contentView = v
-        p.orderFrontRegardless()
-        cagePanel = p
+        p.ignoresMouseEvents = true
+        cagePanel = p     // скрита: вади я само когато прибира или пуска плъха
         cageView = v
         // при първото пускане не е гладен от часове
         if Date().timeIntervalSince(ratFedAt) > 50 * 60 { ratFedAt = Date().addingTimeInterval(-50 * 60) }
@@ -298,11 +303,6 @@ extension Game {
         let m = NSEvent.mouseLocation
         let ratHit = NSRect(x: p.frame.midX - 28, y: p.frame.minY, width: 56, height: 28).contains(m)
         if p.ignoresMouseEvents == ratHit { p.ignoresMouseEvents = !ratHit }
-        if let c = cagePanel {
-            let cageHit = NSRect(x: c.frame.midX - 46, y: c.frame.minY, width: 92, height: 68).contains(m)
-                || NSEvent.pressedMouseButtons != 0 && !c.ignoresMouseEvents
-            if c.ignoresMouseEvents == cageHit { c.ignoresMouseEvents = !cageHit }
-        }
 
         // в състезание: мести го състезанието
         if racePhase != .off && raceBuddy == nil { return }
@@ -358,8 +358,8 @@ extension Game {
                 guard let b = ball, fetchPhase == .waiting, !b.flying, !b.carried else { ratGoal = nil; p.setFrameOrigin(o); return }
                 gx = b.panel.frame.midX - half
             case .toy:
-                guard pet.has("toy"), let c = cagePanel else { ratGoal = nil; p.setFrameOrigin(o); return }
-                gx = c.frame.minX + 20 - half
+                guard pet.has("toy") else { ratGoal = nil; p.setFrameOrigin(o); return }
+                gx = o.x
             }
             let dx = gx - o.x
             v.running = true
@@ -628,20 +628,14 @@ extension Game {
     /// При тревога носи и клетката.
     func updateCarriedCage() {
         guard let c = cagePanel else { return }
+        // клетката се вижда само докато я носи (като монитора)
         if carryingCage {
-            // носи я пред себе си, за да влезе зад ръба заедно с него
             let pr = petScreenRect()
             let x = facingLeft ? pr.minX - c.frame.width + 40 : pr.maxX - 40
-            c.setFrameOrigin(NSPoint(x: x, y: pr.minY + 6))
-            let hidden = hidePhase == .hidden || hidePhase == .peeking
-            c.alphaValue = hidden ? 0 : 1
-            if hidePhase == .off && !jumping {
-                carryingCage = false
-                c.alphaValue = 1
-                c.setFrameOrigin(cageHome)
-            }
-        } else if c.alphaValue < 1 {
-            c.alphaValue = 1
+            c.setFrameOrigin(NSPoint(x: x, y: pr.minY + 4 + CGFloat(abs(sin(time * 9))) * 2))
+            if !c.isVisible { c.orderFrontRegardless() }
+        } else if c.isVisible {
+            c.orderOut(nil)
         }
     }
 
@@ -656,27 +650,39 @@ extension Game {
         say(hungry ? "Ох! Забравих да нахраня \(ratLabel)! Отивам!" : "Ох… отдавна не съм си играл с \(ratLabel). Идвам!", seconds: 3)
         // отива веднага, а ако е зает, веднага щом се освободи
         ratCareNow = true
-        if errands.isEmpty && !pet.working && !playingGame && !busyMoving { doRatCareNow() }
+        if errands.isEmpty && !playingGame && !busyMoving && !monitorDetached { doRatCareNow() }
     }
 
     /// Каквото плъхът иска сега: храна, или гушкане и гонене.
     func doRatCareNow() {
         ratCareNow = false
         if ratHungryMinutes > ratHungerLimit {
-            runErrands([.feedRat])
+            runBreakErrands([.feedRat])
         } else if ratInCage {
-            runErrands([.ratOut, .cuddleRat])
+            runBreakErrands([.ratOut, .cuddleRat])
             nextChase = time + 20
         } else {
-            runErrands([.cuddleRat])
+            runBreakErrands([.cuddleRat])
             nextChase = time + 5
         }
     }
 
     /// Задълженията на Пиксчо към плъха (понякога ги забравя).
     func updateRatCare(_ idle: Bool) {
-        if ratCareNow && hasRat && idle && errands.isEmpty && !busyMoving && !pet.working && !playingGame {
+        if ratCareNow && hasRat && idle && errands.isEmpty && !busyMoving && !playingGame && !monitorDetached {
             doRatCareNow()
+            return
+        }
+        // има сирене в ръката: занася го
+        if cheeseInHand > 0 && hasRat && idle && errands.isEmpty && !busyMoving && !monitorDetached && !playingGame {
+            runBreakErrands([.giveCheese])
+            return
+        }
+        // работи, а плъхът е гладен: става за малко да го нахрани
+        if pet.working && hasRat && idle && errands.isEmpty && !busyMoving && !monitorDetached && ratHungryMinutes > 40
+            && time > nextRatCare {
+            nextRatCare = time + 6 * 60
+            runBreakErrands([.feedRat])
             return
         }
         guard hasRat, idle, errands.isEmpty, !busyMoving, !pet.working, !playingGame, questionPanel == nil,
@@ -698,40 +704,147 @@ extension Game {
 
     func updateRatErrand(_ e: Errand, _ step: Double) {
         guard hasRat, ratPanel != nil else { nextErrand(); return }
-        switch errandStage {
-        case 0:
+        if errandStage == 0 {
             if e == .ratToCage && ratInCage { nextErrand(); return }
             if e == .ratOut && !ratInCage { nextErrand(); return }
+            if e == .cuddleRat && ratInCage { errands.insert(.ratOut, at: 0); return }
+            chasing = false
             switch e {
-            case .feedRat: say("Отивам да нахраня \(ratLabel)!", seconds: 2)
+            case .feedRat: say(ratInCage ? "Отивам да нахраня \(ratLabel) в клетката!" : "Отивам да нахраня \(ratLabel)!", seconds: 2)
             case .cuddleRat: say("Ела да те гушна, \(ratLabel)!", seconds: 2)
-            case .ratToCage: say("Хайде в клетката, \(ratLabel)!", seconds: 2)
-            default: say("Ще пусна \(ratLabel) да потича.", seconds: 2)
+            case .ratToCage: say("Нося клетката! Време е за прибиране, \(ratLabel).", seconds: 2.5)
+            default: say("Нося \(ratLabel) да потича.", seconds: 2)
             }
+        }
+        switch e {
+        case .feedRat where ratInCage || errandStage >= 100:
+            // в клетката е, тя е зад кадър: отива там и се връща
+            if errandStage == 0 { errandStage = 100 }
+            errandStage -= 100
+            let done = edgeTrip(step, out: 380, back: 380, onEdge: { arrivedAtRat(.feedRat) })
+            errandStage += 100
+            if done { nextErrand() }
+        case .ratToCage, .ratOut:
+            cageTrip(e, step)
+        default:
+            switch errandStage {
+            case 0:
+                errandStage = 1
+            case 1:
+                if walkTo(feet: ratSpot, speed: 300, step) {
+                    errandStage = 2
+                    errandStart = time
+                    arrivedAtRat(e)
+                }
+            default:
+                if time - errandStart > 2 { nextErrand() }
+            }
+        }
+    }
+
+    /// Носи сиренето на плъха (ако е в клетката, отива зад кадър).
+    func updateCheeseErrand(_ step: Double) {
+        guard hasRat, cheeseInHand > 0 else { nextErrand(); return }
+        if ratInCage || errandStage >= 100 {
+            if errandStage == 0 { errandStage = 100 }
+            errandStage -= 100
+            let done = edgeTrip(step, out: 380, back: 380, onEdge: { gaveCheese() })
+            errandStage += 100
+            if done { nextErrand() }
+            return
+        }
+        switch errandStage {
+        case 0:
             chasing = false
             errandStage = 1
         case 1:
             if walkTo(feet: ratSpot, speed: 300, step) {
+                gaveCheese()
                 errandStage = 2
                 errandStart = time
-                arrivedAtRat(e)
             }
+        default:
+            if time - errandStart > 2 { nextErrand() }
+        }
+    }
+
+    func gaveCheese() {
+        guard cheeseInHand > 0 else { return }
+        cheeseInHand -= 1
+        ratFedAt = Date()
+        ratPlayedAt = Date()
+        cheeseUntil = time + 10 * 60
+        ratView?.heartsUntil = time + 3
+        ratSay("СИРЕНЕ! Цик-цик-цик!", 2.5)
+        say("Заповядай, \(ratLabel)! Твоето сирене.", seconds: 2.5)
+        start(.love, length: 1.5)
+        sfx("Pop")
+    }
+
+    /// Изважда клетката отзад, слага (или пуска) плъха и я отнася обратно.
+    private func cageTrip(_ e: Errand, _ step: Double) {
+        switch errandStage {
+        case 0:
+            errandHome = window.frame.origin
+            if feetScreenY - floorY > 8 { jump(toFeet: NSPoint(x: petScreenRect().midX, y: floorY)) }
+            errandStage = 1
+        case 1:
+            if jumping { return }
+            errandTarget = offscreenOrigin(left: nearerEdgeIsLeft())
+            errandStage = 2
         case 2:
+            walking = true
+            if moveWindow(toward: errandTarget, speed: CGFloat(420 * step)) {
+                carryingCage = true
+                errandStage = 3
+            }
+        case 3:
             if e == .ratToCage {
-                // носи го за опашката до клетката
-                guard let c = cagePanel else { carryingRat = false; nextErrand(); return }
-                if walkTo(feet: NSPoint(x: c.frame.midX, y: c.frame.minY), speed: 260, step) {
+                if walkTo(feet: ratSpot, speed: 260, step) {
                     carryingRat = false
                     ratInCage = true
                     ratSay("Цик…", 2)
-                    say("Готово! Стой мирно в клетката.", seconds: 2.5)
-                    nextErrand()
+                    say("Готово! Вкъщи, в клетката.", seconds: 2.5)
+                    errandStart = time
+                    errandStage = 4
                 }
-            } else if time - errandStart > 2 {
-                nextErrand()
+            } else {
+                walking = true
+                if moveWindow(toward: NSPoint(x: errandHome.x, y: window.frame.minY), speed: CGFloat(260 * step)) {
+                    walking = false
+                    ratInCage = false
+                    if let p = ratPanel {
+                        let pr = petScreenRect()
+                        p.setFrameOrigin(NSPoint(x: pr.midX + (facingLeft ? -110 : 110) - RatView.size.width / 2, y: floorY + 30))
+                        p.orderFrontRegardless()
+                    }
+                    ratPlayedAt = Date()
+                    ratSay("Свобода! Цик!", 2)
+                    errandStart = time
+                    errandStage = 4
+                }
+            }
+        case 4:
+            walking = false
+            if time - errandStart > 1.2 {
+                errandTarget = offscreenOrigin(left: nearerEdgeIsLeft())
+                errandStage = 5
+            }
+        case 5:
+            walking = true
+            if moveWindow(toward: errandTarget, speed: CGFloat(320 * step)) {
+                carryingCage = false
+                errandStage = 6
+            }
+        case 6:
+            walking = true
+            if moveWindow(toward: NSPoint(x: errandHome.x, y: window.frame.minY), speed: CGFloat(420 * step)) {
+                walking = false
+                if abs(errandHome.y - window.frame.minY) > 4 { jump(toOrigin: errandHome) }
+                errandStage = 7
             }
         default:
-            nextErrand()
+            if !jumping { nextErrand() }
         }
     }
 

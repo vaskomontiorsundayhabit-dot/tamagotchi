@@ -57,6 +57,18 @@ let propBrush = grid([
     ".UU.....",
 ])
 
+/// Приятел с приятел си говорят.
+let buddyChats: [(String, String)] = [
+    ("Видя ли какво монтира пак?", "Да! Пак експлозии!"),
+    ("Искаш ли да играем на гоненица?", "Само ако аз гоня!"),
+    ("Мислиш ли, че ще завали?", "Нося си чадър, за всеки случай."),
+    ("Кой изяде последния пиксел?", "Плъхът! Не аз!"),
+    ("Тази платформа твоя ли е?", "Нарисувах я сутринта!"),
+    ("Да направим купон довечера?", "Аз нося музиката!"),
+    ("Ти ли си най-бързият тук?", "След Пиксчо… може би."),
+    ("Колко е часът?", "Време за пиксели!"),
+]
+
 let buddyKinds: [BuddyKind] = [
     BuddyKind(id: "photo", job: "фотографка", defaultName: "Пикселка", color: 0xff8fab, female: true,
               lines: friendJobLines, prop: propCamera),
@@ -94,6 +106,7 @@ final class Buddy: NSObject {
     var nextHome: Double = 0
     var target: NSPoint?
     var food: FoodPixel?
+    var playRat = false
 
     init(kind: BuddyKind, guest: Bool, origin: NSPoint, game: Game) {
         self.kind = kind
@@ -148,7 +161,7 @@ final class BuddyView: NSView {
         let flashing = t - flashAt < 0.25
         let pose: Pose = asleep ? .sleep : (walking ? .walk : (flashing ? .wave : .idle))
         let f: Face = asleep ? .sleep : (working && !flashing ? .focus : face)
-        let sp = buildSprite(level: 14, face: f, pose: pose, frame: Int(t * (walking ? 7 : 2)), working: false)
+        let sp = buildSprite(level: buddy.guest ? 10 : game.buddyLevel(buddy.kind.id), face: f, pose: pose, frame: Int(t * (walking ? 7 : 2)), working: false)
         let s = BuddyView.scale
         let ox = (bounds.width - CGFloat(canvasW) * s) / 2
         let flip = walking && facingLeft
@@ -380,6 +393,7 @@ extension Game {
                 if let f = b.food, foods.contains(where: { $0 === f }) {
                     f.remove(); foods.removeAll { $0 === f }
                     b.full = min(100, b.full + 30)
+                    buddyAte(b)
                     buddySay(b, "Ням! Мое е!", 2)
                     if !pet.asleep {
                         say("ЕЙ! Това беше мое!", seconds: 2.5)
@@ -388,6 +402,16 @@ extension Game {
                     sfx("Pop")
                 }
                 b.food = nil
+                if b.playRat {
+                    // стигна плъха: играят си
+                    b.playRat = false
+                    ratPlayedAt = Date()
+                    ratView?.heartsUntil = time + 2
+                    ratSay(["Цик! Гъдел!", "Хи-цик!", "Хвани ме, цик!"].randomElement()!, 2)
+                    buddySay(b, ["Гуш, \(ratLabel)!", "Хванах те, \(ratLabel)!", "Какво сладко плъхче!"].randomElement()!, 2.5)
+                    v.face = .happy
+                    if Bool.random() { ratTarget = (ratPanel?.frame.minX ?? 0) + CGFloat.random(in: -200...200) }
+                }
             } else {
                 o.x += dx > 0 ? sp : -sp
             }
@@ -410,11 +434,22 @@ extension Game {
 
         guard time > b.nextAct, !pet.asleep, !asleep, hidePhase == .off else { return }
         b.nextAct = time + Double.random(in: 60...150)
-        let r = Int.random(in: 0..<10)
+        let r = Int.random(in: 0..<13)
+        let others = buddies.filter { $0 !== b && !$0.leaving && !buddyAsleep($0) }
         if (r < 2 || b.full < 30), let food = foods.filter({ $0.onFloor && !$0.view.held }).randomElement() {
             b.food = food
             b.target = NSPoint(x: food.panel.frame.midX - BuddyView.size.width / 2, y: food.panel.frame.minY - v.feetY + 40)
             buddySay(b, "Пиксел!", 1.5)
+        } else if r >= 10, let o2 = others.randomElement() {
+            // говорят си помежду си
+            let (a, c) = buddyChats.randomElement()!
+            buddySay(b, a, 3); v.face = .happy
+            pendingBuddyReply = (o2.kind.id, c, time + 2.5)
+        } else if r >= 8, ratIsOut, let rp = ratPanel {
+            // отива да си играе с плъха
+            b.playRat = true
+            b.target = NSPoint(x: rp.frame.midX - BuddyView.size.width / 2, y: o.y)
+            buddySay(b, "\(ratLabel.capitalized)! Ела да си играем!", 2)
         } else if r < 4 {
             let (a, c) = friendFights.randomElement()!
             buddySay(b, a, 3); v.face = .angry
@@ -486,10 +521,23 @@ extension Game {
         if let id = sender.representedObject as? String { callBuddy(id) }
     }
 
+    /// От ретро менюто: показва списък и ти избираш на кого да звънне.
     @objc func callFriendFromRetro() {
         guard checkAwake() else { return }
-        if let k = callableBuddies().randomElement() { callBuddy(k.id) }
-        else { say("Нямам на кого да звънна… още никой не ни е идвал на гости.", seconds: 3) }
+        let list = callableBuddies()
+        if list.isEmpty { say("Нямам на кого да звънна… още никой не ни е идвал на гости.", seconds: 3); return }
+        let menu = NSMenu()
+        let head = NSMenuItem(title: "На кого да звънна?", action: nil, keyEquivalent: "")
+        head.isEnabled = false
+        menu.addItem(head)
+        for k in list {
+            let it = NSMenuItem(title: "\(buddyName(k)) (\(k.job))" + (joinedBuddies.contains(k.id) ? " · вкъщи" : ""),
+                                action: #selector(callBuddyMenu(_:)), keyEquivalent: "")
+            it.target = self
+            it.representedObject = k.id
+            menu.addItem(it)
+        }
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
 
     /// Звъни по телефона; приятелят идва след малко.
@@ -648,6 +696,7 @@ extension Game {
             if buddyAsleep(b) { buddySay(b, "Спя…", 1.5); return }
             if b.full > 90 { buddySay(b, "Пъл\(b.kind.female ? "на" : "ен") съм!", 2); return }
             b.full = min(100, b.full + 30)
+            buddyAte(b)
             buddySay(b, "Ням! Благодаря!", 2)
             sfx("Pop")
         case 4:
@@ -696,6 +745,7 @@ extension Game {
             food.remove()
             foods.removeAll { $0 === food }
             b.full = min(100, b.full + 30)
+            buddyAte(b)
             buddySay(b, "Ням! Благодаря!", 2)
             sfx("Pop")
             attentionToOthers()
@@ -704,7 +754,29 @@ extension Game {
         return false
     }
 
+    /// Колко е пораснал (с храненето).
+    func buddyLevel(_ id: String) -> Int { max(10, UserDefaults.standard.integer(forKey: "buddyLevel_\(id)")) }
+
+    /// Яде: на всеки 2 хранения пораства малко.
+    func buddyAte(_ b: Buddy) {
+        guard !b.guest else { return }
+        let id = b.kind.id
+        let fed = UserDefaults.standard.integer(forKey: "buddyFed_\(id)") + 1
+        UserDefaults.standard.set(fed, forKey: "buddyFed_\(id)")
+        if fed % 2 == 0 && buddyLevel(id) < 60 {
+            UserDefaults.standard.set(buddyLevel(id) + 1, forKey: "buddyLevel_\(id)")
+            buddySay(b, "Пораснах! Ниво \(buddyLevel(id))!", 3)
+        }
+    }
+
+    func updateBuddyReply() {
+        guard let r = pendingBuddyReply, time > r.at else { return }
+        pendingBuddyReply = nil
+        if let o = buddy(r.id) { buddySay(o, r.text, 3); o.view.face = .happy }
+    }
+
     func updateFriendReply() {
+        updateBuddyReply()
         guard let r = pendingReply, time > r.at else { return }
         pendingReply = nil
         if r.angry { start(.angry, length: 2) }

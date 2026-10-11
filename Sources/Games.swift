@@ -287,7 +287,7 @@ extension Game {
         let big = windowRects.indices.filter { windowRects[$0].width > 200 && windowRects[$0].height > 150 }
         if !big.isEmpty { options += [1, 1, 1] }
         if big.count >= 2 { options += [2, 2, 2] }
-        if cagePanel != nil { options += [3, 3] }
+        if cagePanel?.isVisible == true { options += [3, 3] }
         if friendPanel != nil { options.append(4) }
         options.append(5)                                  // под горната лента
         if vf.minY - sf.minY > 30 { options.append(6) }    // зад дока

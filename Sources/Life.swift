@@ -260,6 +260,10 @@ extension Game {
     func updateToilet(_ step: Double, idle: Bool) {
         switch toiletPhase {
         case .off:
+            // докато работи, става за малко (мониторът остава)
+            if pet.working && idle && time > nextToilet && errands.isEmpty && !jumping && !isDragging && !monitorDetached {
+                if !takeWorkBreak() { return }
+            }
             guard idle, time > nextToilet, !pet.working, fetchPhase == .off, !rolling, !isDragging, !jumping, errands.isEmpty,
                   !playingGame, seekPhase == .off else { return }
             let pr = petScreenRect()
@@ -300,6 +304,9 @@ extension Game {
             if !jumping {
                 toiletPhase = .off
                 saveWindowPosition()
+                if workBreak {
+                    if monitorDetached { runErrands([.backToDesk]) } else { resumeAfterBreak() }
+                }
             }
         }
     }

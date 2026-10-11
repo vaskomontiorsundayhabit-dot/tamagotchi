@@ -813,11 +813,17 @@ extension Game {
                 say("Пуканки! Да гледаме клип!", seconds: 2.5)
                 playClip()
             case "cheese":
-                ratFedAt = Date()
-                cheeseUntil = time + 10 * 60
-                ratView?.heartsUntil = time + 2
-                ratSay("Сирене! Цик-цик-цик!", 2.5)
-                say(hasRat ? "\(ratLabel.capitalized) обожава сирене!" : "Сирене… ама нямаме плъх. Ще го изям аз!", seconds: 2.5)
+                // сиренето е истинско: взима го в ръка и го носи на плъха
+                cheeseInHand += 1
+                if hasRat && !pet.asleep {
+                    say("Сирене за \(ratLabel)! Нося го!", seconds: 2.5)
+                    if errands.isEmpty && !busyMoving && !monitorDetached { runBreakErrands([.giveCheese]) }
+                } else if !hasRat {
+                    cheeseInHand -= 1
+                    lastFoodColor = 0xffd166
+                    start(.eat, length: 1.4)
+                    say("Сирене… ама нямаме плъх. Ще го изям аз!", seconds: 2.5)
+                }
             default: break
             }
         }

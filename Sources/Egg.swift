@@ -284,13 +284,13 @@ extension Game {
         if eggWarmth < 25 && time > nextEggComplain && !pet.asleep && hidePhase == .off {
             nextEggComplain = time + 6 * 60
             say(["Яйцето е студено! Трябва да го стопля!", "Ох, яйцето трепери от студ!"].randomElement()!, seconds: 3)
-            if errands.isEmpty && !pet.working && !playingGame { runErrands([.eggCare]) }
+            if errands.isEmpty && !playingGame && !monitorDetached { runBreakErrands([.eggCare]) }
         }
         // Пиксчо сам се грижи (понякога забравя)
-        if time > nextEggCare && !pet.asleep && !pet.working && errands.isEmpty && !busyMoving && hidePhase == .off
-            && questionPanel == nil && !playingGame {
+        if time > nextEggCare && !pet.asleep && errands.isEmpty && !busyMoving && hidePhase == .off
+            && questionPanel == nil && !playingGame && !monitorDetached {
             nextEggCare = time + Double.random(in: 12 * 60...25 * 60)
-            if Int.random(in: 0..<100) >= 25 { runErrands([.eggCare]) }
+            if Int.random(in: 0..<100) >= 25 && (!pet.working || eggWarmth < 50) { runBreakErrands([.eggCare]) }
         }
         // излюпване
         let ageH = Date().timeIntervalSince(eggLaid) / 3600
@@ -314,7 +314,8 @@ extension Game {
                 errandStage = 2
                 errandStart = time
                 let what: String
-                if eggWarmth < 50 { what = "warm" } else if eggDirty { what = "clean" }
+                if let w = pendingEggCare { what = w; pendingEggCare = nil }
+                else if eggWarmth < 50 { what = "warm" } else if eggDirty { what = "clean" }
                 else { what = ["turn", "talk", "sing", "warm"].randomElement()! }
                 careForEgg(what, byPet: true)
             }
@@ -332,6 +333,20 @@ extension Game {
             return
         }
         eggCareTimes[what] = time
+        let quiet = pet.asleep || !byPet && hidePhase != .off
+        if quiet {
+            // спи: ти се грижиш тихо
+            switch what {
+            case "warm": eggWarmth += 40
+            case "turn": eggTurnUntil = time + 1.5
+            case "clean": eggDirty = false
+            case "sing": eggSongUntil = time + 4
+            case "blanket": eggWarmth = 100
+            default: break
+            }
+            eggCare += 3
+            return
+        }
         var points: Double = 3
         switch what {
         case "warm":
@@ -393,6 +408,12 @@ extension Game {
 
     @objc func eggMenuAction(_ sender: NSMenuItem) {
         guard let what = sender.representedObject as? String else { return }
+        // Пиксчо отива до яйцето и го прави сам (ако може)
+        if !pet.asleep && !pet.dead && hidePhase == .off && !playingGame && errands.isEmpty && !busyMoving && !monitorDetached {
+            pendingEggCare = what
+            if runBreakErrands([.eggCare]) { return }
+            pendingEggCare = nil
+        }
         careForEgg(what, byPet: false)
     }
 

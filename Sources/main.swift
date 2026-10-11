@@ -1258,6 +1258,12 @@ final class PetView: NSView {
             NSRect(x: r.minX + 5, y: r.maxY - 5, width: 6, height: 1).fill()
         }
 
+        // сирене в ръката (носи го на плъха)
+        if game.cheeseInHand > 0 && !pet.asleep {
+            let hx = centerX + (flip ? -bodyW / 2 - 14 : bodyW / 2 + 2)
+            drawGrid(iconCheese, x: hx, y: (vy(sp.top) + vy(sp.bottom)) / 2, s: 1.6, palette: game.color)
+        }
+
         // телефон до ухото, докато звъни
         if t < game.phoneUntil {
             let px = centerX + (flip ? -bodyW / 2 - 4 : bodyW / 2 - 8)
@@ -2460,6 +2466,10 @@ final class Game: NSObject, NSApplicationDelegate {
     var monitorFallTo: CGFloat?
     var deskWalk = false
     var ratCareNow = false
+    var workBreak = false
+    var cheeseInHand = 0
+    var pendingBuddyReply: (id: String, text: String, at: Double)?
+    var pendingEggCare: String?
     var snackFood: FoodPixel?
     var nextFloorSnack: Double = 0
     var pendingWakeLine: (text: String, at: Double)?
@@ -2625,7 +2635,7 @@ final class Game: NSObject, NSApplicationDelegate {
                 if pet.orderWorkDone >= pet.orderWorkNeeded { completeOrderIfAny() }
             }
         }
-        if workingBefore && !pet.working && !pet.asleep && !pet.dead && errands.isEmpty && hidePhase == .off {
+        if workingBefore && !pet.working && !pet.asleep && !pet.dead && errands.isEmpty && hidePhase == .off && !workBreak {
             say("Стига толкова, капнах…", seconds: 3)
             runErrands([.storeMonitor])
         }
@@ -2685,7 +2695,7 @@ final class Game: NSObject, NSApplicationDelegate {
         updateMonitorFall(step)
         updateDeskWalk(step)
         updateFloorSnack(step)
-        if monitorDetached && !pet.working && !isDragging && !jumping && !deskWalk { reattachMonitor() }
+        if monitorDetached && !pet.working && !isDragging && !jumping && !deskWalk && !workBreak { reattachMonitor() }
         monitorPanel?.contentView?.needsDisplay = true
         updateJump()
         updateFlyingFood()
@@ -3330,6 +3340,8 @@ final class Game: NSObject, NSApplicationDelegate {
             if hasRat {
                 v.actions.append(RetroButton(icon: iconRat, label: "Нахрани \(ratLabel)", value: nil,
                                              action: asleep ? nil : #selector(feedRatNow)))
+                v.actions.append(RetroButton(icon: iconCheese, label: ratInCage ? "Пусни \(ratLabel) от клетката" : "Прибери \(ratLabel) в клетката",
+                                             value: nil, action: asleep ? nil : #selector(toggleRatCage)))
             }
             v.actions.append(RetroButton(icon: iconBag, label: inventoryOpen ? "Скрий инвентара" : "Инвентар", value: nil,
                                          action: #selector(toggleInventory)))
@@ -3353,12 +3365,19 @@ final class Game: NSObject, NSApplicationDelegate {
         retroLastInside = time
     }
 
+    @objc func toggleRatCage() {
+        guard checkAwake(), hasRat else { return }
+        if !errands.isEmpty || busyMoving { say("Чакай, зает съм!", seconds: 2); return }
+        clearForGame()
+        runBreakErrands([ratInCage ? .ratOut : .ratToCage])
+    }
+
     @objc func feedRatNow() {
         guard checkAwake(), hasRat else { return }
-        if pet.working { say("Монтирам… после ще го нахраня.", seconds: 2.5); return }
+        if monitorDetached || busyMoving && errands.isEmpty == false { say("Чакай, зает съм!", seconds: 2); return }
         clearForGame()
         cancelErrands()
-        runErrands([.feedRat])
+        runBreakErrands([.feedRat])
     }
 
     @objc func toggleInventory() {
@@ -3491,6 +3510,7 @@ final class Game: NSObject, NSApplicationDelegate {
         item("Разхожда се", #selector(toggleWander), on: wander)
         item("Пиксели-храна по екрана", #selector(toggleFoodPixels), on: foodPixelsOn)
         item("Звънче за тревога на екрана", #selector(toggleBell), on: bellOn)
+        if bellOn { item("Върни звънчето долу", #selector(resetBell)) }
         item("Звуци", #selector(toggleSounds), on: soundsOn)
         item("Истинското време навън", #selector(toggleWeather), on: weatherOn)
         if let w = weatherText { item(w, nil) }

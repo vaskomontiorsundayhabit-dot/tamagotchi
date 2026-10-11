@@ -3,7 +3,7 @@
 
 import AppKit
 
-enum Errand: Equatable { case fetchMonitor, storeMonitor, feedRat, cuddleRat, ratToCage, ratOut, sleep, stepOn(NSPoint), eggCare }
+enum Errand: Equatable { case fetchMonitor, storeMonitor, feedRat, cuddleRat, ratToCage, ratOut, sleep, stepOn(NSPoint), eggCare, backToDesk, giveCheese }
 
 let petNames = [
     "Бобо", "Чочо", "Пипи", "Фъстък", "Бисер", "Мики", "Зузу", "Тошко", "Кексче", "Пухчо",
@@ -234,6 +234,17 @@ extension Game {
             updateRatErrand(e, step)
         case .eggCare:
             updateEggErrand(step)
+        case .giveCheese:
+            updateCheeseErrand(step)
+        case .backToDesk:
+            if errandStage == 0 {
+                if monitorDetached { goBackToDesk() }
+                errandStage = 1
+            } else if !deskWalk && !jumping {
+                if monitorDetached { reattachMonitor() }
+                resumeAfterBreak()
+                nextErrand()
+            }
         case .sleep:
             fallAsleep()
             nextErrand()
@@ -246,6 +257,41 @@ extension Game {
                 start(.love, length: 1.5)
                 nextErrand()
             }
+        }
+    }
+
+    // --- почивка от работа: мониторът остава, той става за малко ---
+
+    /// Става от бюрото (мониторът си стои там). true, ако е станал.
+    @discardableResult
+    func takeWorkBreak() -> Bool {
+        guard pet.working, !monitorDetached, errands.isEmpty, !jumping, hidePhase == .off else { return false }
+        dragStarted()
+        guard monitorDetached else { return false }
+        pet.working = false
+        workBreak = true
+        return true
+    }
+
+    /// Пуска задачи; ако работи, първо става от бюрото, а накрая се връща и продължава.
+    @discardableResult
+    func runBreakErrands(_ list: [Errand]) -> Bool {
+        if pet.working {
+            guard takeWorkBreak() else { return false }
+            say(["Ставам за малко, мониторът ме чака!", "Пауза за минутка!", "Връщам се веднага!"].randomElement()!, seconds: 2)
+            runErrands(list + [.backToDesk])
+        } else {
+            runErrands(list)
+        }
+        return true
+    }
+
+    func resumeAfterBreak() {
+        guard workBreak else { return }
+        workBreak = false
+        if !pet.asleep && !pet.dead && hidePhase == .off {
+            pet.working = true
+            say(["Обратно на работа!", "Докъде бях? А, да…", "Пак на таймлайна!"].randomElement()!, seconds: 2)
         }
     }
 
@@ -316,6 +362,12 @@ extension Game {
         if isDrunk {
             say("Не мога да спя! Изпих \(recentCoffees) кафета! Очите ми са отворени завинаги!", seconds: 3.5)
             return
+        }
+        if workBreak {
+            // беше станал за малко: мониторът е на бюрото, прибира го
+            workBreak = false
+            reattachMonitor()
+            pet.working = true
         }
         let carrying = carriedMonitorPanel != nil
         clearForGame()

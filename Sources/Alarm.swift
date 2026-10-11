@@ -194,6 +194,30 @@ extension Game {
         p.orderFrontRegardless()
         bellPanel = p
         bellView = v
+        clampBell()
+    }
+
+    /// Звънчето винаги остава на екрана (под горната лента), за да може да се хване.
+    func clampBell() {
+        guard let p = bellPanel else { return }
+        let f = p.frame
+        let screen = NSScreen.screens.first { $0.frame.intersects(f) } ?? NSScreen.main
+        guard let vf = screen?.visibleFrame else { return }
+        var o = f.origin
+        o.x = min(max(o.x, vf.minX), vf.maxX - f.width)
+        o.y = min(max(o.y, vf.minY), vf.maxY - f.height)
+        if o != f.origin {
+            p.setFrameOrigin(o)
+            UserDefaults.standard.set(Double(o.x), forKey: "bellX")
+            UserDefaults.standard.set(Double(o.y), forKey: "bellY")
+        }
+    }
+
+    @objc func resetBell() {
+        guard let vf = NSScreen.main?.visibleFrame else { return }
+        bellPanel?.setFrameOrigin(NSPoint(x: vf.minX + 70, y: vf.minY + 4))
+        UserDefaults.standard.set(Double(vf.minX + 70), forKey: "bellX")
+        UserDefaults.standard.set(Double(vf.minY + 4), forKey: "bellY")
     }
 
     @objc func toggleBell() {
@@ -207,7 +231,7 @@ extension Game {
         NSSound(named: NSSound.Name("Tink"))?.play()
     }
 
-    func bellDropped() {}
+    func bellDropped() { clampBell() }
 
     /// Тревога: бяга и се крие. Ако вече е скрит, звънчето го вика обратно.
     func ringAlarm() {
@@ -221,6 +245,7 @@ extension Game {
         if pet.asleep { pet.asleep = false }
         if pet.working { pet.working = false }
         if monitorDetached { reattachMonitor() }
+        workBreak = false
         endFetch()
         clearForGame()
         cancelErrands()
@@ -236,11 +261,6 @@ extension Game {
             hidePhase = .grabRat
             say(["ТРЕВОГА! \(ratLabel.uppercased()), ЕЛА!", "АААА! Къде е \(ratLabel)?!", "Опасност! Взимам \(ratLabel) и бягам!"]
                 .randomElement()!, seconds: 2)
-            return
-        }
-        if cagePanel != nil && !carryingCage {
-            hidePhase = .grabCage
-            say(["ТРЕВОГА! Взимам клетката!", "АААА! Клетката, бързо!"].randomElement()!, seconds: 2)
             return
         }
         beginHideRun()
@@ -287,7 +307,7 @@ extension Game {
                 carryingRat = true
                 ratSay("ЦИИИК!", 1.5)
                 sfx("Pop")
-                if cagePanel != nil { hidePhase = .grabCage } else { beginHideRun() }
+                beginHideRun()
             }
         case .grabCage:
             smashWhileRunning()
