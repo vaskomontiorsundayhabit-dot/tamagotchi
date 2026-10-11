@@ -821,6 +821,9 @@ final class FreePanel: NSPanel {
     override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
 }
 
+/// Големите надписи на целия екран (ДОБРО УТРО, ГЛАДЕН СЪМ…) са изключени.
+let fullScreenAlerts = false
+
 func overlayPanel(_ frame: NSRect, key: Bool) -> NSPanel {
     let p: NSPanel = key
         ? KeyPanel(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
@@ -934,7 +937,7 @@ final class PetView: NSView {
         let flip = game.walking && game.facingLeft
 
         let pose: Pose
-        let atDesk = pet.working && !game.monitorDetached
+        let atDesk = pet.working && !game.monitorDetached && game.racePhase == .off
         if pet.asleep && game.isDragging { pose = .dangle }
         else if pet.asleep || pet.dead { pose = .sleep }
         else if game.isDragging { pose = .wave }
@@ -1105,8 +1108,26 @@ final class PetView: NSView {
                 }
             }
         }
-        drawGlitchy(petGrid, x: ox, y: oy + dy, s: s, flip: flip, palette: game.color,
-                    glitch: game.glitching || (game.isHyper && Int(t * 10) % 3 != 0), noiseRect: box)
+        if t < game.reviveUntil {
+            // след обновяване: пикселите долитат отвсякъде и се събират (възкръсва)
+            let k = CGFloat(max(0, min(1, 1 - (game.reviveUntil - t) / 3.5)))
+            NSColor(hex: 0xfff6a6, alpha: 0.3 * (1 - k * k)).setFill()
+            NSRect(x: centerX - bodyW, y: 0, width: bodyW * 2, height: feetY).fill()
+            for (row, line) in petGrid.enumerated() {
+                for (col, ch) in line.enumerated() {
+                    guard let c = game.color(ch) else { continue }
+                    let ang = cellNoise(col, row) * 2 * Double.pi
+                    let dist = (1 - k) * (1 - k) * 260
+                    let x = ox + CGFloat(flip ? canvasW - 1 - col : col) * s + CGFloat(cos(ang)) * dist
+                    let y = oy + dy + CGFloat(row) * s + CGFloat(sin(ang)) * dist - (1 - k) * 120
+                    c.withAlphaComponent(0.3 + 0.7 * k).setFill()
+                    NSRect(x: x, y: y, width: s, height: s).fill()
+                }
+            }
+        } else {
+            drawGlitchy(petGrid, x: ox, y: oy + dy, s: s, flip: flip, palette: game.color,
+                        glitch: game.glitching || (game.isHyper && Int(t * 10) % 3 != 0), noiseRect: box)
+        }
         if game.rolling || sway { ctx?.restoreGraphicsState() }
         if game.isHyper { ctx?.restoreGraphicsState() }
         if closeUp { ctx?.restoreGraphicsState() }
@@ -2548,6 +2569,12 @@ final class Game: NSObject, NSApplicationDelegate {
     var cakeBlown = false
     var cakeBlownAt: Double = 0
     var nextBirthdayCheck: Double = 20
+    var raceDir: CGFloat = 1
+    var raceStoppedWork = false
+    var reviveUntil: Double = 0
+    var artistQueue: [(Int, Int)] = []
+    var artistNextCell: Double = 0
+    var artistWhat = ""
     var nextRoofCheck: Double = 0
     var nextRainWake: Double = 0
     var nextRoofAsk: Double = 60
@@ -2673,8 +2700,17 @@ final class Game: NSObject, NSApplicationDelegate {
         let timer = Timer(timeInterval: 1.0 / 30, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
         RunLoop.main.add(timer, forMode: .common)
 
-        say(pet.dead ? "…" : "Здрасти, аз съм \(pet.name)!", seconds: 3)
-        if !pet.dead { greet(); start(.love, length: 3) }
+        // обновен ли е? тогава „възкръсва“: пикселите му се събират отвсякъде
+        let lastBuild = UserDefaults.standard.integer(forKey: "lastRunBuild")
+        UserDefaults.standard.set(currentBuild, forKey: "lastRunBuild")
+        if lastBuild > 0 && lastBuild != currentBuild && !pet.dead {
+            reviveUntil = time + 3.5
+            sfx("Hero")
+            say("Обнових се! Нова версия \(currentBuild)!", seconds: 4)
+        } else {
+            say(pet.dead ? "…" : "Здрасти, аз съм \(pet.name)!", seconds: 3)
+            if !pet.dead { greet(); start(.love, length: 3) }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) { save() }
@@ -2773,6 +2809,7 @@ final class Game: NSObject, NSApplicationDelegate {
         updatePlant()
         updateTargetGame(step)
         updateBirthday()
+        updateArtistPainting()
         updateRace(step)
         updateJealousy()
         updateWeather(step)
@@ -3379,7 +3416,8 @@ final class Game: NSObject, NSApplicationDelegate {
     // съобщение на целия екран
 
     func showAlert(_ title: String, _ subtitle: String, happy: Bool = false) {
-        guard window.isVisible, hidePhase == .off, let screen = window.screen ?? NSScreen.main else { return }
+        // съобщенията на целия екран са изключени
+        guard fullScreenAlerts, window.isVisible, hidePhase == .off, let screen = window.screen ?? NSScreen.main else { return }
         let p = overlayPanel(screen.frame, key: false)
         p.ignoresMouseEvents = happy
         let v = AlertView(frame: NSRect(origin: .zero, size: screen.frame.size))

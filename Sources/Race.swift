@@ -44,7 +44,7 @@ extension Game {
 
     /// Предлага състезание (срещу плъха, ако няма приятел).
     func offerRace(with b: Buddy?) {
-        guard racePhase == .off, questionPanel == nil, !pet.asleep, !pet.dead, !pet.working, errands.isEmpty,
+        guard racePhase == .off, questionPanel == nil, !pet.asleep, !pet.dead, errands.isEmpty,
               hidePhase == .off, seekPhase == .off, !playingGame else { return }
         if b == nil && !hasRat { return }
         raceBuddy = b
@@ -76,7 +76,10 @@ extension Game {
         cancelErrands()
         chasing = false
         // не тича с мониторите: те си остават на бюрото
-        if pet.working { takeWorkBreak() }
+        if pet.working && !takeWorkBreak() {
+            pet.working = false
+            raceStoppedWork = true
+        }
         raceBet = bet
         if bet >= 0 {
             if pet.coins < 10 { raceBet = -1 } else { pet.coins -= 10 }
@@ -84,16 +87,20 @@ extension Game {
         let pr = petScreenRect()
         let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
         raceFloor = vf.minY
-        raceStartX = vf.minX + 110
-        raceFinishX = vf.maxX - 110
-        raceOppX = raceStartX - 60
+        // тръгва от по-близкия край към другия
+        let fromLeft = pr.midX - vf.minX < vf.maxX - pr.midX
+        raceDir = fromLeft ? 1 : -1
+        raceStartX = fromLeft ? vf.minX + 110 : vf.maxX - 110
+        raceFinishX = fromLeft ? vf.maxX - 110 : vf.minX + 110
+        raceOppX = raceStartX - raceDir * 60
         racePhase = .lineup
         if raceBuddy == nil {
             if ratInCage { ratInCage = false }
             ratGoal = nil
             dropRatLoot(caught: false)
         }
-        jump(toFeet: NSPoint(x: raceStartX, y: vf.minY))
+        // слиза на пода (ако е на платформа), после тича до старта
+        if feetScreenY - vf.minY > 8 { jump(toFeet: NSPoint(x: pr.midX, y: vf.minY)) }
         let fs = NSSize(width: 44, height: 80)
         let p = overlayPanel(NSRect(x: raceFinishX - 4, y: vf.minY, width: fs.width, height: fs.height), key: false)
         p.level = .floating
@@ -112,12 +119,12 @@ extension Game {
             let hop = time - raceOppHop < 0.5 ? CGFloat(sin((time - raceOppHop) / 0.5 * .pi)) * 60 : 0
             b.panel.setFrameOrigin(NSPoint(x: raceOppX - w.width / 2, y: raceFloor - (w.height - b.view.feetY) + hop))
             b.view.walking = running
-            b.view.facingLeft = false
+            b.view.facingLeft = raceDir < 0
         } else if let p = ratPanel, let v = ratView {
             p.setFrameOrigin(NSPoint(x: raceOppX - RatView.size.width / 2, y: raceFloor))
             if !p.isVisible { p.orderFrontRegardless() }
             v.running = running
-            v.facingLeft = false
+            v.facingLeft = raceDir < 0
             v.hanging = false
         }
     }
@@ -138,10 +145,16 @@ extension Game {
         case .lineup:
             placeOpponent(running: false)
             if !jumping {
-                racePhase = .countdown
-                raceT0 = time
-                raceCount = -1
-                facingLeft = false
+                // тича по пода до старта
+                let target = NSPoint(x: window.frame.minX + raceStartX - petScreenRect().midX, y: window.frame.minY)
+                walking = true
+                if moveWindow(toward: target, speed: CGFloat(320 * step)) {
+                    walking = false
+                    racePhase = .countdown
+                    raceT0 = time
+                    raceCount = -1
+                    facingLeft = raceDir < 0
+                }
             }
         case .countdown:
             placeOpponent(running: false)
@@ -164,19 +177,19 @@ extension Game {
                 if Int.random(in: 0..<8) == 0 { racePetSpeed *= 0.4; say(["Ох, спънах се!", "Чакай, връзките ми!"].randomElement()!, seconds: 1) }
             }
             walking = true
-            facingLeft = false
+            facingLeft = raceDir < 0
             if !jumping {
-                let dx = CGFloat(racePetSpeed * step)
-                if bodyHitsDrawing(dx: dx + 2) {
+                let dx = CGFloat(racePetSpeed * step) * raceDir
+                if bodyHitsDrawing(dx: dx + 2 * raceDir) {
                     // нарисувана стена: ниска → прескача, висока → пробива
                     let pr = petScreenRect()
-                    let front = NSRect(x: pr.maxX - 6, y: feetScreenY + 3, width: 40, height: 400)
+                    let front = NSRect(x: raceDir > 0 ? pr.maxX - 6 : pr.minX - 34, y: feetScreenY + 3, width: 40, height: 400)
                     let top = drawingTop(in: front) ?? feetScreenY
                     if top - feetScreenY <= 90 {
-                        jump(toFeet: NSPoint(x: pr.midX + 110, y: raceFloor))
+                        jump(toFeet: NSPoint(x: pr.midX + 110 * raceDir, y: raceFloor))
                         say("Хоп! Прескачам!", seconds: 1)
                     } else {
-                        smashCells(in: NSRect(x: pr.maxX - 10, y: feetScreenY + 3, width: 30, height: pr.height),
+                        smashCells(in: NSRect(x: raceDir > 0 ? pr.maxX - 10 : pr.minX - 20, y: feetScreenY + 3, width: 30, height: pr.height),
                                    from: NSPoint(x: pr.midX, y: pr.midY), limit: 30)
                         say("Пробивам!", seconds: 1)
                     }
@@ -186,20 +199,22 @@ extension Game {
                     window.setFrameOrigin(o)
                 }
             }
-            let ox = raceOppX + CGFloat(raceOppSpeed * step)
+            let ox = raceOppX + CGFloat(raceOppSpeed * step) * raceDir
             if raceBuddy == nil {
                 // плъхът прояжда рисунката
                 if ratBlocked(ox - RatView.size.width / 2, raceFloor) { ratChew(ox - RatView.size.width / 2, raceFloor) } else { raceOppX = ox }
             } else if buddyBlockedAt(ox, raceFloor) && time - raceOppHop > 0.6 {
                 raceOppHop = time
-                raceOppX += 90
+                raceOppX += 90 * raceDir
             } else {
                 raceOppX = ox
             }
             placeOpponent(running: true)
-            let petX = petScreenRect().midX
-            if petX >= raceFinishX || raceOppX >= raceFinishX {
-                finishRace(petWon: petX - raceFinishX >= raceOppX - raceFinishX)
+            // колко е изминал всеки към финала
+            let petGo = (petScreenRect().midX - raceFinishX) * raceDir
+            let oppGo = (raceOppX - raceFinishX) * raceDir
+            if petGo >= 0 || oppGo >= 0 {
+                finishRace(petWon: petGo >= oppGo)
             }
         case .done:
             placeOpponent(running: false)
@@ -236,6 +251,7 @@ extension Game {
         walking = false
         saveWindowPosition()
         if workBreak && monitorDetached { runErrands([.backToDesk]) }
+        else if raceStoppedWork { raceStoppedWork = false; toggleWork() }
     }
 
     /// Най-горният нарисуван пиксел в правоъгълника (или nil).

@@ -734,7 +734,7 @@ extension Game {
                 buddySay(b, "Стриймът свърши! +12 монети", 3.5)
             }
         case "artist":
-            if b.workSeconds >= 12 * 60 {
+            if b.workSeconds >= 6 * 60 {
                 b.workSeconds = 0
                 paintPlatform(b)
             }
@@ -748,16 +748,56 @@ extension Game {
     }
 
     /// Художничката рисува малка платформа близо до Пиксчо.
+    /// Художничката рисува из екрана: платформа, стълби, сърце, къща, дърво, слънце, звезда, цвете…
     private func paintPlatform(_ b: Buddy) {
+        guard artistQueue.isEmpty else { return }
+        let shapes: [(String, [String])] = [
+            ("платформа", ["##########"]),
+            ("стълби", ["......##", "....##..", "..##....", "##......"]),
+            ("сърце", [".RR.RR.", "RRRRRRR", "RRRRRRR", ".RRRRR.", "..RRR..", "...R..."]),
+            ("къща", ["...RR...", "..RRRR..", ".RRRRRR.", "RRRRRRRR", ".BBBBBB.", ".BBYYBB.", ".BBYYBB.", ".BBBBBB."]),
+            ("дърво", ["..GGG..", ".GGGGG.", "GGGGGGG", ".GGGGG.", "...B...", "...B...", "...B..."]),
+            ("слънце", ["Y..Y..Y", ".YYYYY.", "YYYYYYY", ".YYYYY.", "Y..Y..Y"]),
+            ("звезда", ["...Y...", "..YYY..", "YYYYYYY", ".YYYYY.", ".YY.YY.", "YY...YY"]),
+            ("цвете", [".P.P.", "PPYPP", ".P.P.", "..G..", "G.G..", ".GG.."]),
+            ("ракета", ["..R..", ".CCC.", ".CWC.", ".CCC.", "CCCCC", "R.R.R"]),
+            ("облак", ["..WWW...", ".WWWWWW.", "WWWWWWWW"]),
+        ]
+        let pick = shapes.randomElement()!
         let pr = petScreenRect()
-        let x0 = Int(floor((pr.midX + CGFloat.random(in: -160...160)) / drawCell))
-        let y = Int(floor((feetScreenY + CGFloat.random(in: 90...160)) / drawCell))
-        for dx in 0..<8 { drawCells[cellKey(x0 + dx, y)] = b.kind.color }
+        let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
+        let w = CGFloat(pick.1[0].count) * drawCell, h = CGFloat(pick.1.count) * drawCell
+        let x = CGFloat.random(in: (vf.minX + 40)...max(vf.minX + 41, vf.maxX - w - 40))
+        let top = vf.minY + CGFloat.random(in: (h + 80)...max(h + 81, min(vf.height - 60, 420)))
+        let colors: [Character: Int] = ["#": b.kind.color, "R": 0xe63946, "B": 0x8b5a2b, "Y": 0xffd166, "G": 0x52b788,
+                                        "P": 0xff8fab, "C": 0x48cae4, "W": 0xffffff]
+        let x0 = Int(floor(x / drawCell)), y0 = Int(floor(top / drawCell))
+        for (r, line) in pick.1.enumerated() {
+            for (c, ch) in line.enumerated() where ch != "." {
+                artistQueue.append((cellKey(x0 + c, y0 - r), colors[ch] ?? b.kind.color))
+            }
+        }
+        artistWhat = pick.0
+        b.wanderX = x + w / 2
+        buddySay(b, "Рисувам \(pick.0)!", 3)
+    }
+
+    /// Рисува по едно квадратче, като анимация.
+    func updateArtistPainting() {
+        guard !artistQueue.isEmpty, time > artistNextCell else { return }
+        artistNextCell = time + 0.12
+        let (k, c) = artistQueue.removeFirst()
+        drawCells[k] = c
         redrawDrawing()
-        saveDrawing()
-        drawingChanged()
-        buddySay(b, "Нарисувах ти платформа!", 3)
-        if !pet.asleep { say("Ооо, нова платформа! Благодаря!", seconds: 2.5) }
+        if artistQueue.isEmpty {
+            saveDrawing()
+            drawingChanged()
+            if let b = buddy("artist") { buddySay(b, "Готово! \(artistWhat.capitalized)!", 3) }
+            if !pet.asleep && hidePhase == .off {
+                say(artistWhat == "платформа" || artistWhat == "стълби" ? "Ооо, ново място за скачане! Благодаря!"
+                    : "Каква хубава рисунка!", seconds: 2.5)
+            }
+        }
     }
 
     // --- клик, меню, храна ---
