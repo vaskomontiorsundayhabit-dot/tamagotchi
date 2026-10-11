@@ -226,13 +226,13 @@ extension Game {
     func updateSmallPets(_ step: Double) {
         let visible = window.isVisible && !pet.dead
         // махнати или непокупени: изчезват
-        let gone = smallPets.filter { !pet.has($0.kind.id) || !visible }
+        let gone = smallPets.filter { !pet.has($0.kind.id) || !visible || minimalMode && $0.kind.id == "fish" }
         gone.forEach { $0.remove() }
         smallPets.removeAll { p in gone.contains { $0 === p } }
         guard visible else { return }
         let pr = petScreenRect()
         let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
-        for k in smallPetKinds where pet.has(k.id) && smallPet(k.id) == nil {
+        for k in smallPetKinds where pet.has(k.id) && smallPet(k.id) == nil && !(minimalMode && k.id == "fish") {
             let size = k.id == "fish" ? NSSize(width: 80, height: 80) : NSSize(width: 110, height: 64)
             var x = CGFloat.random(in: (vf.minX + 80)...max(vf.minX + 81, vf.maxX - 180))
             if let saved = UserDefaults.standard.object(forKey: "petX_\(k.id)") as? Double { x = CGFloat(saved) }
@@ -340,6 +340,16 @@ extension Game {
             p.targetX = rp.frame.midX - half
             ratTarget = rp.frame.minX + (rp.frame.midX > o.x + half ? 260 : -260)
             if abs(rp.frame.midX - (o.x + half)) < 30 || Int.random(in: 0..<600) == 0 { p.chasingRat = false; p.targetX = nil }
+        }
+        // охлювът обича развалените пиксели на пода
+        if k.id == "snail", let sf = foods.first(where: { $0.spoiled && $0.onFloor && !$0.view.held }) {
+            p.targetX = sf.panel.frame.midX - half
+            if abs(sf.panel.frame.midX - (o.x + half)) < 14 {
+                sf.remove()
+                foods.removeAll { $0 === sf }
+                feedSmallPet(p)
+                smallPetSay(p, "Ммм… развалено. Вкусно.", 2.5)
+            }
         }
         // кучето ходи по-често след Пиксчо
         if p.targetX == nil && time > p.nextMove {

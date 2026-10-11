@@ -662,7 +662,7 @@ extension Game {
 
     /// Колелото на пода: появява се, ако е купено; търкаля се с плъха вътре.
     func updateWheel(_ step: Double) {
-        let want = pet.has("wheel") && hasRat && window.isVisible
+        let want = pet.has("wheel") && hasRat && window.isVisible && !minimalMode
         if !want { wheelPanel?.orderOut(nil); wheelPanel = nil; ratInWheelUntil = 0; return }
         let vf = NSScreen.main?.visibleFrame ?? .zero
         if wheelPanel == nil {

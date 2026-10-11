@@ -165,7 +165,7 @@ extension Game {
             nextWeatherFetch = time + 30 * 60
             fetchWeather()
         }
-        let shows = weatherOn && window.isVisible && weatherKind != .clear
+        let shows = weatherOn && window.isVisible && weatherKind != .clear && !minimalMode
         guard shows else { if weatherPanel != nil { closeWeather() }; return }
         let pr = petScreenRect()
         guard let sf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.frame else { return }

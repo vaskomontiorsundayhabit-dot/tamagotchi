@@ -945,10 +945,14 @@ final class PetView: NSView {
         else if atDesk { pose = .type }
         else { pose = .idle }
 
+        // на рождения ден носи парти шапка (ако няма друга)
+        let hats: Set<String> = ["party", "beanie", "crown", "cap", "chef", "catears", "cowboy"]
+        let hasHat = pet.worn.contains { hats.contains($0) }
+        let wornNow: [String] = game.birthdayHat && !hasHat ? pet.worn + ["party"] : pet.worn
         let sp = buildSprite(level: game.bodyCells, face: game.currentFace(), pose: pose,
                              frame: pose == .walk || pose == .wobble || pose == .dance || game.isDragging ? Int(t * 7) : frame,
                              working: atDesk,
-                             worn: pet.worn, variant: game.bodyVariant, monitors: game.monitorCount,
+                             worn: wornNow, variant: game.bodyVariant, monitors: game.monitorCount,
                              monitorLevel: pet.monitorLevel, redEyes: game.redEyes,
                              lookX: game.lookOffset(flip: flip).0, lookY: game.lookOffset(flip: flip).1)
 
@@ -991,7 +995,8 @@ final class PetView: NSView {
 
         // купените неща се виждат: стол зад него, докато монтира; лампа до него, докато спи
         let groundLine = oy + CGFloat(sp.groundY + 1) * s
-        if atDesk && pet.has("chair") {
+        let decor = !game.minimalMode
+        if decor && atDesk && pet.has("chair") {
             let cw = bodyW + 16, chx = centerX - cw / 2
             NSColor(hex: 0x5c3a1e).setFill()
             NSRect(x: chx, y: groundLine - 26, width: cw, height: 6).fill()
@@ -999,7 +1004,7 @@ final class PetView: NSView {
             NSRect(x: chx + 4, y: groundLine - 20, width: 4, height: 20).fill()
             NSRect(x: chx + cw - 8, y: groundLine - 20, width: 4, height: 20).fill()
         }
-        if pet.has("lamp") && (pet.asleep || Calendar.current.component(.hour, from: Date()) >= 20) {
+        if decor && pet.has("lamp") && (pet.asleep || Calendar.current.component(.hour, from: Date()) >= 20) {
             let lx = centerX - bodyW / 2 - 40
             if pet.asleep {
                 NSColor(hex: 0xffd166, alpha: 0.18).setFill()
@@ -1012,7 +1017,7 @@ final class PetView: NSView {
             NSRect(x: lx, y: groundLine - 64, width: 27, height: 14).fill()
             NSRect(x: lx + 4, y: groundLine - 70, width: 19, height: 6).fill()
         }
-        if atDesk && pet.has("piggy") {
+        if decor && atDesk && pet.has("piggy") {
             let px = flip ? centerX - bodyW / 2 - 50 : centerX + bodyW / 2 + 12
             drawGrid(iconPiggy, x: px, y: groundLine - 22, s: 2.5, palette: game.color)
             if t - game.lastCoinAt < 0.8 {
@@ -1020,7 +1025,7 @@ final class PetView: NSView {
                 NSRect(x: px + 8, y: groundLine - 30 - CGFloat(1 - (t - game.lastCoinAt) / 0.8) * 20, width: 5, height: 5).fill()
             }
         }
-        if pet.has("magnet") && !pet.asleep && !atDesk {
+        if decor && pet.has("magnet") && !pet.asleep && !atDesk {
             drawGrid(iconMagnet, x: centerX + bodyW / 2 + 8, y: vy(sp.top) - 6 + CGFloat(sin(t * 2)) * 3, s: 2, palette: game.color)
         }
 
@@ -1678,7 +1683,7 @@ final class RetroView: NSView {
     static let cell: CGFloat = 36
     static let invCell: CGFloat = 30
     static let pad: CGFloat = 12
-    static let width = pad * 2 + cell * 13
+    static let width = pad * 2 + cell * 11
     static let height: CGFloat = 162
     static let heightWithInventory: CGFloat = 244
     var showInventory = false
@@ -2532,6 +2537,17 @@ final class Game: NSObject, NSApplicationDelegate {
     var wheelDir: CGFloat = 1
     var ratInWheelUntil: Double = 0
     var nextRatWheel: Double = 2 * 60
+    var plantPanel: NSPanel?
+    var nextFruit: Double = 60
+    var targetPanel: NSPanel?
+    var targetUntil: Double = 0
+    var targetHits = 0
+    var targetDir: CGFloat = 1
+    var targetShots: [(FoodPixel, NSPoint, NSPoint, Double)] = []
+    var cakePanel: NSPanel?
+    var cakeBlown = false
+    var cakeBlownAt: Double = 0
+    var nextBirthdayCheck: Double = 20
     var nextRoofCheck: Double = 0
     var nextRainWake: Double = 0
     var nextRoofAsk: Double = 60
@@ -2754,6 +2770,9 @@ final class Game: NSObject, NSApplicationDelegate {
         updateDialog()
         updateSmallPets(step)
         updateBuddyGame(step)
+        updatePlant()
+        updateTargetGame(step)
+        updateBirthday()
         updateRace(step)
         updateJealousy()
         updateWeather(step)
@@ -3405,19 +3424,11 @@ final class Game: NSObject, NSApplicationDelegate {
                 RetroButton(icon: pet.working ? iconPause : iconMonitor, label: pet.working ? "Спри работа" : "Работи",
                             value: nil, action: asleep ? nil : #selector(toggleWork)),
                 RetroButton(icon: iconBall, label: "Игри", value: nil, action: asleep ? nil : #selector(openGamesMenu)),
-                RetroButton(icon: iconPhone, label: "Обади се на приятел", value: nil, action: asleep ? nil : #selector(callFriendFromRetro)),
                 RetroButton(icon: asleep ? iconSun : iconMoon, label: asleep ? "Събуди" : "Приспи", value: nil, action: #selector(toggleSleep)),
+                RetroButton(icon: iconHug, label: "Приятели и любимци", value: nil, action: asleep ? nil : #selector(openFriendsMenu)),
                 RetroButton(icon: iconShop, label: "Магазин", value: nil, action: #selector(openShop)),
-                RetroButton(icon: iconPencil, label: "Рисувай платформи", value: nil, action: #selector(startDrawing)),
+                RetroButton(icon: iconBag, label: "Още: рисуване, инвентар", value: nil, action: #selector(openMoreMenu)),
             ]
-            if hasRat {
-                v.actions.append(RetroButton(icon: iconRat, label: "Нахрани \(ratLabel)", value: nil,
-                                             action: asleep ? nil : #selector(feedRatNow)))
-                v.actions.append(RetroButton(icon: iconCheese, label: ratInCage ? "Пусни \(ratLabel) от клетката" : "Прибери \(ratLabel) в клетката",
-                                             value: nil, action: asleep ? nil : #selector(toggleRatCage)))
-            }
-            v.actions.append(RetroButton(icon: iconBag, label: inventoryOpen ? "Скрий инвентара" : "Инвентар", value: nil,
-                                         action: #selector(toggleInventory)))
         }
         v.timers = timersParts()
         v.inventory = shopItems.filter {
@@ -3438,6 +3449,38 @@ final class Game: NSObject, NSApplicationDelegate {
         retroLastInside = time
     }
 
+    /// Приятели и любимци на едно място.
+    @objc func openFriendsMenu() {
+        let pr = petScreenRect()
+        var buttons = [
+            MiniButton(icon: iconPhone, label: "Обади се на приятел", enabled: true, action: { [weak self] in self?.callFriendFromRetro() }),
+        ]
+        if hasRat {
+            buttons.append(MiniButton(icon: iconRat, label: "Нахрани \(ratLabel)", enabled: true, action: { [weak self] in self?.feedRatNow() }))
+            buttons.append(MiniButton(icon: iconCheese, label: ratInCage ? "Пусни \(ratLabel)" : "Прибери \(ratLabel) в клетката",
+                                      enabled: true, action: { [weak self] in self?.toggleRatCage() }))
+        }
+        if buddies.count >= 1 {
+            buttons.append(MiniButton(icon: iconHug, label: "Приятелите да играят", enabled: true,
+                                      action: { [weak self] in self?.startBuddyGame() }))
+        }
+        if eggState == "egg" {
+            buttons.append(MiniButton(icon: iconWarm, label: "Яйцето", enabled: true, action: { [weak self] in self?.openEggMenu() }))
+        }
+        showMiniMenu(title: "Приятели и любимци", stats: [], buttons: buttons, above: NSPoint(x: pr.midX, y: pr.maxY))
+    }
+
+    @objc func openMoreMenu() {
+        let pr = petScreenRect()
+        let buttons = [
+            MiniButton(icon: iconPencil, label: "Рисувай платформи", enabled: true, action: { [weak self] in self?.startDrawing() }),
+            MiniButton(icon: iconBag, label: inventoryOpen ? "Скрий инвентара" : "Инвентар", enabled: true,
+                       action: { [weak self] in self?.toggleInventory() }),
+            MiniButton(icon: iconCake, label: "Рожден ден", enabled: true, action: { [weak self] in self?.birthdayInfo() }),
+        ]
+        showMiniMenu(title: "Още", stats: [], buttons: buttons, above: NSPoint(x: pr.midX, y: pr.maxY))
+    }
+
     /// Всички игри на едно място.
     @objc func openGamesMenu() {
         let pr = petScreenRect()
@@ -3450,6 +3493,8 @@ final class Game: NSObject, NSApplicationDelegate {
                        action: { [weak self] in self?.toggleBalloon() }),
             MiniButton(icon: iconSeek, label: "Криеница", enabled: true, action: { [weak self] in self?.startSeek() }),
             MiniButton(icon: iconFlag, label: "Състезание (със залог)", enabled: true, action: { [weak self] in self?.raceFromMenu() }),
+            MiniButton(icon: iconTarget, label: targetPanel == nil ? "Мишена (развалени пиксели)" : "Спри мишената", enabled: true,
+                       action: { [weak self] in self?.toggleTargetGame() }),
         ]
         if buddies.filter({ !$0.guest }).count + (hasRat ? 1 : 0) >= 2 || buddies.count >= 2 {
             buttons.append(MiniButton(icon: iconHug, label: "Приятелите да играят", enabled: true,
@@ -3606,6 +3651,7 @@ final class Game: NSObject, NSApplicationDelegate {
         if bellOn { item("Върни звънчето долу", #selector(resetBell)) }
         item("Звуци", #selector(toggleSounds), on: soundsOn)
         item("Истинското време навън", #selector(toggleWeather), on: weatherOn)
+        item("Минимален режим (по-малко неща на екрана)", #selector(toggleMinimal), on: minimalMode)
         if let w = weatherText { item(w, nil) }
         if foodPixelsOn { item("Пусни пиксел сега", #selector(spawnFoodNow), enabled: foods.count < 12) }
         item("Смени името…", #selector(rename))

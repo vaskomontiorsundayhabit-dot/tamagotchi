@@ -310,6 +310,16 @@ let iconPhone = grid([
     ".KKKK...",
     "........",
 ])
+let iconTarget = grid([
+    "..RRRR..",
+    ".RWWWWR.",
+    "RWRRRRWR",
+    "RWRWWRWR",
+    "RWRWWRWR",
+    "RWRRRRWR",
+    ".RWWWWR.",
+    "..RRRR..",
+])
 let iconFlag = grid([
     "KKKKKKK.",
     "KWSWSWK.",

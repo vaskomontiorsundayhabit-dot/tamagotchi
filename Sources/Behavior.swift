@@ -391,6 +391,7 @@ extension Game {
     // --- пиксел, изстрелян към него с клик ---
 
     func shootFood(_ food: FoodPixel) {
+        if shootAtTarget(food) { return }
         food.flying = true
         food.flyFrom = food.panel.frame.origin
         food.flyStart = time

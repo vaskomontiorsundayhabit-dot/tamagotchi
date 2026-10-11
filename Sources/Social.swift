@@ -117,8 +117,9 @@ extension Game {
     // --- часът на деня ---
 
     func updateDayTalk(_ idle: Bool) {
-        guard idle, !pet.working, time > nextDayTalk, bubbleText == nil else { return }
-        nextDayTalk = time + Double.random(in: 25 * 60...45 * 60)
+        guard idle, !pet.working, time > nextDayTalk, bubbleText == nil, dialog.isEmpty else { return }
+        // по-рядко, за да не се застъпва с разговорите на приятелите
+        nextDayTalk = time + Double.random(in: 70 * 60...120 * 60)
         let c = Calendar.current
         let h = c.component(.hour, from: Date())
         let friday = c.component(.weekday, from: Date()) == 6

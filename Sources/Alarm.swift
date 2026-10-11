@@ -175,6 +175,7 @@ extension Game {
                 if !pet.asleep && hidePhase == .off {
                     say(f.spoiled ? "Браво, развален беше!" : "Ей, тоя можеше да го изям!", seconds: 2)
                 }
+                pixelBinned(spoiled: f.spoiled)
             } else {
                 keep.append((f, from, t0))
             }
@@ -194,6 +195,7 @@ extension Game {
             if window.isVisible && !pet.asleep {
                 say(food.spoiled ? "Браво, развален беше!" : "Ей, тоя можеше да го изям!", seconds: 2)
             }
+            pixelBinned(spoiled: food.spoiled)
             return true
         }
         binHideAt = time + 0.3
@@ -214,7 +216,7 @@ extension Game {
     // --- звънче ---
 
     func setUpBell() {
-        guard bellOn, bellPanel == nil, let vf = NSScreen.main?.visibleFrame else { return }
+        guard bellOn, !minimalMode, bellPanel == nil, let vf = NSScreen.main?.visibleFrame else { return }
         let d = UserDefaults.standard
         let size = NSSize(width: 44, height: 44)
         var o = NSPoint(x: vf.minX + 70, y: vf.minY + 4)
