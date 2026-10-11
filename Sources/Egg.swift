@@ -87,10 +87,8 @@ final class EggView: NSView {
     static let size = NSSize(width: 64, height: 76)
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) {
-        guard let game else { return }
-        NSMenu.popUpContextMenu(game.eggMenu(), with: event, for: self)
-    }
+    override func mouseDown(with event: NSEvent) { game?.openEggMenu() }
+    override func rightMouseDown(with event: NSEvent) { game?.openEggMenu() }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
@@ -120,6 +118,19 @@ final class EggView: NSView {
         if game.eggDirty {
             NSColor(hex: 0x8b5a2b, alpha: 0.8).setFill()
             for (x, y) in [(22.0, 40.0), (36.0, 52.0), (28.0, 60.0)] { NSRect(x: x, y: y, width: 4, height: 3).fill() }
+        }
+        // одеалцето (вижда се, докато е топло)
+        if game.eggBlanket {
+            let x0 = (bounds.width - 40) / 2 - 4, y0 = bounds.height - 6 - 26
+            for row in 0..<6 {
+                for col in 0..<12 {
+                    let c = (row / 2 + col / 3) % 2 == 0 ? 0xe63946 : 0xffd166
+                    NSColor(hex: c).setFill()
+                    NSRect(x: x0 + CGFloat(col) * 4, y: y0 + CGFloat(row) * 4, width: 4, height: 4).fill()
+                }
+            }
+            NSColor(hex: 0x2b2b3a).setFill()
+            NSRect(x: x0, y: y0 - 2, width: 48, height: 2).fill()
         }
         ctx?.restoreGraphicsState()
         // топло: пара; студено: снежинка
@@ -162,6 +173,7 @@ final class BabyView: NSView {
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { game?.babyClicked() }
+    override func rightMouseDown(with event: NSEvent) { game?.openBabyMenu() }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let game, let k = game.babyInfo else { return }
@@ -208,6 +220,10 @@ extension Game {
         set { UserDefaults.standard.set(newValue, forKey: "eggLaid") }
     }
     static let eggNeed: Double = 300
+    var eggBlanket: Bool {
+        get { UserDefaults.standard.bool(forKey: "eggBlanket") }
+        set { UserDefaults.standard.set(newValue, forKey: "eggBlanket") }
+    }
     var eggProgress: Double { min(1, eggCare / Game.eggNeed) }
     var eggHover: Bool { eggPanel?.frame.contains(NSEvent.mouseLocation) ?? false }
 
@@ -277,7 +293,9 @@ extension Game {
 
         // топлината пада; мръсотия; стои топло → бавно трупа грижа
         let m = step / 60
-        eggWarmth -= 0.8 * m
+        // под одеалцето изстива по-бавно; щом изстине, одеалцето е паднало
+        eggWarmth -= (eggBlanket ? 0.4 : 0.8) * m
+        if eggBlanket && eggWarmth < 40 { eggBlanket = false }
         if eggWarmth > 50 { eggCare += 0.2 * m }
         if eggWarmth < 20 { eggCare = max(0, eggCare - 0.1 * m) }
         if !eggDirty && Double.random(in: 0..<1) < step / 3600 { eggDirty = true }
@@ -341,7 +359,7 @@ extension Game {
             case "turn": eggTurnUntil = time + 1.5
             case "clean": eggDirty = false
             case "sing": eggSongUntil = time + 4
-            case "blanket": eggWarmth = 100
+            case "blanket": eggWarmth = 100; eggBlanket = true
             default: break
             }
             eggCare += 3
@@ -373,6 +391,7 @@ extension Game {
             say("♪ Нани-на, яйчице… ♪", seconds: 3)
         case "blanket":
             eggWarmth = 100
+            eggBlanket = true
             points = 4
             say("Завивам го с одеалце.", seconds: 2.5)
         default:
@@ -406,8 +425,27 @@ extension Game {
         return menu
     }
 
+    func openEggMenu() {
+        guard let p = eggPanel else { return }
+        let ageH = Int(Date().timeIntervalSince(eggLaid) / 3600)
+        let items: [(Grid, String, String)] = [(iconWarm, "Стопли", "warm"), (iconTurn, "Обърни", "turn"), (iconClean, "Почисти", "clean"),
+                                               (iconTalk, "Говори му", "talk"), (iconSing, "Пей му", "sing"),
+                                               (iconBlanket, "Завий с одеалце", "blanket")]
+        let buttons = items.map { item in
+            MiniButton(icon: item.0, label: item.1, enabled: item.2 != "clean" || eggDirty, action: { [weak self] in
+                self?.requestEggCare(item.2)
+            })
+        }
+        showMiniMenu(title: "Яйце · \(ageH) ч", stats: [("Грижа", eggProgress, 0xffd166), ("Топлина", eggWarmth / 100, 0xe63946)],
+                     buttons: buttons, above: NSPoint(x: p.frame.midX, y: p.frame.maxY))
+    }
+
     @objc func eggMenuAction(_ sender: NSMenuItem) {
         guard let what = sender.representedObject as? String else { return }
+        requestEggCare(what)
+    }
+
+    func requestEggCare(_ what: String) {
         // Пиксчо отива до яйцето и го прави сам (ако може)
         if !pet.asleep && !pet.dead && hidePhase == .off && !playingGame && errands.isEmpty && !busyMoving && !monitorDetached {
             pendingEggCare = what
@@ -482,6 +520,22 @@ extension Game {
             nextBabySound = time + Double.random(in: 2 * 60...5 * 60)
             babySay(k.sound, 2)
         }
+    }
+
+    func openBabyMenu() {
+        guard let p = babyPanel else { return }
+        var buttons = [
+            MiniButton(icon: iconHug, label: "Погали", enabled: true, action: { [weak self] in self?.babyClicked() }),
+            MiniButton(icon: iconSing, label: "Приспивна песен", enabled: babyAlive, action: { [weak self] in
+                guard let self else { return }
+                self.babySay("Ги… zzz", 3)
+                if !self.pet.asleep { self.say("♪ Нани-на, малкото… ♪", seconds: 3) }
+            }),
+        ]
+        if babyAlive {
+            buttons.append(MiniButton(icon: iconTalk, label: "Смени името", enabled: true, action: { [weak self] in self?.askName("baby") }))
+        }
+        showMiniMenu(title: babyLabel.capitalized, stats: [], buttons: buttons, above: NSPoint(x: p.frame.midX, y: p.frame.minY + 30))
     }
 
     func babyClicked() {

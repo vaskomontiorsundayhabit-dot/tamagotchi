@@ -831,7 +831,8 @@ func overlayPanel(_ frame: NSRect, key: Bool) -> NSPanel {
     p.level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
     p.hidesOnDeactivate = false
     p.isReleasedWhenClosed = false
-    p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+    // .stationary: да не изчезва, когато macOS скрива прозорците (клик по тапета)
+    p.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
     return p
 }
 
@@ -2469,6 +2470,17 @@ final class Game: NSObject, NSApplicationDelegate {
     var workBreak = false
     var cheeseInHand = 0
     var pendingBuddyReply: (id: String, text: String, at: Double)?
+    var miniMenuPanel: NSPanel?
+    var miniMenuOpened: Double = 0
+    var dialog: [(String, String)] = []
+    var dialogAt: Double = 0
+    var pendingMakeUp: Double = 0
+    var cheesePanel: NSPanel?
+    var cheeseLeft: Double = 0
+    var ratEatingCheese = false
+    var nextCheeseNom: Double = 0
+    var smallPets: [SmallPet] = []
+    var nextPetCare: Double = 5 * 60
     var pendingEggCare: String?
     var snackFood: FoodPixel?
     var nextFloorSnack: Double = 0
@@ -2680,6 +2692,9 @@ final class Game: NSObject, NSApplicationDelegate {
         updateBuddies(step)
         maybeCallSomeone()
         updateEgg(step)
+        updateMiniMenu()
+        updateDialog()
+        updateSmallPets(step)
         updateRace(step)
         updateJealousy()
         updateWeather(step)
@@ -3094,7 +3109,7 @@ final class Game: NSObject, NSApplicationDelegate {
 
     func foodDropped(_ food: FoodPixel) {
         if tryBin(food) { return }
-        if tryFeedRat(food) || tryFeedFriend(food) || tryFeedBaby(food) { return }
+        if tryFeedRat(food) || tryFeedFriend(food) || tryFeedBaby(food) || tryFeedSmallPet(food) { return }
         let f = food.panel.frame
         let center = NSPoint(x: f.midX, y: f.midY)
         if window.isVisible && petScreenRect().insetBy(dx: -14, dy: -14).contains(center) {

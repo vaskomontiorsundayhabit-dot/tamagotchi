@@ -3,7 +3,7 @@
 
 import AppKit
 
-enum Errand: Equatable { case fetchMonitor, storeMonitor, feedRat, cuddleRat, ratToCage, ratOut, sleep, stepOn(NSPoint), eggCare, backToDesk, giveCheese }
+enum Errand: Equatable { case fetchMonitor, storeMonitor, feedRat, cuddleRat, ratToCage, ratOut, sleep, stepOn(NSPoint), eggCare, backToDesk, giveCheese, feedPet(String) }
 
 let petNames = [
     "Бобо", "Чочо", "Пипи", "Фъстък", "Бисер", "Мики", "Зузу", "Тошко", "Кексче", "Пухчо",
@@ -236,6 +236,8 @@ extension Game {
             updateEggErrand(step)
         case .giveCheese:
             updateCheeseErrand(step)
+        case .feedPet(let id):
+            updateFeedPetErrand(id, step)
         case .backToDesk:
             if errandStage == 0 {
                 if monitorDetached { goBackToDesk() }
@@ -419,6 +421,7 @@ extension Game {
         guard idle, questionPanel == nil, letterPanel == nil, errands.isEmpty, !playingGame, time > nextNameAsk else { return }
         if pet.has("rat") && ratName == nil { askName("rat") }
         else if babyAlive && babyName == nil { askName("baby") }
+        else if let k = smallPetKinds.first(where: { pet.has($0.id) && smallPetName($0.id) == nil }) { askName("pet_" + k.id) }
     }
 
     @objc func renameRat() { askName("rat") }
@@ -432,7 +435,8 @@ extension Game {
         var n = petNames.randomElement()!
         while n == pendingName { n = petNames.randomElement()! }
         pendingName = n
-        let what = who == "rat" ? "плъхчето" : "бебето от яйцето"
+        let what = who == "rat" ? "плъхчето"
+            : (who.hasPrefix("pet_") ? (smallPetKinds.first { "pet_" + $0.id == who }?.label ?? "любимеца") : "бебето от яйцето")
         ask(Question(text: "Как да кръстим \(what)? Харесва ли ти „\(n)“?", answers: [
             ("ХАРЕСВА МИ", "„\(n)“! Чудесно име!", .acceptName), ("ДРУГО", "Хм… чакай да помисля.", .nextName),
         ]), index: -1)
@@ -441,6 +445,13 @@ extension Game {
     func acceptName() {
         let n = pendingName
         guard !n.isEmpty else { return }
+        if pendingNameFor.hasPrefix("pet_") {
+            let id = String(pendingNameFor.dropFirst(4))
+            UserDefaults.standard.set(n, forKey: "petName_\(id)")
+            if let p = smallPet(id) { smallPetSay(p, p.kind.sound + " (\(n))", 3) }
+            start(.love, length: 1.5)
+            return
+        }
         if pendingNameFor == "rat" {
             UserDefaults.standard.set(n, forKey: "ratName")
             ratSay("Цик! Аз съм \(n)!", 3)

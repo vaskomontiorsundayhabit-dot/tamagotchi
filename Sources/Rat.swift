@@ -3,7 +3,7 @@
 
 import AppKit
 
-enum RatGoal { case food(FoodPixel), pixel, ball, toy }
+enum RatGoal { case food(FoodPixel), pixel, ball, toy, cheese }
 
 let ratAngryLines = ["Цик! Гладен съм! Забрави ме!", "Цик-цик! Къде ми е храната?!", "Сърдит съм ти, цик!",
                      "Никой не се грижи за мен… цик.", "ЦИК! Купичката е празна!"]
@@ -24,6 +24,7 @@ final class RatView: NSView {
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { game?.ratClicked() }
+    override func rightMouseDown(with event: NSEvent) { game?.openRatMenu() }
 
     static func ratGrid(frame: Int, running: Bool) -> Grid {
         var g = grid([
@@ -106,6 +107,18 @@ func drawRatBubble(_ text: String, in view: NSView, bottom: CGFloat) {
     let r = NSRect(x: (view.bounds.width - w) / 2, y: max(0, bottom - h), width: w, height: h)
     NSColor(hex: 0x4a3a5a, alpha: 0.95).setFill(); r.fill()
     str.draw(with: r.insetBy(dx: 4, dy: 2), options: [.usesLineFragmentOrigin], attributes: a)
+}
+
+/// Парче сирене на пода (смалява се, докато плъхът го яде).
+final class CheeseView: NSView {
+    weak var game: Game?
+    override var isFlipped: Bool { true }
+    override func draw(_ dirtyRect: NSRect) {
+        guard let game else { return }
+        let k = CGFloat(max(0.25, game.cheeseLeft))
+        let s = 3 * k
+        drawGrid(iconCheese, x: (bounds.width - 8 * s) / 2, y: bounds.height - 7 * s, s: s, palette: game.color)
+    }
 }
 
 // MARK: - Клетката
@@ -344,6 +357,34 @@ extension Game {
         // пада, ако е във въздуха
         if o.y > vf.minY + 0.5 { o.y = max(vf.minY, o.y - CGFloat(520 * step)) } else { o.y = vf.minY }
 
+        // яде сиренето бавно, хапка по хапка
+        if ratEatingCheese {
+            v.running = false
+            if let c = cheesePanel {
+                v.facingLeft = c.frame.midX < o.x + half
+                cheeseLeft -= step / 90
+                c.contentView?.needsDisplay = true
+                if time > nextCheeseNom {
+                    nextCheeseNom = time + Double.random(in: 6...12)
+                    ratSay(["Ням…", "Мммм, сирене…", "Хрус. Цик.", "Най-хубавото сирене!"].randomElement()!, 1.8)
+                }
+                if cheeseLeft <= 0 {
+                    c.orderOut(nil)
+                    cheesePanel = nil
+                    ratEatingCheese = false
+                    ratFedAt = Date()
+                    ratPlayedAt = Date()
+                    v.heartsUntil = time + 3
+                    ratSay("Изядох го! Цик-цик!", 2.5)
+                }
+            } else {
+                ratEatingCheese = false
+            }
+            p.setFrameOrigin(o)
+            return
+        }
+
+        if cheesePanel != nil && ratGoal == nil && !chasing { ratGoal = .cheese }
         // тича към нещо: пиксел на пода, паднал пиксел на Пиксчо или топката
         if let goal = ratGoal {
             let gx: CGFloat
@@ -360,6 +401,9 @@ extension Game {
             case .toy:
                 guard pet.has("toy") else { ratGoal = nil; p.setFrameOrigin(o); return }
                 gx = o.x
+            case .cheese:
+                guard let c = cheesePanel else { ratGoal = nil; p.setFrameOrigin(o); return }
+                gx = c.frame.midX - half + (o.x + half < c.frame.midX ? -26 : 26)
             }
             let dx = gx - o.x
             v.running = true
@@ -502,6 +546,16 @@ extension Game {
         }
     }
 
+    /// Къде на пода има някой (приятел, яйце, любимец) — за тоалетната.
+    func occupiedFloorXs() -> [CGFloat] {
+        var xs: [CGFloat] = buddies.map { buddyScreenBox($0).midX }
+        if let p = ratPanel, p.isVisible { xs.append(p.frame.midX) }
+        if let p = eggPanel { xs.append(p.frame.midX) }
+        if let p = babyPanel { xs.append(p.frame.midX) }
+        xs += smallPets.map { $0.panel.frame.midX }
+        return xs
+    }
+
     /// Има ли нарисуван пиксел там, където би застанал плъхът (минава само през празно).
     func ratBlocked(_ x: CGFloat, _ y: CGFloat) -> Bool {
         guard !drawCells.isEmpty else { return false }
@@ -587,6 +641,10 @@ extension Game {
             start(.angry, length: 1.5)
             say("ЕЙ! Открадна ми пиксел! ВЪРНИ ГО!", seconds: 2.5)
             if !chasing && !busyMoving { startRatChase() }
+        case .cheese:
+            ratEatingCheese = true
+            ratSay("СИРЕНЕ! Цик-цик-цик!", 2.5)
+            sfx("Pop")
         case .toy:
             ratPlayedAt = Date()
             ratToyUntil = time + 6
@@ -770,6 +828,18 @@ extension Game {
 
     func gaveCheese() {
         guard cheeseInHand > 0 else { return }
+        if !ratInCage {
+            // слага го на пода; плъхът идва и го яде дълго
+            cheeseInHand -= 1
+            let pr = petScreenRect()
+            let x = pr.midX + (facingLeft ? -pr.width / 2 - 20 : pr.width / 2 + 20)
+            placeCheese(at: NSPoint(x: x, y: floorY))
+            ratGoal = .cheese
+            chasing = false
+            say("Оставям ти сиренето, \(ratLabel)! Яж бавно.", seconds: 2.5)
+            start(.love, length: 1.5)
+            return
+        }
         cheeseInHand -= 1
         ratFedAt = Date()
         ratPlayedAt = Date()
@@ -779,6 +849,21 @@ extension Game {
         say("Заповядай, \(ratLabel)! Твоето сирене.", seconds: 2.5)
         start(.love, length: 1.5)
         sfx("Pop")
+    }
+
+    func placeCheese(at p: NSPoint) {
+        cheesePanel?.orderOut(nil)
+        let s = NSSize(width: 30, height: 24)
+        let panel = overlayPanel(NSRect(x: p.x - s.width / 2, y: p.y, width: s.width, height: s.height), key: false)
+        panel.level = .floating
+        panel.ignoresMouseEvents = true
+        let v = CheeseView(frame: NSRect(origin: .zero, size: s))
+        v.game = self
+        panel.contentView = v
+        panel.orderFrontRegardless()
+        cheesePanel = panel
+        cheeseLeft = 1
+        sfx("Tink")
     }
 
     /// Изважда клетката отзад, слага (или пуска) плъха и я отнася обратно.
@@ -891,6 +976,24 @@ extension Game {
         default:
             break
         }
+    }
+
+    func openRatMenu() {
+        guard let p = ratPanel else { return }
+        attentionToOthers()
+        let buttons = [
+            MiniButton(icon: iconFood, label: "Нахрани", enabled: true, action: { [weak self] in self?.feedRatNow() }),
+            MiniButton(icon: iconHug, label: "Гушни", enabled: true, action: { [weak self] in
+                guard let self else { return }
+                if self.errands.isEmpty && !self.busyMoving && !self.monitorDetached { self.runBreakErrands([.cuddleRat]) }
+            }),
+            MiniButton(icon: iconHouse, label: "Прибери в клетката", enabled: true, action: { [weak self] in self?.toggleRatCage() }),
+            MiniButton(icon: iconTalk, label: "Смени името", enabled: true, action: { [weak self] in self?.askName("rat") }),
+        ]
+        showMiniMenu(title: ratLabel.capitalized,
+                     stats: [("Ситост", max(0, 1 - ratHungryMinutes / ratHungerLimit), 0x52b788),
+                             ("Радост", max(0, 1 - ratLonelyMinutes / 120), 0xff8fab)],
+                     buttons: buttons, above: NSPoint(x: p.frame.midX, y: p.frame.minY + 30))
     }
 
     func ratClicked() {

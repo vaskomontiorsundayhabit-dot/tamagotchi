@@ -107,6 +107,12 @@ final class Buddy: NSObject {
     var target: NSPoint?
     var food: FoodPixel?
     var playRat = false
+    var chatting = false
+    var energy: Double = 90
+    var wanderX: CGFloat?
+    var nextWander: Double = 0
+    var nextSleepCheck: Double = 0
+    var growSeconds: Double = 0
 
     init(kind: BuddyKind, guest: Bool, origin: NSPoint, game: Game) {
         self.kind = kind
@@ -139,8 +145,9 @@ final class BuddyView: NSView {
     var walking = false
     var facingLeft = false
     var flashAt: Double = -10
-    static let size = NSSize(width: 210, height: 190)
-    static let scale: CGFloat = 1.5
+    static let scale: CGFloat = 3     // като Пиксчо: всяко ниво е още едно квадратче
+    static let size = NSSize(width: CGFloat(canvasW) * 3 + 20, height: 40 + CGFloat(canvasH) * 3 + 10)
+    var spriteBox = NSRect.zero        // заетата част (за кликовете)
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) {
@@ -148,10 +155,10 @@ final class BuddyView: NSView {
     }
     override func rightMouseDown(with event: NSEvent) {
         guard let game, let buddy else { return }
-        NSMenu.popUpContextMenu(game.buddyMenu(buddy), with: event, for: self)
+        game.openBuddyMenu(buddy)
     }
 
-    var feetY: CGFloat { 30 + CGFloat(canvasH) * BuddyView.scale }
+    var feetY: CGFloat { 40 + CGFloat(canvasH) * BuddyView.scale }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let game, let buddy else { return }
@@ -161,12 +168,23 @@ final class BuddyView: NSView {
         let flashing = t - flashAt < 0.25
         let pose: Pose = asleep ? .sleep : (walking ? .walk : (flashing ? .wave : .idle))
         let f: Face = asleep ? .sleep : (working && !flashing ? .focus : face)
-        let sp = buildSprite(level: buddy.guest ? 10 : game.buddyLevel(buddy.kind.id), face: f, pose: pose, frame: Int(t * (walking ? 7 : 2)), working: false)
+        let sp = buildSprite(level: game.buddyLevel(buddy.kind.id), face: f, pose: pose, frame: Int(t * (walking ? 7 : 2)), working: false)
         let s = BuddyView.scale
         let ox = (bounds.width - CGFloat(canvasW) * s) / 2
+        let oy: CGFloat = 40
         let flip = walking && facingLeft
         let body = NSColor(hex: buddy.kind.color)
-        drawGrid(sp.grid, x: ox, y: 30, s: s, flip: flip, palette: { c in
+        let l = flip ? ox + CGFloat(canvasW - 1 - sp.maxX) * s : ox + CGFloat(sp.minX) * s
+        spriteBox = NSRect(x: l, y: oy + CGFloat(sp.minY) * s, width: CGFloat(sp.maxX - sp.minX + 1) * s,
+                           height: CGFloat(sp.maxY - sp.minY + 1) * s).insetBy(dx: -6, dy: -6)
+        if buddy.chatting {
+            // говорят си: малки точки над главата
+            NSColor(hex: 0x8d99ae).setFill()
+            for i in 0..<3 where Int(t * 3) % 3 >= i {
+                NSRect(x: spriteBox.midX - 8 + CGFloat(i) * 6, y: spriteBox.minY - 10, width: 3, height: 3).fill()
+            }
+        }
+        drawGrid(sp.grid, x: ox, y: oy, s: s, flip: flip, palette: { c in
             switch c {
             case "B": return body
             case "D": return body.blended(withFraction: 0.22, of: .black)
@@ -175,8 +193,8 @@ final class BuddyView: NSView {
             default: return game.color(c)
             }
         })
-        let cx = ox + CGFloat(sp.cx) * s
-        let midY = 30 + CGFloat(sp.top + sp.bottom) / 2 * s
+        let cx = ox + CGFloat(flip ? canvasW - 1 - sp.cx : sp.cx) * s
+        let midY = oy + CGFloat(sp.top + sp.bottom) / 2 * s
         if working {
             let prop = buddy.kind.prop
             let pw = CGFloat(prop[0].count) * 3
@@ -202,7 +220,7 @@ final class BuddyView: NSView {
                                                     .foregroundColor: body]
             for i in 0..<2 {
                 let ph = (t * 0.5 + Double(i) / 2).truncatingRemainder(dividingBy: 1)
-                ("z" as NSString).draw(at: NSPoint(x: cx + 20 + CGFloat(ph) * 14, y: 30 + CGFloat(sp.minY) * s - CGFloat(ph) * 20),
+                ("z" as NSString).draw(at: NSPoint(x: cx + 20 + CGFloat(ph) * 14, y: oy + CGFloat(sp.minY) * s - CGFloat(ph) * 20),
                                        withAttributes: a)
             }
         }
@@ -215,7 +233,7 @@ final class BuddyView: NSView {
             let size = str.boundingRect(with: NSSize(width: bounds.width - 16, height: 60), options: [.usesLineFragmentOrigin],
                                         attributes: a).size
             let w = ceil(size.width) + 10, h = ceil(size.height) + 6
-            let r = NSRect(x: (bounds.width - w) / 2, y: max(0, 30 + CGFloat(sp.minY) * s - h - 4), width: w, height: h)
+            let r = NSRect(x: min(max(2, cx - w / 2), bounds.width - w - 2), y: max(0, oy + CGFloat(sp.minY) * s - h - 4), width: w, height: h)
             body.blended(withFraction: 0.65, of: .black)?.withAlphaComponent(0.95).setFill(); r.fill()
             str.draw(with: r.insetBy(dx: 5, dy: 3), options: [.usesLineFragmentOrigin], attributes: a)
         }
@@ -243,8 +261,13 @@ extension Game {
             || id == "photo" && UserDefaults.standard.string(forKey: "friendName") != nil
     }
 
-    func buddyAsleep(_ b: Buddy) -> Bool { b.sleeping || pet.asleep && !b.guest }
-    func buddyHover(_ b: Buddy) -> Bool { b.panel.frame.insetBy(dx: 50, dy: 30).contains(NSEvent.mouseLocation) }
+    /// Спят по свой график (не непременно с Пиксчо).
+    func buddyAsleep(_ b: Buddy) -> Bool { b.sleeping }
+    func buddyScreenBox(_ b: Buddy) -> NSRect {
+        let r = b.view.spriteBox, f = b.panel.frame
+        return NSRect(x: f.minX + r.minX, y: f.maxY - r.maxY, width: r.width, height: r.height)
+    }
+    func buddyHover(_ b: Buddy) -> Bool { buddyScreenBox(b).contains(NSEvent.mouseLocation) }
     var friendPanel: NSPanel? { buddies.first { !$0.guest }?.panel }
     var friendFeetY: CGFloat { buddies.first { !$0.guest }?.view.feetY ?? 0 }
     func buddy(_ id: String) -> Buddy? { buddies.first { $0.kind.id == id } }
@@ -361,6 +384,30 @@ extension Game {
         }
         if racePhase != .off && raceBuddy === b { return }
 
+        // собствен сън: изморява се (нощем повече), спи си и става
+        let hour = Calendar.current.component(.hour, from: Date())
+        if b.sleeping {
+            b.energy = min(100, b.energy + step / 40)
+            if b.energy >= 100 {
+                b.sleeping = false
+                buddySay(b, ["Добро утро!", "Наспах се!", "Ааах… какво пропуснах?"].randomElement()!, 2.5)
+            }
+        } else {
+            b.energy = max(0, b.energy - step / 300 * ((hour >= 23 || hour < 7) ? 3 : 1))
+            if b.energy < 15 && !b.working && !b.guest {
+                b.sleeping = true
+                buddySay(b, b.kind.female ? "Уморена съм… лягам за малко." : "Уморен съм… лягам за малко.", 2.5)
+            }
+        }
+        // расте с времето, докато живее при вас (на 30 минути по едно квадратче)
+        if !b.guest {
+            b.growSeconds += step
+            if b.growSeconds >= 30 * 60 {
+                b.growSeconds = 0
+                growBuddy(b, by: 1)
+            }
+        }
+
         if !asleep && !b.guest {
             b.full = max(0, b.full - step / 180)
             if b.full < 30 && time > b.nextHungry {
@@ -416,54 +463,70 @@ extension Game {
                 o.x += dx > 0 ? sp : -sp
             }
         } else {
-            // стои до Пиксчо: първият вляво, вторият вдясно, следващите по-навън
-            let side: CGFloat = i % 2 == 0 ? -1 : 1
-            let goal = pr.midX + side * (pr.width / 2 + 70 + CGFloat(i / 2) * 110) - BuddyView.size.width / 2
-            let gx = min(max(goal, vf.minX - 40), vf.maxX - BuddyView.size.width + 40)
-            let dx = gx - o.x
-            v.walking = abs(dx) > 3 || abs(o.y - y) > 3
-            if abs(dx) > 3 {
-                v.facingLeft = dx < 0
-                let nx = o.x + (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat((abs(dx) > 300 ? 220 : 60) * step))
-                if buddyBlockedAt(nx + BuddyView.size.width / 2 + (dx > 0 ? 12 : -12), vf.minY) { v.walking = false } else { o.x = nx }
+            // свои занимания: ходи си насам-натам, понякога идва при Пиксчо, понякога си стои
+            if time > b.nextWander {
+                b.nextWander = time + Double.random(in: 25...70)
+                let r = Int.random(in: 0..<10)
+                let side: CGFloat = i % 2 == 0 ? -1 : 1
+                if r < 5 {
+                    b.wanderX = CGFloat.random(in: (vf.minX + 60)...max(vf.minX + 61, vf.maxX - 60))
+                } else if r < 8 {
+                    b.wanderX = pr.midX + side * (pr.width / 2 + 90 + CGFloat(i / 2) * 120)
+                } else {
+                    b.wanderX = nil
+                    if !b.working && Int.random(in: 0..<3) == 0 { buddySay(b, buddyIdleLines.randomElement()!, 3) }
+                }
             }
-            if abs(o.y - y) > 3 { o.y += (y > o.y ? 1 : -1) * min(abs(y - o.y), CGFloat(300 * step)) } else { o.y = y }
-            if !v.walking { v.facingLeft = pr.midX < o.x + BuddyView.size.width / 2 }
+            o.y = y
+            if let wx = b.wanderX {
+                let gx = min(max(wx - BuddyView.size.width / 2, vf.minX - 60), vf.maxX - BuddyView.size.width + 60)
+                let dx = gx - o.x
+                v.walking = abs(dx) > 3
+                if v.walking {
+                    v.facingLeft = dx < 0
+                    let nx = o.x + (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat((abs(dx) > 300 ? 160 : 60) * step))
+                    if buddyBlockedAt(nx + BuddyView.size.width / 2 + (dx > 0 ? 12 : -12), vf.minY) {
+                        v.walking = false
+                        b.wanderX = nil
+                    } else { o.x = nx }
+                } else {
+                    b.wanderX = nil
+                }
+            } else {
+                v.walking = false
+            }
         }
         p.setFrameOrigin(o)
 
-        guard time > b.nextAct, !pet.asleep, !asleep, hidePhase == .off else { return }
-        b.nextAct = time + Double.random(in: 60...150)
-        let r = Int.random(in: 0..<13)
+        guard time > b.nextAct, !asleep, hidePhase == .off, dialog.isEmpty else { return }
+        b.nextAct = time + Double.random(in: 50...130)
+        let r = Int.random(in: 0..<14)
         let others = buddies.filter { $0 !== b && !$0.leaving && !buddyAsleep($0) }
+        let petFree = !pet.asleep && hidePhase == .off
         if (r < 2 || b.full < 30), let food = foods.filter({ $0.onFloor && !$0.view.held }).randomElement() {
             b.food = food
             b.target = NSPoint(x: food.panel.frame.midX - BuddyView.size.width / 2, y: food.panel.frame.minY - v.feetY + 40)
             buddySay(b, "Пиксел!", 1.5)
-        } else if r >= 10, let o2 = others.randomElement() {
-            // говорят си помежду си
+        } else if r < 4, let o2 = others.randomElement() {
+            // говорят си помежду си (няколко реплики)
             let (a, c) = buddyChats.randomElement()!
-            buddySay(b, a, 3); v.face = .happy
-            pendingBuddyReply = (o2.kind.id, c, time + 2.5)
-        } else if r >= 8, ratIsOut, let rp = ratPanel {
+            startDialog([(b.kind.id, a), (o2.kind.id, c), (b.kind.id, ["Хаха!", "Точно така.", "Ще видим!", "Права си!"].randomElement()!)])
+        } else if r < 6, ratIsOut, let rp = ratPanel {
             // отива да си играе с плъха
             b.playRat = true
             b.target = NSPoint(x: rp.frame.midX - BuddyView.size.width / 2, y: o.y)
             buddySay(b, "\(ratLabel.capitalized)! Ела да си играем!", 2)
-        } else if r < 4 {
-            let (a, c) = friendFights.randomElement()!
-            buddySay(b, a, 3); v.face = .angry
-            pendingReply = (c, time + 2.5, true)
-        } else if r < 5 {
+        } else if r < 7, petFree {
             buddySay(b, "Прегръдка!", 2); start(.love, length: 2)
             sfx("Purr")
-        } else if r < 6 && b.kind.id == "gamer" && racePhase == .off {
+        } else if r < 8 && b.kind.id == "gamer" && racePhase == .off && petFree {
             buddySay(b, "Хайде на състезание, \(pet.name)!", 3)
             offerRace(with: b)
-        } else {
-            let (a, c) = friendTalks.randomElement()!
-            buddySay(b, a, 3); v.face = .happy
-            pendingReply = (c, time + 2.5, false)
+        } else if petFree && !b.guest && (r < 10 || b.working && r < 11) {
+            // Пиксчо се дразни от нещо (зависи от професията) и се карат
+            buddyArgument(b)
+        } else if petFree {
+            buddyConversation(b)
         }
     }
 
@@ -683,15 +746,46 @@ extension Game {
         return menu
     }
 
+    func openBuddyMenu(_ b: Buddy) {
+        let id = b.kind.id
+        var buttons: [MiniButton] = []
+        func add(_ icon: Grid, _ label: String, _ code: Int, _ on: Bool = true) {
+            buttons.append(MiniButton(icon: icon, label: label, enabled: on, action: { [weak self] in self?.doBuddyAction(id, code) }))
+        }
+        if b.guest {
+            add(iconHouse, "Покани да остане", 6)
+            add(iconHug, "Прегърни \(pet.name)", 4)
+        } else {
+            add(b.kind.prop, b.working ? "Спри работа" : "Работи (\(b.kind.job))", 1)
+            add(b.sleeping ? iconSun : iconMoon, b.sleeping ? "Събуди" : "Приспи", 2)
+            add(iconFood, "Нахрани", 3)
+            add(iconHug, "Прегърни \(pet.name)", 4)
+            add(iconFlag, "Състезание с \(pet.name)", 7)
+            add(iconTalk, "Да си поговорят", 9)
+            add(iconHouse, "Иди си до вкъщи", 8)
+        }
+        let box = buddyScreenBox(b)
+        showMiniMenu(title: "\(buddyName(b.kind)) · \(b.kind.job) · \(buddyLevel(id)) пикс.",
+                     stats: b.guest ? [("Приятелство", Double(buddyFriendship(id)) / 100, 0xff8fab)]
+                        : [("Ситост", b.full / 100, 0x52b788), ("Енергия", b.energy / 100, 0x48cae4),
+                           ("Приятелство", Double(buddyFriendship(id)) / 100, 0xff8fab)],
+                     buttons: buttons, above: NSPoint(x: box.midX, y: box.maxY))
+    }
+
     @objc func buddyMenuAction(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String, let b = buddy(id) else { return }
-        switch sender.tag {
+        guard let id = sender.representedObject as? String else { return }
+        doBuddyAction(id, sender.tag)
+    }
+
+    func doBuddyAction(_ id: String, _ code: Int) {
+        guard let b = buddy(id) else { return }
+        switch code {
         case 1:
             if b.working { b.working = false; buddySay(b, "Почивка!", 2) }
             else if buddyAsleep(b) { buddySay(b, "Спя…", 1.5) } else { startBuddyWork(b) }
         case 2:
             b.sleeping.toggle()
-            if b.sleeping { b.working = false; buddySay(b, "Лека нощ…", 2) } else { buddySay(b, "Добро утро!", 2) }
+            if b.sleeping { b.working = false; buddySay(b, "Лека нощ…", 2) } else { b.energy = max(b.energy, 50); buddySay(b, "Добро утро!", 2) }
         case 3:
             if buddyAsleep(b) { buddySay(b, "Спя…", 1.5); return }
             if b.full > 90 { buddySay(b, "Пъл\(b.kind.female ? "на" : "ен") съм!", 2); return }
@@ -713,6 +807,13 @@ extension Game {
             else { buddySay(b, ["Още е рано… може следващия път!", "Хм, нека дойда още веднъж първо!"].randomElement()!, 3) }
         case 7:
             offerRace(with: b)
+        case 8:
+            b.leaving = true
+            b.working = false
+            UserDefaults.standard.set(Date().addingTimeInterval(30 * 60), forKey: "buddyAway_\(id)")
+            buddySay(b, "Добре, отивам си до вкъщи. Звънни ми!", 3)
+        case 9:
+            if dialog.isEmpty && !pet.asleep { buddyConversation(b) }
         default:
             break
         }
@@ -741,7 +842,7 @@ extension Game {
     /// Пусна пиксел върху приятел.
     func tryFeedFriend(_ food: FoodPixel) -> Bool {
         let f = food.panel.frame
-        for b in buddies where !buddyAsleep(b) && b.panel.frame.insetBy(dx: 50, dy: 30).contains(NSPoint(x: f.midX, y: f.midY)) {
+        for b in buddies where !buddyAsleep(b) && buddyScreenBox(b).insetBy(dx: -10, dy: -10).contains(NSPoint(x: f.midX, y: f.midY)) {
             food.remove()
             foods.removeAll { $0 === food }
             b.full = min(100, b.full + 30)
@@ -755,7 +856,15 @@ extension Game {
     }
 
     /// Колко е пораснал (с храненето).
-    func buddyLevel(_ id: String) -> Int { max(10, UserDefaults.standard.integer(forKey: "buddyLevel_\(id)")) }
+    func buddyLevel(_ id: String) -> Int { max(1, UserDefaults.standard.integer(forKey: "buddyLevel_\(id)")) }
+
+    func growBuddy(_ b: Buddy, by n: Int) {
+        let id = b.kind.id
+        let lvl = buddyLevel(id)
+        guard lvl < 250 else { return }
+        UserDefaults.standard.set(min(250, lvl + n), forKey: "buddyLevel_\(id)")
+        buddySay(b, "Пораснах! Вече съм \(lvl + n) пиксела!", 3)
+    }
 
     /// Яде: на всеки 2 хранения пораства малко.
     func buddyAte(_ b: Buddy) {
@@ -763,10 +872,7 @@ extension Game {
         let id = b.kind.id
         let fed = UserDefaults.standard.integer(forKey: "buddyFed_\(id)") + 1
         UserDefaults.standard.set(fed, forKey: "buddyFed_\(id)")
-        if fed % 2 == 0 && buddyLevel(id) < 60 {
-            UserDefaults.standard.set(buddyLevel(id) + 1, forKey: "buddyLevel_\(id)")
-            buddySay(b, "Пораснах! Ниво \(buddyLevel(id))!", 3)
-        }
+        growBuddy(b, by: 1)
     }
 
     func updateBuddyReply() {

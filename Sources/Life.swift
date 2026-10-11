@@ -269,9 +269,16 @@ extension Game {
             let pr = petScreenRect()
             guard let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame else { return }
             // винаги слиза долу, в по-близкия ъгъл
+            // място, където няма приятел, яйце или любимец (иначе по-близкия ъгъл)
             let half = (view.bodyX1 - view.bodyX0) / 2
             let left = vf.minX + 30 + half, right = vf.maxX - 30 - half
-            let x = abs(pr.midX - left) < abs(pr.midX - right) ? left : right
+            let taken = occupiedFloorXs()
+            var spots: [CGFloat] = [left, right]
+            var sx = left + 160
+            while sx < right - 160 { spots.append(sx); sx += 160 }
+            let free = spots.filter { s in !taken.contains { abs($0 - s) < 150 } }
+            let pool = free.isEmpty ? [left, right] : free
+            let x = pool.min(by: { abs($0 - pr.midX) < abs($1 - pr.midX) })!
             toiletReturnOrigin = window.frame.origin
             toiletPhase = .going
             walkTarget = nil

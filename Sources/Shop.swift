@@ -506,6 +506,15 @@ let shopItems: [ShopItem] = [
     ShopItem(id: "chair", name: "Удобен стол", price: 180, kind: .upgrade, slot: "", info: "работата го изморява с 30% по-малко", icon: iconChair),
     ShopItem(id: "piggy", name: "Касичка", price: 220, kind: .upgrade, slot: "", info: "+25% монети от всичко", icon: iconPiggy),
     ShopItem(id: "fastedit", name: "Бърз монтаж", price: 200, kind: .upgrade, slot: "", info: "видео за 20 минути вместо 30", icon: iconEnergy),
+    ShopItem(id: "cat", name: "Пиксел коте", price: 150, kind: .upgrade, slot: "", info: "дреме много и гони плъха", icon: iconCat),
+    ShopItem(id: "dog", name: "Пиксел куче", price: 180, kind: .upgrade, slot: "", info: "ходи след Пиксчо навсякъде", icon: iconDog),
+    ShopItem(id: "snail", name: "Охлюв", price: 60, kind: .upgrade, slot: "", info: "много бавен, оставя следа", icon: iconSnail),
+    ShopItem(id: "fish", name: "Рибка в аквариум", price: 90, kind: .upgrade, slot: "", info: "плува си на пода", icon: iconFish),
+    ShopItem(id: "parrot", name: "Папагал", price: 160, kind: .upgrade, slot: "", info: "лети и повтаря какво казва Пиксчо", icon: iconParrot),
+    ShopItem(id: "bone", name: "Кокал за кучето", price: 25, kind: .upgrade, slot: "", info: "стои до кучето", icon: iconBone),
+    ShopItem(id: "yarn", name: "Кълбо за котето", price: 25, kind: .upgrade, slot: "", info: "котето си играе с него", icon: iconYarn),
+    ShopItem(id: "petfood", name: "Храна за любимци", price: 15, kind: .use, slot: "", info: "нахранва всички любимци наведнъж", icon: iconPetFood),
+    ShopItem(id: "fishfood", name: "Храна за рибки", price: 8, kind: .use, slot: "", info: "нахранва рибката", icon: iconFishFood),
     ShopItem(id: "wheel", name: "Колело за плъха", price: 100, kind: .upgrade, slot: "", info: "плъхът по-рядко скучае", icon: iconWheel),
     ShopItem(id: "feeder", name: "Автохранилка", price: 140, kind: .upgrade, slot: "", info: "плъхът огладнява 2 пъти по-бавно", icon: iconFeeder),
     ShopItem(id: "lens", name: "Обектив за фотографката", price: 160, kind: .upgrade, slot: "", info: "фотографката (ако живее при вас) снима по-често и по-скъпо", icon: iconLens),
@@ -517,7 +526,7 @@ let shopItems: [ShopItem] = [
 
 /// Разделите в магазина.
 let shopTabs = ["ХРАНА", "ОБЛЕКЛО", "ПОДОБРЕНИЯ", "ЛЮБИМЦИ"]
-let petShopIds: Set<String> = ["rat", "cheese", "toy", "wheel", "feeder", "lens"]
+let petShopIds: Set<String> = ["cat", "dog", "snail", "fish", "parrot", "bone", "yarn", "petfood", "fishfood", "rat", "cheese", "toy", "wheel", "feeder", "lens"]
 
 func shopTab(_ item: ShopItem) -> Int {
     if petShopIds.contains(item.id) { return 3 }
@@ -812,6 +821,13 @@ extension Game {
                 pet.fun = (pet.fun + 20).clamped()
                 say("Пуканки! Да гледаме клип!", seconds: 2.5)
                 playClip()
+            case "petfood":
+                for p in smallPets { feedSmallPet(p) }
+                if hasRat { ratFedAt = Date(); ratSay("Ням! Цик!", 2) }
+                say(smallPets.isEmpty && !hasRat ? "Храна за любимци… ама нямаме любимци." : "Храна за всички!", seconds: 2.5)
+            case "fishfood":
+                if let f = smallPet("fish") { feedSmallPet(f); say("Храня рибката!", seconds: 2) }
+                else { say("Нямаме рибка…", seconds: 2) }
             case "cheese":
                 // сиренето е истинско: взима го в ръка и го носи на плъха
                 cheeseInHand += 1
