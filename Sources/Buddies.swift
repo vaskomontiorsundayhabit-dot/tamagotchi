@@ -58,7 +58,7 @@ let propBrush = grid([
 ])
 
 let buddyKinds: [BuddyKind] = [
-    BuddyKind(id: "photo", job: "фотографка", defaultName: "Пиксчочка", color: 0xff8fab, female: true,
+    BuddyKind(id: "photo", job: "фотографка", defaultName: "Пикселка", color: 0xff8fab, female: true,
               lines: friendJobLines, prop: propCamera),
     BuddyKind(id: "music", job: "музикант", defaultName: "Нотко", color: 0x5dade2, female: false,
               lines: ["Тин-тирин!", "Нова песен за клипа ти!", "Ла-ла-лааа!", "Китарата ми е разстроена…", "Това е хит!"],
@@ -91,6 +91,7 @@ final class Buddy: NSObject {
     var nextHungry: Double = 0
     var nextAct: Double = 0
     var nextDance: Double = 0
+    var nextHome: Double = 0
     var target: NSPoint?
     var food: FoodPixel?
 
@@ -107,6 +108,7 @@ final class Buddy: NSObject {
         panel.orderFrontRegardless()
         nextWork = game.time + Double.random(in: 2 * 60...6 * 60)
         nextAct = game.time + Double.random(in: 30...90)
+        nextHome = game.time + Double.random(in: 30 * 60...60 * 60)
     }
 
     func remove() {
@@ -219,7 +221,7 @@ extension Game {
 
     func buddyName(_ k: BuddyKind) -> String {
         if let n = UserDefaults.standard.string(forKey: "buddyName_\(k.id)") { return n }
-        if k.id == "photo", let n = UserDefaults.standard.string(forKey: "friendName") { return n }
+        if k.id == "photo", let n = UserDefaults.standard.string(forKey: "friendName"), n != "Пиксчочка" { return n }
         return k.defaultName
     }
 
@@ -249,29 +251,30 @@ extension Game {
         }
         let pr = petScreenRect()
         let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
-        for id in joinedBuddies where buddy(id) == nil {
+        // обаждане по телефона: идва след малко
+        if let c = pendingCall, time > c.at {
+            pendingCall = nil
+            if let k = buddyKind(c.id), buddy(c.id) == nil {
+                if joinedBuddies.contains(c.id) {
+                    UserDefaults.standard.removeObject(forKey: "buddyAway_\(c.id)")
+                } else {
+                    arriveAsGuest(k, vf: vf)
+                }
+            }
+        }
+        for id in joinedBuddies where buddy(id) == nil && !buddyIsAway(id) {
             guard let k = buddyKind(id) else { continue }
-            let b = Buddy(kind: k, guest: false, origin: NSPoint(x: pr.midX + 120, y: vf.minY), game: self)
+            // идва от ръба на екрана
+            let b = Buddy(kind: k, guest: false, origin: NSPoint(x: vf.minX - BuddyView.size.width, y: vf.minY), game: self)
             buddies.append(b)
+            if time > 5 { buddySay(b, ["Върнах се!", "Ето ме пак!", "Здрасти, \(pet.name)! Вкъщи беше скучно."].randomElement()!, 3) }
         }
         // гости
         let idle = !pet.asleep && hidePhase == .off && seekPhase == .off && racePhase == .off
         if time > nextVisit && idle && !buddies.contains(where: { $0.guest }) {
             nextVisit = time + Double.random(in: 25 * 60...45 * 60)
             let free = buddyKinds.filter { !joinedBuddies.contains($0.id) }
-            if let k = free.randomElement() {
-                let left = Bool.random()
-                let x = left ? vf.minX - BuddyView.size.width : vf.maxX
-                let b = Buddy(kind: k, guest: true, origin: NSPoint(x: x, y: vf.minY), game: self)
-                b.visitUntil = time + Double.random(in: 4 * 60...6 * 60)
-                buddies.append(b)
-                let visits = UserDefaults.standard.integer(forKey: "buddyVisits_\(k.id)") + 1
-                UserDefaults.standard.set(visits, forKey: "buddyVisits_\(k.id)")
-                buddySay(b, visits == 1 ? "Здрасти! Аз съм \(buddyName(k)), \(k.job)!" : "Пак съм аз, \(buddyName(k))!", 3)
-                pendingReply = (visits == 1 ? (k.female ? "О, гости! Добре дошла!" : "О, гости! Добре дошъл!")
-                                : "\(buddyName(k))! Пак си тук! Радвам се!", time + 3, false)
-                sfx("Glass")
-            }
+            if let k = free.randomElement() { arriveAsGuest(k, vf: vf) }
         }
         for (i, b) in buddies.enumerated() { updateBuddy(b, index: i, step, pr: pr, vf: vf) }
         let gone = buddies.filter { $0.leaving && !$0.panel.frame.intersects(vf.insetBy(dx: -5, dy: -5)) }
@@ -289,10 +292,35 @@ extension Game {
         let hit = buddyHover(b)
         if p.ignoresMouseEvents == hit { p.ignoresMouseEvents = !hit }
 
+        // тревога: всички бягат зад ръба
+        if hidePhase != .off && hidePhase != .returning {
+            let goal = o.x + p.frame.width / 2 < vf.midX ? vf.minX - p.frame.width - 30 : vf.maxX + 30
+            let dx = goal - o.x
+            v.walking = abs(dx) > 3
+            v.facingLeft = dx < 0
+            o.x += (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(600 * step))
+            o.y = y
+            p.setFrameOrigin(o)
+            if b.view.text == nil || time > b.view.textUntil, abs(dx) > 200 { buddySay(b, "АААА! Бягам!", 1.5) }
+            return
+        }
+
+        // понякога си отиват до вкъщи (и после се връщат)
+        if !b.guest && !b.leaving && time > b.nextHome {
+            b.nextHome = time + Double.random(in: 30 * 60...60 * 60)
+            if !b.working && !pet.asleep && racePhase == .off && Int.random(in: 0..<100) < 35 {
+                b.leaving = true
+                UserDefaults.standard.set(Date().addingTimeInterval(Double.random(in: 20 * 60...60 * 60)), forKey: "buddyAway_\(b.kind.id)")
+                buddySay(b, ["Отивам си до вкъщи, ще се върна!", "Мама ме вика за вечеря. Чао!", "Отивам да си почина у дома."]
+                    .randomElement()!, 3)
+                pendingReply = ("Чао, \(buddyName(b.kind))! Ела пак!", time + 2.5, false)
+            }
+        }
+
         // гостът си тръгва (или пита дали може да остане)
         if b.guest && !b.leaving && (time > b.visitUntil || pet.asleep) {
             let visits = UserDefaults.standard.integer(forKey: "buddyVisits_\(b.kind.id)")
-            let canAsk = visits >= 2 && !b.asked && !pet.asleep
+            let canAsk = visits >= visitsNeeded(b.kind.id) && !b.asked && !pet.asleep
             if canAsk {
                 if questionPanel == nil {
                 b.asked = true
@@ -336,13 +364,18 @@ extension Game {
         if asleep {
             v.walking = false
         } else if let target = b.target {
-            // тича към пиксел-храната
-            let dx = target.x - o.x, dy = target.y - o.y
-            let d = hypot(dx, dy)
-            let sp = CGFloat(500 * step)
+            // тича по пода към пиксела (не лети и не минава през нарисуваното)
+            let dx = target.x - o.x
+            let sp = CGFloat(260 * step)
             v.walking = true
             v.facingLeft = dx < 0
-            if d < sp {
+            o.y = y
+            let mid = o.x + BuddyView.size.width / 2
+            if abs(dx) >= sp && buddyBlockedAt(mid + (dx > 0 ? sp + 10 : -sp - 10), vf.minY) {
+                b.target = nil
+                b.food = nil
+                buddySay(b, "Не мога да мина оттук…", 1.5)
+            } else if abs(dx) < sp {
                 b.target = nil
                 if let f = b.food, foods.contains(where: { $0 === f }) {
                     f.remove(); foods.removeAll { $0 === f }
@@ -356,7 +389,7 @@ extension Game {
                 }
                 b.food = nil
             } else {
-                o.x += dx / d * sp; o.y += dy / d * sp
+                o.x += dx > 0 ? sp : -sp
             }
         } else {
             // стои до Пиксчо: първият вляво, вторият вдясно, следващите по-навън
@@ -365,7 +398,11 @@ extension Game {
             let gx = min(max(goal, vf.minX - 40), vf.maxX - BuddyView.size.width + 40)
             let dx = gx - o.x
             v.walking = abs(dx) > 3 || abs(o.y - y) > 3
-            if abs(dx) > 3 { v.facingLeft = dx < 0; o.x += (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(60 * step)) }
+            if abs(dx) > 3 {
+                v.facingLeft = dx < 0
+                let nx = o.x + (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat((abs(dx) > 300 ? 220 : 60) * step))
+                if buddyBlockedAt(nx + BuddyView.size.width / 2 + (dx > 0 ? 12 : -12), vf.minY) { v.walking = false } else { o.x = nx }
+            }
             if abs(o.y - y) > 3 { o.y += (y > o.y ? 1 : -1) * min(abs(y - o.y), CGFloat(300 * step)) } else { o.y = y }
             if !v.walking { v.facingLeft = pr.midX < o.x + BuddyView.size.width / 2 }
         }
@@ -374,7 +411,7 @@ extension Game {
         guard time > b.nextAct, !pet.asleep, !asleep, hidePhase == .off else { return }
         b.nextAct = time + Double.random(in: 60...150)
         let r = Int.random(in: 0..<10)
-        if (r < 2 || b.full < 30), let food = foods.randomElement() {
+        if (r < 2 || b.full < 30), let food = foods.filter({ $0.onFloor && !$0.view.held }).randomElement() {
             b.food = food
             b.target = NSPoint(x: food.panel.frame.midX - BuddyView.size.width / 2, y: food.panel.frame.minY - v.feetY + 40)
             buddySay(b, "Пиксел!", 1.5)
@@ -393,6 +430,84 @@ extension Game {
             buddySay(b, a, 3); v.face = .happy
             pendingReply = (c, time + 2.5, false)
         }
+    }
+
+    /// Гост пристига от ръба на екрана. Ако Пиксчо работи, реагира различно.
+    func arriveAsGuest(_ k: BuddyKind, vf: NSRect) {
+        let left = Bool.random()
+        let x = left ? vf.minX - BuddyView.size.width : vf.maxX
+        let b = Buddy(kind: k, guest: true, origin: NSPoint(x: x, y: vf.minY), game: self)
+        b.visitUntil = time + Double.random(in: 4 * 60...6 * 60)
+        buddies.append(b)
+        let visits = UserDefaults.standard.integer(forKey: "buddyVisits_\(k.id)") + 1
+        UserDefaults.standard.set(visits, forKey: "buddyVisits_\(k.id)")
+        buddySay(b, visits == 1 ? "Здрасти! Аз съм \(buddyName(k)), \(k.job)!" : "Пак съм аз, \(buddyName(k))!", 3)
+        sfx("Glass")
+        if pet.working || goingToWork {
+            switch Int.random(in: 0..<3) {
+            case 0:
+                pendingReply = ("Сега монтирам! Седни, ще свърша скоро.", time + 3, false)
+                b.visitUntil += 5 * 60
+            case 1:
+                pendingReply = ("\(buddyName(k))! За теб ще спра работа!", time + 3, false)
+                stopWork()
+            default:
+                pendingReply = ("Ох, точно сега съм зает… клиентът чака.", time + 3, false)
+                b.visitUntil = time + 8
+                buddySay(b, "Виждам, че си зает. Ще мина по-късно!", 3)
+            }
+            return
+        }
+        pendingReply = (visits == 1 ? (k.female ? "О, гости! Добре дошла!" : "О, гости! Добре дошъл!")
+                        : "\(buddyName(k))! Пак си тук! Радвам се!", time + 3, false)
+    }
+
+    func visitsNeeded(_ id: String) -> Int {
+        let key = "buddyNeed_\(id)"
+        var n = UserDefaults.standard.integer(forKey: key)
+        if n == 0 { n = Int.random(in: 2...3); UserDefaults.standard.set(n, forKey: key) }
+        return n
+    }
+
+    func buddyIsAway(_ id: String) -> Bool {
+        (UserDefaults.standard.object(forKey: "buddyAway_\(id)") as? Date ?? .distantPast) > Date()
+    }
+
+    /// На кого може да звънне: приятелите, които са си вкъщи, и тези, които вече са идвали.
+    func callableBuddies() -> [BuddyKind] {
+        buddyKinds.filter { k in
+            if buddy(k.id) != nil { return false }
+            if joinedBuddies.contains(k.id) { return buddyIsAway(k.id) }
+            return UserDefaults.standard.integer(forKey: "buddyVisits_\(k.id)") > 0
+        }
+    }
+
+    @objc func callBuddyMenu(_ sender: NSMenuItem) {
+        if let id = sender.representedObject as? String { callBuddy(id) }
+    }
+
+    @objc func callFriendFromRetro() {
+        guard checkAwake() else { return }
+        if let k = callableBuddies().randomElement() { callBuddy(k.id) }
+        else { say("Нямам на кого да звънна… още никой не ни е идвал на гости.", seconds: 3) }
+    }
+
+    /// Звъни по телефона; приятелят идва след малко.
+    func callBuddy(_ id: String) {
+        guard let k = buddyKind(id), buddy(id) == nil, !pet.asleep, pendingCall == nil else { return }
+        phoneUntil = time + 4
+        sfx("Tink")
+        say(["Ало, \(buddyName(k))? Ела у нас!", "Ало? \(buddyName(k))! Скучно ми е, идвай!", "Ринг-ринг… \(buddyName(k)), ела!"]
+            .randomElement()!, seconds: 3.5)
+        pendingCall = (id, time + Double.random(in: 6...10))
+    }
+
+    /// Понякога сам звъни на някого, когато му е скучно.
+    func maybeCallSomeone() {
+        guard time > nextSelfCall, pet.fun < 50, !pet.asleep, !pet.working, hidePhase == .off, window.isVisible,
+              questionPanel == nil, pendingCall == nil else { return }
+        nextSelfCall = time + Double.random(in: 30 * 60...50 * 60)
+        if let k = callableBuddies().randomElement() { callBuddy(k.id) }
     }
 
     // --- професиите ---
@@ -421,7 +536,7 @@ extension Game {
                 v.flashAt = time
                 sfx("Tink", every: 3)
             }
-            let lens = pet.owned.contains("lens")
+            let lens = pet.has("lens")
             if b.workSeconds >= (lens ? 10 : 15) * 60 {
                 b.workSeconds = 0
                 earnCoins(lens ? 25 : 15)
@@ -515,7 +630,6 @@ extension Game {
             item(b.sleeping ? "Събуди" : "Приспи", 2)
             item("Нахрани с пиксел", 3)
             item("Състезание с \(pet.name)", 7)
-            item("Смени името…", 5)
         }
         item("Прегърни \(pet.name)", 4)
         return menu
@@ -545,7 +659,9 @@ extension Game {
         case 5:
             askName(id)
         case 6:
-            buddyJoins(b)
+            let visits = UserDefaults.standard.integer(forKey: "buddyVisits_\(id)")
+            if visits >= visitsNeeded(id) { buddyJoins(b) }
+            else { buddySay(b, ["Още е рано… може следващия път!", "Хм, нека дойда още веднъж първо!"].randomElement()!, 3) }
         case 7:
             offerRace(with: b)
         default:
@@ -562,7 +678,6 @@ extension Game {
         start(.love, length: 2.5)
         buddySay(b, "Ураа! Оставам!", 3)
         sfx("Hero")
-        if !buddyHasName(b.kind.id) { nextNameAsk = time + 5 }
     }
 
     func buddyAnswer(stay: Bool) {

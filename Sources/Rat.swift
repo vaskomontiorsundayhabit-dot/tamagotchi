@@ -3,7 +3,7 @@
 
 import AppKit
 
-enum RatGoal { case food(FoodPixel), pixel, ball }
+enum RatGoal { case food(FoodPixel), pixel, ball, toy }
 
 let ratAngryLines = ["Цик! Гладен съм! Забрави ме!", "Цик-цик! Къде ми е храната?!", "Сърдит съм ти, цик!",
                      "Никой не се грижи за мен… цик.", "ЦИК! Купичката е празна!"]
@@ -147,7 +147,7 @@ final class CageView: NSView {
         NSColor(hex: 0x5c3a1e).setFill()
         NSRect(x: r.minX - 2, y: r.minY, width: r.width + 4, height: 5).fill()
         NSRect(x: r.midX - 6, y: r.minY - 6, width: 12, height: 6).fill()
-        let owned = game.pet.owned
+        let owned = game.pet.owned.filter { game.pet.has($0) }
         let inWheel = game.ratInCage && owned.contains("wheel") && Int(game.time / 10) % 3 == 0
         // колелото (вътре, вдясно)
         if owned.contains("wheel") {
@@ -191,7 +191,7 @@ final class CageView: NSView {
         }
         // топчето (отвън, до клетката)
         if owned.contains("toy") {
-            let roll = game.ratInCage ? 0 : CGFloat(sin(game.time * 1.3)) * 3
+            let roll = game.time < game.ratToyUntil ? CGFloat(sin(game.time * 9)) * 8 : 0
             drawGrid(iconToy, x: r.minX - 30 + roll, y: r.maxY - 16, s: 2, palette: game.color)
         }
         // решетките
@@ -228,9 +228,9 @@ extension Game {
 
     var ratHungryMinutes: Double { Date().timeIntervalSince(ratFedAt) / 60 }
     var ratLonelyMinutes: Double { Date().timeIntervalSince(ratPlayedAt) / 60 }
-    var ratHungerLimit: Double { pet.owned.contains("feeder") ? 120 : 60 }
-    var ratAngry: Bool { ratHungryMinutes > ratHungerLimit || ratLonelyMinutes > (pet.owned.contains("wheel") ? 240 : 120) + (pet.owned.contains("toy") ? 60 : 0) }
-    var hasRat: Bool { pet.owned.contains("rat") }
+    var ratHungerLimit: Double { pet.has("feeder") ? 120 : 60 }
+    var ratAngry: Bool { ratHungryMinutes > ratHungerLimit || ratLonelyMinutes > (pet.has("wheel") ? 240 : 120) + (pet.has("toy") ? 60 : 0) }
+    var hasRat: Bool { pet.has("rat") }
     var ratIsOut: Bool { hasRat && !ratInCage && ratPanel != nil }
 
     func ratSay(_ text: String, _ seconds: Double) {
@@ -357,6 +357,9 @@ extension Game {
             case .ball:
                 guard let b = ball, fetchPhase == .waiting, !b.flying, !b.carried else { ratGoal = nil; p.setFrameOrigin(o); return }
                 gx = b.panel.frame.midX - half
+            case .toy:
+                guard pet.has("toy"), let c = cagePanel else { ratGoal = nil; p.setFrameOrigin(o); return }
+                gx = c.frame.minX + 20 - half
             }
             let dx = gx - o.x
             v.running = true
@@ -367,9 +370,8 @@ extension Game {
                 ratGoal = nil
                 ratReached(goal)
             } else if ratBlocked(o.x + (dx > 0 ? sp : -sp), o.y) {
-                // нарисувана стена: отказва се
-                ratGoal = nil
-                ratSay("Цик? Стена!", 1.2)
+                // нарисувана стена: прояжда си път
+                ratChew(o.x + (dx > 0 ? sp : -sp), o.y)
             } else {
                 o.x += dx > 0 ? sp : -sp
             }
@@ -425,7 +427,7 @@ extension Game {
             v.facingLeft = dx < 0
             v.running = true
             let nx = o.x + (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(70 * step))
-            if ratBlocked(nx, o.y) { ratTarget = nil; v.running = false } else { o.x = nx }
+            if ratBlocked(nx, o.y) { ratChew(nx, o.y); v.running = false } else { o.x = nx }
         } else if ratAngry {
             // сърдит: обръща гръб на Пиксчо
             v.facingLeft = pr.midX > o.x + half
@@ -454,6 +456,13 @@ extension Game {
             nextBallSteal = time + Double.random(in: 40...120)
             if Int.random(in: 0..<100) < 40 { ratGoal = .ball; ratSay("Топка! Цик!", 1.5); return }
         }
+        // играе си сам с топчето до клетката
+        if pet.has("toy") && time > nextRatToy && !chasing {
+            nextRatToy = time + Double.random(in: 3 * 60...7 * 60)
+            ratGoal = .toy
+            ratSay("Топчето! Цик!", 1.5)
+            return
+        }
         // яде паднали на пода пиксели
         if time > nextRatSnack {
             let onFloorFoods = foods.filter { $0.onFloor && !$0.view.held }
@@ -463,6 +472,32 @@ extension Game {
                 ratSay("Пиксел на пода! Цик!", 1.5)
             } else {
                 nextRatSnack = time + 20
+            }
+        }
+    }
+
+    /// Гризе нарисуваното пред себе си: по един пиксел на всеки малко.
+    func ratChew(_ x: CGFloat, _ y: CGFloat) {
+        guard time > nextChew else { return }
+        nextChew = time + 0.35
+        let mid = x + RatView.size.width / 2
+        let r = NSRect(x: mid - 22, y: y + 3, width: 44, height: 17)
+        let x0 = Int(floor(r.minX / drawCell)), x1 = Int(floor(r.maxX / drawCell))
+        let y0 = Int(floor(r.minY / drawCell)), y1 = Int(floor(r.maxY / drawCell))
+        outer: for cy in y0...max(y0, y1) {
+            for cx in x0...max(x0, x1) where drawCells[cellKey(cx, cy)] != nil {
+                drawCells.removeValue(forKey: cellKey(cx, cy))
+                break outer
+            }
+        }
+        redrawDrawing()
+        saveDrawing()
+        sfx("Pop", every: 0.6)
+        if time > nextChewLine {
+            nextChewLine = time + 25
+            ratSay(["Ням-ням, пиксели!", "Хрус-хрус! Цик!", "Вкусна рисунка!"].randomElement()!, 1.5)
+            if !pet.asleep && hidePhase == .off && Bool.random() {
+                say(["Ей! \(ratLabel.capitalized) ми яде рисунката!", "Не гризи платформите ми!"].randomElement()!, seconds: 2.5)
             }
         }
     }
@@ -552,6 +587,11 @@ extension Game {
             start(.angry, length: 1.5)
             say("ЕЙ! Открадна ми пиксел! ВЪРНИ ГО!", seconds: 2.5)
             if !chasing && !busyMoving { startRatChase() }
+        case .toy:
+            ratPlayedAt = Date()
+            ratToyUntil = time + 6
+            ratView?.heartsUntil = time + 2
+            ratSay(["Туп-туп! Цик!", "Моето топче!", "Играя си! Цик-цик!"].randomElement()!, 2)
         case .ball:
             guard let b = ball else { return }
             b.carried = true

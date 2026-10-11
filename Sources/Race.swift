@@ -107,7 +107,8 @@ extension Game {
     private func placeOpponent(running: Bool) {
         if let b = raceBuddy {
             let w = BuddyView.size
-            b.panel.setFrameOrigin(NSPoint(x: raceOppX - w.width / 2, y: raceFloor - (w.height - b.view.feetY)))
+            let hop = time - raceOppHop < 0.5 ? CGFloat(sin((time - raceOppHop) / 0.5 * .pi)) * 60 : 0
+            b.panel.setFrameOrigin(NSPoint(x: raceOppX - w.width / 2, y: raceFloor - (w.height - b.view.feetY) + hop))
             b.view.walking = running
             b.view.facingLeft = false
         } else if let p = ratPanel, let v = ratView {
@@ -162,10 +163,37 @@ extension Game {
             }
             walking = true
             facingLeft = false
-            var o = window.frame.origin
-            o.x += CGFloat(racePetSpeed * step)
-            window.setFrameOrigin(o)
-            raceOppX += CGFloat(raceOppSpeed * step)
+            if !jumping {
+                let dx = CGFloat(racePetSpeed * step)
+                if bodyHitsDrawing(dx: dx + 2) {
+                    // нарисувана стена: ниска → прескача, висока → пробива
+                    let pr = petScreenRect()
+                    let front = NSRect(x: pr.maxX - 6, y: feetScreenY + 3, width: 40, height: 400)
+                    let top = drawingTop(in: front) ?? feetScreenY
+                    if top - feetScreenY <= 90 {
+                        jump(toFeet: NSPoint(x: pr.midX + 110, y: raceFloor))
+                        say("Хоп! Прескачам!", seconds: 1)
+                    } else {
+                        smashCells(in: NSRect(x: pr.maxX - 10, y: feetScreenY + 3, width: 30, height: pr.height),
+                                   from: NSPoint(x: pr.midX, y: pr.midY), limit: 30)
+                        say("Пробивам!", seconds: 1)
+                    }
+                } else {
+                    var o = window.frame.origin
+                    o.x += dx
+                    window.setFrameOrigin(o)
+                }
+            }
+            let ox = raceOppX + CGFloat(raceOppSpeed * step)
+            if raceBuddy == nil {
+                // плъхът прояжда рисунката
+                if ratBlocked(ox - RatView.size.width / 2, raceFloor) { ratChew(ox - RatView.size.width / 2, raceFloor) } else { raceOppX = ox }
+            } else if buddyBlockedAt(ox, raceFloor) && time - raceOppHop > 0.6 {
+                raceOppHop = time
+                raceOppX += 90
+            } else {
+                raceOppX = ox
+            }
             placeOpponent(running: true)
             let petX = petScreenRect().midX
             if petX >= raceFinishX || raceOppX >= raceFinishX {
@@ -205,6 +233,24 @@ extension Game {
         raceBuddy = nil
         walking = false
         saveWindowPosition()
+    }
+
+    /// Най-горният нарисуван пиксел в правоъгълника (или nil).
+    func drawingTop(in r: NSRect) -> CGFloat? {
+        guard !drawCells.isEmpty else { return nil }
+        let x0 = Int(floor(r.minX / drawCell)), x1 = Int(floor(r.maxX / drawCell))
+        let y0 = Int(floor(r.minY / drawCell)), y1 = Int(floor(r.maxY / drawCell))
+        guard x1 >= x0, y1 >= y0, (x1 - x0 + 1) * (y1 - y0 + 1) < 40000 else { return nil }
+        var top: CGFloat?
+        for cy in y0...y1 {
+            for cx in x0...x1 where drawCells[cellKey(cx, cy)] != nil { top = max(top ?? 0, CGFloat(cy + 1) * drawCell) }
+        }
+        return top
+    }
+
+    /// Нарисувано ли е там, където би стъпил приятел (средата му е x, краката на y)?
+    func buddyBlockedAt(_ x: CGFloat, _ feet: CGFloat) -> Bool {
+        drawingTop(in: NSRect(x: x - 18, y: feet + 3, width: 36, height: 30)) != nil
     }
 
     // --- ревност ---

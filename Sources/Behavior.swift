@@ -16,7 +16,7 @@ let drawRequests = ["сърце", "къща", "дърво", "стълбичка"
 
 enum Reaction { case happy, angry(Double), work, shop, clip, play, nothing, comeOut, sleep, seek, laser, balloon,
                  feedRat, cuddleRat, jump, draw, acceptName, nextName, buddyStay, buddyGo,
-                 raceBetPet, raceBetOther, raceNoBet }
+                 raceBetPet, raceBetOther, raceNoBet, update }
 
 struct Question {
     let text: String
@@ -290,6 +290,7 @@ extension Game {
         case .raceBetPet: beginRace(bet: 0)
         case .raceBetOther: beginRace(bet: 1)
         case .raceNoBet: beginRace(bet: -1)
+        case .update: if availableBuild > currentBuild && !updating { installUpdate() }
         }
         addXP(2)
     }

@@ -300,6 +300,16 @@ let iconBattle = grid([
     ".KBBBBK.",
     "..KKKK..",
 ])
+let iconPhone = grid([
+    ".KKKK...",
+    ".KCCK...",
+    ".KCCK...",
+    ".KCCK...",
+    ".KKKK...",
+    ".KEEK...",
+    ".KKKK...",
+    "........",
+])
 let iconFlag = grid([
     "KKKKKKK.",
     "KWSWSWK.",
@@ -858,9 +868,37 @@ extension Game {
         pet.worn.append(item.id)
     }
 
+    /// Купено, но махнато?
+    func itemOff(_ item: ShopItem) -> Bool {
+        item.kind == .stack ? pet.shownMonitors == 0 : pet.disabled.contains(item.id)
+    }
+
+    /// От инвентара: маха или връща купено нещо (без да го продава).
+    func toggleItem(_ item: ShopItem) {
+        switch item.kind {
+        case .stack:
+            // маха по един допълнителен монитор, после ги връща всички
+            pet.hiddenMonitors = pet.hiddenMonitors < pet.extraMonitors ? pet.hiddenMonitors + 1 : 0
+            say(pet.hiddenMonitors == 0 ? "Всички монитори обратно! Вече са \(monitorCount)." : "Махнах един монитор. Остават \(monitorCount).",
+                seconds: 2.5)
+        case .upgrade:
+            if pet.disabled.contains(item.id) {
+                pet.disabled.removeAll { $0 == item.id }
+                say("\(item.name) пак е тук!", seconds: 2.5)
+            } else {
+                pet.disabled.append(item.id)
+                say(item.id == "rat" ? "Прибрах \(ratLabel) за малко." : "Махнах „\(item.name.lowercased())“.", seconds: 2.5)
+            }
+        default:
+            return
+        }
+        sfx("Tink")
+        save()
+    }
+
     func earnCoins(_ n: Int) {
         guard n > 0 else { return }
-        pet.coins += pet.owned.contains("piggy") ? Int((Double(n) * 1.25).rounded(.up)) : n
+        pet.coins += pet.has("piggy") ? Int((Double(n) * 1.25).rounded(.up)) : n
     }
 
     func sell(_ item: ShopItem) {

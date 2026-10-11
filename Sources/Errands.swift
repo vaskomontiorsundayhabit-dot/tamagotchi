@@ -3,7 +3,7 @@
 
 import AppKit
 
-enum Errand: Equatable { case fetchMonitor, storeMonitor, feedRat, cuddleRat, ratToCage, ratOut, sleep, stepOn(NSPoint) }
+enum Errand: Equatable { case fetchMonitor, storeMonitor, feedRat, cuddleRat, ratToCage, ratOut, sleep, stepOn(NSPoint), eggCare }
 
 let petNames = [
     "Бобо", "Чочо", "Пипи", "Фъстък", "Бисер", "Мики", "Зузу", "Тошко", "Кексче", "Пухчо",
@@ -145,14 +145,63 @@ extension Game {
 
     /// Отива така, че краката му да са до точката (отстрани, не върху нея). true, когато стигне.
     func walkTo(feet p: NSPoint, speed: Double, _ step: Double) -> Bool {
+        if jumping { return false }
         let pr = petScreenRect()
         let side: CGFloat = pr.midX < p.x ? -1 : 1
         let lift = window.frame.height - view.feetY
-        let target = NSPoint(x: p.x + side * (pr.width / 2 + 14) - bodyCenterOffset, y: p.y - lift)
+        let standX = p.x + side * (pr.width / 2 + 14)
+        // на друго ниво (платформа или пода): първо скача, не ходи по въздуха
+        if abs(p.y - feetScreenY) > 20 {
+            jump(toFeet: NSPoint(x: standX, y: p.y))
+            return false
+        }
+        let target = NSPoint(x: standX - bodyCenterOffset, y: p.y - lift)
         walking = true
         if moveWindow(toward: target, speed: CGFloat(speed * step)) {
             walking = false
             facingLeft = side > 0
+            return true
+        }
+        return false
+    }
+
+    /// Пода под него (на екрана, където е).
+    var floorY: CGFloat {
+        let pr = petScreenRect()
+        return screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame.minY ?? 0
+    }
+
+    /// Отива зад ръба (по пода) и се връща у дома (със скок, ако домът е на платформа).
+    /// Връща true, когато е готов; onEdge се вика зад ръба.
+    func edgeTrip(_ step: Double, out: Double, back: Double, onEdge: () -> Void) -> Bool {
+        switch errandStage {
+        case 0:
+            errandHome = window.frame.origin
+            if feetScreenY - floorY > 8 { jump(toFeet: NSPoint(x: petScreenRect().midX, y: floorY)) }
+            errandStage = 1
+        case 1:
+            if jumping { return false }
+            errandTarget = offscreenOrigin(left: nearerEdgeIsLeft())
+            errandStage = 2
+        case 2:
+            walking = true
+            if moveWindow(toward: errandTarget, speed: CGFloat(out * step)) {
+                onEdge()
+                errandStage = 3
+                errandStart = time
+            }
+        case 3:
+            walking = false
+            if time - errandStart > 0.7 { errandStage = 4 }
+        case 4:
+            walking = true
+            if moveWindow(toward: NSPoint(x: errandHome.x, y: window.frame.minY), speed: CGFloat(back * step)) {
+                walking = false
+                if abs(errandHome.y - window.frame.minY) > 4 { jump(toOrigin: errandHome) }
+                errandStage = 5
+            }
+        default:
+            if jumping { return false }
             return true
         }
         return false
@@ -164,59 +213,27 @@ extension Game {
         if pet.dead || hidePhase != .off { cancelErrands(); return }
         switch e {
         case .fetchMonitor:
-            switch errandStage {
-            case 0:
-                errandHome = window.frame.origin
-                errandTarget = offscreenOrigin(left: nearerEdgeIsLeft())
-                errandStage = 1
-                if bubbleText == nil {
-                    say(["Отивам да си донеса монитора!", "Чакай, ей сега идвам с монитора!", "Мониторът е отзад, носим го!"]
-                        .randomElement()!, seconds: 2.5)
-                }
-            case 1:
-                walking = true
-                if moveWindow(toward: errandTarget, speed: CGFloat(420 * step)) {
-                    showCarriedMonitor()
-                    errandStage = 2
-                    errandStart = time
-                }
-            case 2:
-                walking = false
-                if time - errandStart > 0.8 { errandStage = 3 }
-            default:
-                walking = true
-                if moveWindow(toward: errandHome, speed: CGFloat(240 * step)) {
-                    hideCarriedMonitor()
-                    beginWork()
-                    nextErrand()
-                }
+            if errandStage == 0 && bubbleText == nil {
+                say(["Отивам да си донеса монитора!", "Чакай, ей сега идвам с монитора!", "Мониторът е отзад, носим го!"]
+                    .randomElement()!, seconds: 2.5)
+            }
+            if edgeTrip(step, out: 420, back: 240, onEdge: { showCarriedMonitor() }) {
+                hideCarriedMonitor()
+                beginWork()
+                nextErrand()
             }
         case .storeMonitor:
-            switch errandStage {
-            case 0:
+            if errandStage == 0 {
                 pet.working = false
                 autoWorking = false
                 if monitorDetached { reattachMonitor() }
-                errandHome = window.frame.origin
-                errandTarget = offscreenOrigin(left: nearerEdgeIsLeft())
                 showCarriedMonitor()
-                errandStage = 1
-            case 1:
-                walking = true
-                if moveWindow(toward: errandTarget, speed: CGFloat(260 * step)) {
-                    hideCarriedMonitor()
-                    errandStage = 2
-                    errandStart = time
-                }
-            case 2:
-                walking = false
-                if time - errandStart > 0.6 { errandStage = 3 }
-            default:
-                walking = true
-                if moveWindow(toward: errandHome, speed: CGFloat(420 * step)) { nextErrand() }
             }
+            if edgeTrip(step, out: 260, back: 420, onEdge: { hideCarriedMonitor() }) { nextErrand() }
         case .feedRat, .cuddleRat, .ratToCage, .ratOut:
             updateRatErrand(e, step)
+        case .eggCare:
+            updateEggErrand(step)
         case .sleep:
             fallAsleep()
             nextErrand()
@@ -348,8 +365,8 @@ extension Game {
 
     func updateNames(_ idle: Bool) {
         guard idle, questionPanel == nil, letterPanel == nil, errands.isEmpty, !playingGame, time > nextNameAsk else { return }
-        if pet.owned.contains("rat") && ratName == nil { askName("rat") }
-        else if let id = joinedBuddies.first(where: { !buddyHasName($0) }) { askName(id) }
+        if pet.has("rat") && ratName == nil { askName("rat") }
+        else if babyAlive && babyName == nil { askName("baby") }
     }
 
     @objc func renameRat() { askName("rat") }
@@ -363,7 +380,7 @@ extension Game {
         var n = petNames.randomElement()!
         while n == pendingName { n = petNames.randomElement()! }
         pendingName = n
-        let what = who == "rat" ? "плъхчето" : (buddyKind(who).map { "новия ни приятел (\($0.job))" } ?? "приятеля ми")
+        let what = who == "rat" ? "плъхчето" : "бебето от яйцето"
         ask(Question(text: "Как да кръстим \(what)? Харесва ли ти „\(n)“?", answers: [
             ("ХАРЕСВА МИ", "„\(n)“! Чудесно име!", .acceptName), ("ДРУГО", "Хм… чакай да помисля.", .nextName),
         ]), index: -1)
@@ -376,8 +393,8 @@ extension Game {
             UserDefaults.standard.set(n, forKey: "ratName")
             ratSay("Цик! Аз съм \(n)!", 3)
         } else {
-            UserDefaults.standard.set(n, forKey: "buddyName_\(pendingNameFor)")
-            if let b = buddy(pendingNameFor) { buddySay(b, "Аз съм \(n)! Харесва ми!", 3) }
+            UserDefaults.standard.set(n, forKey: "babyName")
+            babySay("Ги-ги! (\(n))", 3)
         }
         start(.love, length: 1.5)
     }

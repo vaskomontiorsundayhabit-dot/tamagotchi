@@ -633,6 +633,8 @@ struct Pet: Codable {
     var coins = 0
     var owned: [String] = []
     var worn: [String] = []
+    var disabled: [String] = []        // купени, но махнати (изключени) неща
+    var hiddenMonitors = 0             // прибрани допълнителни монитори
     var workCoinSeconds: Double = 0
     var overfull: Double = 0           // преяждане 0…100 (коремчето)
     var tired: Double = 0              // часове без сън (червени очи над 3)
@@ -672,6 +674,8 @@ struct Pet: Codable {
         coins = try c.decodeIfPresent(Int.self, forKey: .coins) ?? coins
         owned = try c.decodeIfPresent([String].self, forKey: .owned) ?? owned
         worn = try c.decodeIfPresent([String].self, forKey: .worn) ?? worn
+        disabled = try c.decodeIfPresent([String].self, forKey: .disabled) ?? disabled
+        hiddenMonitors = try c.decodeIfPresent(Int.self, forKey: .hiddenMonitors) ?? hiddenMonitors
         workCoinSeconds = try c.decodeIfPresent(Double.self, forKey: .workCoinSeconds) ?? workCoinSeconds
         overfull = try c.decodeIfPresent(Double.self, forKey: .overfull) ?? overfull
         tired = try c.decodeIfPresent(Double.self, forKey: .tired) ?? tired
@@ -693,6 +697,10 @@ struct Pet: Codable {
         lastUpdate = try c.decodeIfPresent(Date.self, forKey: .lastUpdate) ?? lastUpdate
     }
 
+    /// Купено и включено.
+    func has(_ id: String) -> Bool { owned.contains(id) && !disabled.contains(id) }
+    var shownMonitors: Int { max(0, extraMonitors - hiddenMonitors) }
+
     /// с всяко ниво един залепен пиксел повече (започва от 3×3)
     var cellsAcross: Int { Int(Double(8 + min(250, level)).squareRoot().rounded(.up)) }
     var xpNeeded: Int { 15 + level * 3 }
@@ -703,7 +711,7 @@ struct Pet: Codable {
     mutating func tick(_ dt: Double, offline: Bool = false) {
         guard !dead, dt > 0 else { return }
         let m = dt / 60
-        let rest = owned.contains("lamp") ? 6.0 : 4.0
+        let rest = has("lamp") ? 6.0 : 4.0
         tired = asleep || offline ? max(0, tired - dt / 3600 * rest) : tired + dt / 3600
         if asleep {
             working = false
@@ -716,7 +724,7 @@ struct Pet: Codable {
         } else if working && !offline {
             fullness -= 0.6 * m * (1 + Double(level) / 100)
             fun -= 0.3 * m
-            energy -= (owned.contains("chair") ? 0.7 : 1.0) * m
+            energy -= (has("chair") ? 0.7 : 1.0) * m
             work += 5 * m
             workSeconds += dt
             if energy <= 10 { working = false }
@@ -1250,6 +1258,12 @@ final class PetView: NSView {
             NSRect(x: r.minX + 5, y: r.maxY - 5, width: 6, height: 1).fill()
         }
 
+        // телефон до ухото, докато звъни
+        if t < game.phoneUntil {
+            let px = centerX + (flip ? -bodyW / 2 - 4 : bodyW / 2 - 8)
+            drawGrid(iconPhone, x: px, y: headTop + 6, s: 2, palette: game.color)
+        }
+
         // чадър, когато вали навън
         if game.umbrellaUp && !pet.dead {
             let ux = centerX + (flip ? -bodyW / 3 : bodyW / 3)
@@ -1617,7 +1631,7 @@ final class RetroView: NSView {
     static let cell: CGFloat = 36
     static let invCell: CGFloat = 30
     static let pad: CGFloat = 12
-    static let width = pad * 2 + cell * 11
+    static let width = pad * 2 + cell * 13
     static let height: CGFloat = 162
     static let heightWithInventory: CGFloat = 244
     var showInventory = false
@@ -1676,7 +1690,8 @@ final class RetroView: NSView {
         if h.0 == 2 {
             // облича/съблича нещо от инвентара
             let item = inventory[h.1]
-            if item.kind == .wear { game.shopAction(item); needsDisplay = true }
+            if item.kind == .wear { game.shopAction(item) } else { game.toggleItem(item) }
+            needsDisplay = true
             return
         }
         guard h.0 == 1, let sel = actions[h.1].action else { return }
@@ -1756,11 +1771,23 @@ final class RetroView: NSView {
         for (i, item) in inventory.enumerated() {
             let r = cellRect(2, i)
             let worn = pet.worn.contains(item.id)
+            let off = game.itemOff(item)
             NSColor(hex: worn ? 0x2f5d50 : (hover?.0 == 2 && hover?.1 == i ? 0x3a3a50 : 0x26263a)).setFill()
             r.insetBy(dx: 2, dy: 2).fill()
+            if item.kind == .stack && pet.extraMonitors > 0 {
+                let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 8, weight: .heavy),
+                                                        .foregroundColor: NSColor(hex: 0xffd166)]
+                ("\(pet.shownMonitors)/\(pet.extraMonitors)" as NSString).draw(at: NSPoint(x: r.minX + 3, y: r.maxY - 11), withAttributes: a)
+            }
             let w = CGFloat(item.icon[0].count), h = CGFloat(item.icon.count)
             let s = min(2.5, 22 / max(w, h))
-            drawGrid(item.icon, x: r.midX - w * s / 2, y: r.midY - h * s / 2, s: s, palette: game.color)
+            let grey: (Character) -> NSColor? = { c in game.color(c) == nil ? nil : NSColor(hex: 0x4a4a60) }
+            let pal: (Character) -> NSColor? = off ? grey : { c in game.color(c) }
+            drawGrid(item.icon, x: r.midX - w * s / 2, y: r.midY - h * s / 2, s: s, palette: pal)
+            if off {
+                NSColor(hex: 0xe63946).setFill()
+                NSRect(x: r.minX + 4, y: r.midY - 1, width: r.width - 8, height: 2).fill()
+            }
         }
         }
 
@@ -1770,8 +1797,9 @@ final class RetroView: NSView {
         if let h = hover {
             if h.0 == 2 {
                 let item = inventory[h.1]
-                label = item.name.uppercased() + (item.kind != .wear ? "  (ПОДОБРЕНИЕ)"
-                    : (pet.worn.contains(item.id) ? "  (СВАЛИ)" : "  (СЛОЖИ)"))
+                label = item.name.uppercased() + (item.kind == .wear ? (pet.worn.contains(item.id) ? "  (СВАЛИ)" : "  (СЛОЖИ)")
+                    : (item.kind == .stack ? "  (ЦЪКНИ: МАХНИ/ВЪРНИ МОНИТОР)"
+                        : (item.kind == .levelup ? "" : (game.itemOff(item) ? "  (МАХНАТО, ЦЪКНИ ЗА ВРЪЩАНЕ)" : "  (ЦЪКНИ ЗА МАХАНЕ)"))))
             } else {
                 let item = h.0 == 0 ? stats[h.1] : actions[h.1]
                 label = item.label.uppercased()
@@ -2299,19 +2327,19 @@ final class Game: NSObject, NSApplicationDelegate {
     var nextAutoWork: Double = 15 * 60
 
     var videoLength: Double {
-        (pet.owned.contains("fastedit") ? 20 * 60 : 30 * 60) * (1 - 0.1 * Double(pet.monitorLevel - 1))
+        (pet.has("fastedit") ? 20 * 60 : 30 * 60) * (1 - 0.1 * Double(pet.monitorLevel - 1))
     }
-    var coinMultiplier: Int { 1 + pet.extraMonitors }
+    var coinMultiplier: Int { 1 + pet.shownMonitors }
     /// Колко бързо върви поръчката (1 = нормално).
     var orderSpeed: Double {
-        (pet.owned.contains("fastedit") ? 1.5 : 1) * (1 + 0.1 * Double(pet.monitorLevel - 1)) * (1 + 0.15 * Double(pet.extraMonitors))
+        (pet.has("fastedit") ? 1.5 : 1) * (1 + 0.1 * Double(pet.monitorLevel - 1)) * (1 + 0.15 * Double(pet.shownMonitors))
     }
     var videoProgress: Double { min(1, pet.workSeconds / videoLength) }
     var orderProgress: Double? {
         guard pet.orderText != nil, pet.orderWorkNeeded > 0 else { return nil }
         return min(1, pet.orderWorkDone / pet.orderWorkNeeded)
     }
-    var monitorCount: Int { 1 + pet.extraMonitors }
+    var monitorCount: Int { 1 + pet.shownMonitors }
     var recentCoffees: Int { coffeeTimes.filter { time - $0 < 60 * 60 }.count }
     var isHyper: Bool { isDrunk && recentCoffees >= 3 }
     var redEyes: Bool { pet.tired > 3 || isHyper }
@@ -2478,6 +2506,25 @@ final class Game: NSObject, NSApplicationDelegate {
     var checkingUpdate = false
     var updating = false
     var nextUpdateCheck: Double = 15
+    var nextUpdateNag: Double = 0
+    var nextChew: Double = 0
+    var nextChewLine: Double = 0
+    var nextRatToy: Double = 4 * 60
+    var ratToyUntil: Double = 0
+    var raceOppHop: Double = -10
+    var pendingCall: (id: String, at: Double)?
+    var phoneUntil: Double = 0
+    var nextSelfCall: Double = 20 * 60
+    var eggPanel: NSPanel?
+    var eggFallFrom: CGFloat?
+    var eggTurnUntil: Double = 0
+    var eggSongUntil: Double = 0
+    var eggCareTimes: [String: Double] = [:]
+    var nextEggCare: Double = 5 * 60
+    var nextEggComplain: Double = 0
+    var babyPanel: NSPanel?
+    var babyView: BabyView?
+    var nextBabySound: Double = 60
 
     var wander: Bool {
         get { UserDefaults.standard.object(forKey: "wander") as? Bool ?? true }
@@ -2604,7 +2651,7 @@ final class Game: NSObject, NSApplicationDelegate {
         }
 
         if foodPixelsOn && window.isVisible && time > nextFoodSpawn {
-            nextFoodSpawn = time + (pet.owned.contains("magnet") ? Double.random(in: 60...150) : Double.random(in: 2 * 60...5 * 60))
+            nextFoodSpawn = time + (pet.has("magnet") ? Double.random(in: 60...150) : Double.random(in: 2 * 60...5 * 60))
             if foods.count < 10 { spawnFoodNow() }
         }
         for f in foods { f.view.needsDisplay = true }
@@ -2621,6 +2668,8 @@ final class Game: NSObject, NSApplicationDelegate {
         updateHiding(step)
         updateDreams()
         updateBuddies(step)
+        maybeCallSomeone()
+        updateEgg(step)
         updateRace(step)
         updateJealousy()
         updateWeather(step)
@@ -2656,7 +2705,7 @@ final class Game: NSObject, NSApplicationDelegate {
 
         if time - lastSave > 30 { save() }
         if time > nextUpdateCheck {
-            nextUpdateCheck = time + 6 * 3600
+            nextUpdateCheck = time + 30 * 60
             checkForUpdate(manual: false)
         }
         view.needsDisplay = true
@@ -3035,7 +3084,7 @@ final class Game: NSObject, NSApplicationDelegate {
 
     func foodDropped(_ food: FoodPixel) {
         if tryBin(food) { return }
-        if tryFeedRat(food) || tryFeedFriend(food) { return }
+        if tryFeedRat(food) || tryFeedFriend(food) || tryFeedBaby(food) { return }
         let f = food.panel.frame
         let center = NSPoint(x: f.midX, y: f.midY)
         if window.isVisible && petScreenRect().insetBy(dx: -14, dy: -14).contains(center) {
@@ -3273,6 +3322,7 @@ final class Game: NSObject, NSApplicationDelegate {
                             value: nil, action: asleep ? nil : #selector(toggleBalloon)),
                 RetroButton(icon: iconSeek, label: "Игра: криеница", value: nil, action: asleep ? nil : #selector(startSeek)),
                 RetroButton(icon: iconFlag, label: "Състезание (със залог)", value: nil, action: asleep ? nil : #selector(raceFromMenu)),
+                RetroButton(icon: iconPhone, label: "Обади се на приятел", value: nil, action: asleep ? nil : #selector(callFriendFromRetro)),
                 RetroButton(icon: asleep ? iconSun : iconMoon, label: asleep ? "Събуди" : "Приспи", value: nil, action: #selector(toggleSleep)),
                 RetroButton(icon: iconShop, label: "Магазин", value: nil, action: #selector(openShop)),
                 RetroButton(icon: iconPencil, label: "Рисувай платформи", value: nil, action: #selector(startDrawing)),
@@ -3332,6 +3382,7 @@ final class Game: NSObject, NSApplicationDelegate {
             parts.append("ПОРЪЧКА: \(Int(p * 100))% (ОЩЕ ~\(Int(left.rounded(.up))) МИН РАБОТА)")
         }
         if let w = weatherText { parts.append(w.uppercased()) }
+        if eggState == "egg" { parts.append("ЯЙЦЕ: \(Int(eggProgress * 100))% ГРИЖА" + (eggWarmth < 25 ? " (СТУДЕНО!)" : "")) }
         if pet.working { parts.append("ВИДЕО №\(pet.videos + 1): \(Int(videoProgress * 100))%") }
         if isSick, let until = pet.sickUntil { parts.append("БОЛЕН: " + clock(until.timeIntervalSinceNow)) }
         if pet.overfull > 0.5 { parts.append("КОРЕМЧЕ: " + clock(pet.overfull / 10 * 60)) }
@@ -3446,12 +3497,19 @@ final class Game: NSObject, NSApplicationDelegate {
         if foodPixelsOn { item("Пусни пиксел сега", #selector(spawnFoodNow), enabled: foods.count < 12) }
         item("Смени името…", #selector(rename))
         if hasRat { item("Кръсти плъхчето…", #selector(renameRat)) }
-        for id in joinedBuddies {
-            guard let k = buddyKind(id) else { continue }
-            let it = NSMenuItem(title: "Кръсти \(buddyName(k)) (\(k.job))…", action: #selector(renameBuddy(_:)), keyEquivalent: "")
-            it.target = self
-            it.representedObject = id
-            menu.addItem(it)
+        if babyAlive { item("Кръсти бебето…", #selector(renameBaby)) }
+        let callable = callableBuddies()
+        if !callable.isEmpty {
+            let sub = NSMenu()
+            for k in callable {
+                let it = NSMenuItem(title: "\(buddyName(k)) (\(k.job))", action: #selector(callBuddyMenu(_:)), keyEquivalent: "")
+                it.target = self
+                it.representedObject = k.id
+                sub.addItem(it)
+            }
+            let call = NSMenuItem(title: "Обади се на приятел", action: nil, keyEquivalent: "")
+            call.submenu = sub
+            menu.addItem(call)
         }
         if #available(macOS 13.0, *) {
             item("Пускай при включване", #selector(toggleLogin), on: SMAppService.mainApp.status == .enabled)
@@ -3577,8 +3635,16 @@ final class Game: NSObject, NSApplicationDelegate {
                 alert.addButton(withTitle: "Обнови")
                 alert.addButton(withTitle: "По-късно")
                 if alert.runModal() == .alertFirstButtonReturn { installUpdate() }
-            } else if isNew {
-                say("Има обновление!", seconds: 5)
+            } else if isNew || time > nextUpdateNag {
+                // казва сам и пита дали да се обнови
+                nextUpdateNag = time + 2 * 3600
+                if window.isVisible && !pet.asleep && questionPanel == nil {
+                    ask(Question(text: "Има нова версия на мен (\(build))! Да се обновя ли сега?", answers: [
+                        ("ДА", "Обновявам се! Ще се видим след малко!", .update), ("ПОСЛЕ", "Добре, напомням по-късно.", .nothing),
+                    ]), index: -1)
+                } else {
+                    say("Има нова версия! Десен бутон на иконката горе → „Обнови“.", seconds: 5)
+                }
             }
         } else if manual {
             NSApp.activate(ignoringOtherApps: true)
