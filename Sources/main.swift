@@ -801,12 +801,18 @@ enum Action { case none, eat, love, angry, pill, levelUp, wave }
 
 final class KeyPanel: NSPanel {
     override var canBecomeKey: Bool { true }
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
+}
+
+/// Прозорче, което macOS не бута надолу под горната лента (за да може да се вдига нависоко).
+final class FreePanel: NSPanel {
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
 }
 
 func overlayPanel(_ frame: NSRect, key: Bool) -> NSPanel {
     let p: NSPanel = key
         ? KeyPanel(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
-        : NSPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        : FreePanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     p.isOpaque = false
     p.backgroundColor = .clear
     p.hasShadow = false
@@ -1129,31 +1135,19 @@ final class PetView: NSView {
             }
         }
 
-        // цензура, докато е в тоалетна
+        // цензура, докато е в тоалетна: 4 размазани пиксела
         if game.toiletPhase == .doing {
-            let top = vy(sp.bottom) - CGFloat(sp.bottom - sp.top) * s * 0.3
-            let bar = NSRect(x: centerX - bodyW / 2 - 16, y: top, width: bodyW + 32, height: feetY - top + 4)
-            let m: CGFloat = 8
-            var yy = bar.minY
-            var row = 0
-            while yy < bar.maxY {
-                var xx = bar.minX
-                var col = 0
-                while xx < bar.maxX {
-                    let shade = (row * 7 + col * 3 + Int(t * 6)) % 4
-                    NSColor(hex: [0x3a3a50, 0x4a4a60, 0x2b2b3a, 0x5a5a70][shade]).setFill()
-                    NSRect(x: xx, y: yy, width: min(m, bar.maxX - xx), height: min(m, bar.maxY - yy)).fill()
-                    xx += m; col += 1
-                }
-                yy += m; row += 1
+            let cs = s * CGFloat(cellSize) * 0.9
+            let cx0 = centerX - cs, cy0 = vy(sp.bottom) - cs * 0.6
+            let shades = [0xc8b88a, 0x9a8f78, 0xb0a07a, 0x8a8070]
+            for i in 0..<4 {
+                let k = (i + Int(t * 3)) % 4
+                let r = NSRect(x: cx0 + CGFloat(i % 2) * cs, y: cy0 + CGFloat(i / 2) * cs, width: cs, height: cs)
+                NSColor(hex: shades[k], alpha: 0.55).setFill()
+                r.insetBy(dx: -3, dy: -3).fill()
+                NSColor(hex: shades[k], alpha: 0.95).setFill()
+                r.fill()
             }
-            let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 10, weight: .heavy),
-                                                    .foregroundColor: NSColor.white]
-            let label = "ЦЕНЗУРА" as NSString
-            let ls = label.size(withAttributes: a)
-            NSColor(hex: 0x1b1b24).setFill()
-            NSRect(x: bar.midX - ls.width / 2 - 4, y: bar.midY - ls.height / 2 - 2, width: ls.width + 8, height: ls.height + 4).fill()
-            label.draw(at: NSPoint(x: bar.midX - ls.width / 2, y: bar.midY - ls.height / 2), withAttributes: a)
         }
 
         // пиксели, които плават около него (повече с нивата)
@@ -2357,6 +2351,13 @@ final class Game: NSObject, NSApplicationDelegate {
     var nextGameJump: Double = 0
     var sleepSnapshot: SleepSnapshot?
     var sleepWatch = false
+    var shopOpenedAt: Double = 0
+    var cheeseUntil: Double = 0
+    var monitorFallTo: CGFloat?
+    var deskWalk = false
+    var ratCareNow = false
+    var snackFood: FoodPixel?
+    var nextFloorSnack: Double = 0
     var pendingWakeLine: (text: String, at: Double)?
     var debrisPanel: NSPanel?
     var crazySmashAt: Double = 0
@@ -2391,10 +2392,12 @@ final class Game: NSObject, NSApplicationDelegate {
     }
 
     var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off || jumping || hidePhase != .off
-        || chasing || seekPhase != .off || !errands.isEmpty || laserPanel != nil || balloonPanel != nil }
+        || chasing || seekPhase != .off || !errands.isEmpty || laserPanel != nil || balloonPanel != nil || deskWalk
+        || snackFood != nil }
     /// Движи се сам (без игрите, в които ходи по земята и гравитацията важи).
     var movingSelf: Bool {
         rolling || toiletPhase != .off || jumping || hidePhase != .off || chasing || seekPhase != .off || !errands.isEmpty
+            || deskWalk || snackFood != nil
     }
 
     // обновяване
@@ -2552,7 +2555,10 @@ final class Game: NSObject, NSApplicationDelegate {
         updateBin()
         bellView?.needsDisplay = true
         updateDragYell()
-        if monitorDetached && !pet.working && !isDragging && !jumping { reattachMonitor() }
+        updateMonitorFall(step)
+        updateDeskWalk(step)
+        updateFloorSnack(step)
+        if monitorDetached && !pet.working && !isDragging && !jumping && !deskWalk { reattachMonitor() }
         monitorPanel?.contentView?.needsDisplay = true
         updateJump()
         updateFlyingFood()
@@ -2563,6 +2569,11 @@ final class Game: NSObject, NSApplicationDelegate {
         clipView?.needsDisplay = true
         if let c = clipView, time - c.started > c.totalLength + 15 { closeClip() }
         shopPanel?.contentView?.needsDisplay = true
+        // клик извън магазина го затваря
+        if let sp = shopPanel, NSEvent.pressedMouseButtons != 0, !sp.frame.contains(NSEvent.mouseLocation),
+           time - shopOpenedAt > 0.4 {
+            closeShop()
+        }
         if let a = alertView, time - a.started > 6 { closeAlert() }
 
         if time - lastSave > 30 { save() }
@@ -2839,8 +2850,8 @@ final class Game: NSObject, NSApplicationDelegate {
             say(["Ааа?! Къде съм?!", "Кой ме мести, докато спя?!", "Летях ли? Сънувах ли? Събуди ме!"].randomElement()!, seconds: 3)
         }
         if monitorDetached {
-            // връща се със скок при монитора си
-            returnToDesk()
+            // връща се при монитора си (пеша или със скок)
+            goBackToDesk()
             return
         }
         keepOnScreen()
@@ -2950,7 +2961,7 @@ final class Game: NSObject, NSApplicationDelegate {
         let center = NSPoint(x: f.midX, y: f.midY)
         if window.isVisible && petScreenRect().insetBy(dx: -14, dy: -14).contains(center) {
             if pet.dead { say("…", seconds: 1.5); return }
-            if pet.asleep { say("Zzz… (спи)", seconds: 2); return }
+            if pet.asleep { return }   // спи и не вижда
             if eatFood(color: food.color, spoiled: food.spoiled) {
                 food.remove()
                 foods.removeAll { $0 === food }

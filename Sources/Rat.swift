@@ -147,20 +147,52 @@ final class CageView: NSView {
         NSColor(hex: 0x5c3a1e).setFill()
         NSRect(x: r.minX - 2, y: r.minY, width: r.width + 4, height: 5).fill()
         NSRect(x: r.midX - 6, y: r.minY - 6, width: 12, height: 6).fill()
-        // плъхът вътре
-        if game.ratInCage {
-            let g = RatView.ratGrid(frame: Int(game.time * 3), running: false)
-            let s: CGFloat = 2.5
-            let w = CGFloat(g[0].count) * s
-            let bob = Int(game.time * 2) % 2 == 0 ? 0 : CGFloat(1)
-            drawGrid(g, x: r.midX - w / 2, y: r.maxY - 6 - CGFloat(g.count) * s - bob, s: s, flip: true,
-                     palette: { c in c == "R" ? NSColor(hex: 0xff8fab) : game.color(c) })
-            // купичка
+        let owned = game.pet.owned
+        let inWheel = game.ratInCage && owned.contains("wheel") && Int(game.time / 10) % 3 == 0
+        // колелото (вътре, вдясно)
+        if owned.contains("wheel") {
+            let c = NSPoint(x: r.maxX - 20, y: r.maxY - 24)
+            let ring = NSBezierPath(ovalIn: NSRect(x: c.x - 15, y: c.y - 15, width: 30, height: 30))
+            NSColor(hex: 0x8d99ae).setStroke(); ring.lineWidth = 3; ring.stroke()
+            let a = inWheel ? game.time * 8 : 0
+            NSColor(hex: 0x6a6a80).setFill()
+            for k in 0..<4 {
+                let ang = a + Double(k) * .pi / 2
+                NSRect(x: c.x + CGFloat(cos(ang)) * 10 - 1.5, y: c.y + CGFloat(sin(ang)) * 10 - 1.5, width: 3, height: 3).fill()
+            }
+            NSColor(hex: 0x5c3a1e).setFill(); NSRect(x: c.x - 2, y: c.y + 14, width: 4, height: 6).fill()
+        }
+        // купичка или автохранилка (вляво)
+        if owned.contains("feeder") {
+            NSColor(hex: 0x8d99ae).setFill(); NSRect(x: r.minX + 6, y: r.maxY - 40, width: 12, height: 28).fill()
+            NSColor(hex: 0x48cae4).setFill(); NSRect(x: r.minX + 8, y: r.maxY - 38, width: 8, height: 12).fill()
+            NSColor(hex: 0xffca3a).setFill(); NSRect(x: r.minX + 8, y: r.maxY - 24, width: 8, height: 8).fill()
+            NSColor(hex: 0x5dade2).setFill(); NSRect(x: r.minX + 4, y: r.maxY - 12, width: 16, height: 6).fill()
+        } else {
             NSColor(hex: 0x5dade2).setFill()
             NSRect(x: r.minX + 6, y: r.maxY - 12, width: 14, height: 6).fill()
             if game.ratHungryMinutes < 30 {
                 NSColor(hex: 0xffca3a).setFill(); NSRect(x: r.minX + 9, y: r.maxY - 14, width: 8, height: 3).fill()
             }
+        }
+        // сирене в купичката
+        if game.time < game.cheeseUntil {
+            drawGrid(iconCheese, x: r.minX + 22, y: r.maxY - 16, s: 1.5, palette: game.color)
+        }
+        // плъхът вътре (понякога тича в колелото)
+        if game.ratInCage {
+            let g = RatView.ratGrid(frame: Int(game.time * (inWheel ? 12 : 3)), running: inWheel)
+            let s: CGFloat = inWheel ? 1.6 : 2.5
+            let w = CGFloat(g[0].count) * s
+            let bob = Int(game.time * 2) % 2 == 0 ? 0 : CGFloat(1)
+            let x = inWheel ? r.maxX - 20 - w / 2 : r.midX - w / 2
+            let y = inWheel ? r.maxY - 24 + 2 - CGFloat(g.count) * s : r.maxY - 6 - CGFloat(g.count) * s - bob
+            drawGrid(g, x: x, y: y, s: s, flip: true, palette: { c in c == "R" ? NSColor(hex: 0xff8fab) : game.color(c) })
+        }
+        // топчето (отвън, до клетката)
+        if owned.contains("toy") {
+            let roll = game.ratInCage ? 0 : CGFloat(sin(game.time * 1.3)) * 3
+            drawGrid(iconToy, x: r.minX - 30 + roll, y: r.maxY - 16, s: 2, palette: game.color)
         }
         // решетките
         NSColor(hex: 0x8d99ae).setFill()
@@ -197,7 +229,7 @@ extension Game {
     var ratHungryMinutes: Double { Date().timeIntervalSince(ratFedAt) / 60 }
     var ratLonelyMinutes: Double { Date().timeIntervalSince(ratPlayedAt) / 60 }
     var ratHungerLimit: Double { pet.owned.contains("feeder") ? 120 : 60 }
-    var ratAngry: Bool { ratHungryMinutes > ratHungerLimit || ratLonelyMinutes > (pet.owned.contains("wheel") ? 240 : 120) }
+    var ratAngry: Bool { ratHungryMinutes > ratHungerLimit || ratLonelyMinutes > (pet.owned.contains("wheel") ? 240 : 120) + (pet.owned.contains("toy") ? 60 : 0) }
     var hasRat: Bool { pet.owned.contains("rat") }
     var ratIsOut: Bool { hasRat && !ratInCage && ratPanel != nil }
 
@@ -332,6 +364,10 @@ extension Game {
                 o.x = gx
                 ratGoal = nil
                 ratReached(goal)
+            } else if ratBlocked(o.x + (dx > 0 ? sp : -sp), o.y) {
+                // нарисувана стена: отказва се
+                ratGoal = nil
+                ratSay("Цик? Стена!", 1.2)
             } else {
                 o.x += dx > 0 ? sp : -sp
             }
@@ -343,7 +379,7 @@ extension Game {
             // бяга от Пиксчо; при стената се обръща и минава покрай него (без да трепери)
             v.running = true
             var nx = o.x + ratRunDir * CGFloat(170 * step)
-            if nx < lo || nx > hi {
+            if nx < lo || nx > hi || ratBlocked(nx, o.y) {
                 ratRunDir = -ratRunDir
                 nx = min(max(nx, lo), hi)
                 ratSay("Цик!", 1)
@@ -386,7 +422,8 @@ extension Game {
             let dx = tx - o.x
             v.facingLeft = dx < 0
             v.running = true
-            o.x += (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(70 * step))
+            let nx = o.x + (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(70 * step))
+            if ratBlocked(nx, o.y) { ratTarget = nil; v.running = false } else { o.x = nx }
         } else if ratAngry {
             // сърдит: обръща гръб на Пиксчо
             v.facingLeft = pr.midX > o.x + half
@@ -425,6 +462,61 @@ extension Game {
             } else {
                 nextRatSnack = time + 20
             }
+        }
+    }
+
+    /// Има ли нарисуван пиксел там, където би застанал плъхът (минава само през празно).
+    func ratBlocked(_ x: CGFloat, _ y: CGFloat) -> Bool {
+        guard !drawCells.isEmpty else { return false }
+        let mid = x + RatView.size.width / 2
+        let x0 = Int(floor((mid - 22) / drawCell)), x1 = Int(floor((mid + 22) / drawCell))
+        let y0 = Int(floor((y + 3) / drawCell)), y1 = Int(floor((y + 20) / drawCell))
+        for cy in y0...max(y0, y1) {
+            for cx in x0...max(x0, x1) where drawCells[cellKey(cx, cy)] != nil { return true }
+        }
+        return false
+    }
+
+    /// Паднал пиксел на пода близо до него: отива и го изяжда (ако е по-бърз от плъха).
+    func updateFloorSnack(_ step: Double) {
+        if let f = snackFood {
+            guard foods.contains(where: { $0 === f }), f.onFloor, !pet.asleep, hidePhase == .off, !isDragging else {
+                snackFood = nil
+                walking = false
+                return
+            }
+            let pr = petScreenRect()
+            let dx = f.panel.frame.midX - pr.midX
+            if abs(dx) < 10 {
+                snackFood = nil
+                walking = false
+                if eatFood(color: f.color, spoiled: f.spoiled) {
+                    f.remove()
+                    foods.removeAll { $0 === f }
+                }
+                return
+            }
+            walking = true
+            facingLeft = dx < 0
+            var o = window.frame.origin
+            o.x += (dx < 0 ? -1 : 1) * min(abs(dx), CGFloat(140 * step))
+            window.setFrameOrigin(o)
+            return
+        }
+        guard time > nextFloorSnack, !pet.asleep, !pet.dead, !pet.working, !busyMoving, !isDragging, errands.isEmpty,
+              pet.fullness < 85, window.isVisible, hidePhase == .off, action == .none else { return }
+        nextFloorSnack = time + 3
+        let pr = petScreenRect()
+        let feet = feetScreenY
+        let near = foods.filter {
+            $0.onFloor && !$0.view.held && abs($0.panel.frame.midX - pr.midX) < 170 && abs($0.panel.frame.minY + 8 - feet) < 24
+        }
+        guard let f = near.min(by: { abs($0.panel.frame.midX - pr.midX) < abs($1.panel.frame.midX - pr.midX) }) else { return }
+        snackFood = f
+        if case .food(let rf)? = ratGoal, rf === f {
+            say("По-бърз съм от теб, \(ratLabel)! Мой е!", seconds: 2.5)
+        } else {
+            say(["Ооо, пиксел на пода! Мой е!", "Пиксел! Преди плъхът да го види!", "Ням, паднал пиксел!"].randomElement()!, seconds: 2)
         }
     }
 
@@ -518,14 +610,33 @@ extension Game {
         ratSay(ratHungryMinutes > ratHungerLimit ? pick(ratAngryLines, avoiding: &lastLine) : "Цик… никой не си играе с мен.", 3)
         sfx("Funk", every: 5)
         guard !pet.asleep, hidePhase == .off else { return }
-        say(ratHungryMinutes > ratHungerLimit ? "Ох! Забравих да нахраня \(ratLabel)!" : "Ох… отдавна не съм си играл с \(ratLabel).", seconds: 3)
-        if errands.isEmpty && !pet.working && !playingGame && Bool.random() {
-            runErrands([ratHungryMinutes > ratHungerLimit ? .feedRat : .cuddleRat])
+        let hungry = ratHungryMinutes > ratHungerLimit
+        say(hungry ? "Ох! Забравих да нахраня \(ratLabel)! Отивам!" : "Ох… отдавна не съм си играл с \(ratLabel). Идвам!", seconds: 3)
+        // отива веднага, а ако е зает, веднага щом се освободи
+        ratCareNow = true
+        if errands.isEmpty && !pet.working && !playingGame && !busyMoving { doRatCareNow() }
+    }
+
+    /// Каквото плъхът иска сега: храна, или гушкане и гонене.
+    func doRatCareNow() {
+        ratCareNow = false
+        if ratHungryMinutes > ratHungerLimit {
+            runErrands([.feedRat])
+        } else if ratInCage {
+            runErrands([.ratOut, .cuddleRat])
+            nextChase = time + 20
+        } else {
+            runErrands([.cuddleRat])
+            nextChase = time + 5
         }
     }
 
     /// Задълженията на Пиксчо към плъха (понякога ги забравя).
     func updateRatCare(_ idle: Bool) {
+        if ratCareNow && hasRat && idle && errands.isEmpty && !busyMoving && !pet.working && !playingGame {
+            doRatCareNow()
+            return
+        }
         guard hasRat, idle, errands.isEmpty, !busyMoving, !pet.working, !playingGame, questionPanel == nil,
               time > nextRatCare else { return }
         nextRatCare = time + Double.random(in: 6 * 60...12 * 60)

@@ -357,8 +357,10 @@ extension Game {
                     f.remove(); foods.removeAll { $0 === f }
                     friendFull = min(100, friendFull + 30)
                     friendSay("Ням! Мое е!", 2)
-                    say("ЕЙ! Това беше мое!", seconds: 2.5)
-                    annoy(5, reason: "приятелката ми ми открадна пиксела")
+                    if !pet.asleep {
+                        say("ЕЙ! Това беше мое!", seconds: 2.5)
+                        annoy(5, reason: "приятелката ми ми открадна пиксела")
+                    }
                     sfx("Pop")
                 }
                 friendFood = nil

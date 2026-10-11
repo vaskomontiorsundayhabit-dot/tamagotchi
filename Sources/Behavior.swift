@@ -456,12 +456,48 @@ extension Game {
         say(["Ей! Къде ми носиш монитора?!", "Монитореее!", "Внимавай, там е проектът ми!"].randomElement()!, seconds: 2)
     }
 
-    /// Пусна монитора: Пиксчо скача до новото място.
+    /// Пусна монитора: той пада до нещо твърдо, после Пиксчо отива до него.
     func monitorDropped() {
         guard let p = monitorPanel else { return }
-        deskOrigin = NSPoint(x: p.frame.minX - monitorGrabOffset.x, y: p.frame.minY - monitorGrabOffset.y)
-        returnToDesk()
+        monitorFallTo = supportY(x0: p.frame.minX + 6, x1: p.frame.maxX - 6, feet: p.frame.minY)
         say("Идвам, идвам!", seconds: 2)
+    }
+
+    func updateMonitorFall(_ step: Double) {
+        guard let target = monitorFallTo, let p = monitorPanel else { monitorFallTo = nil; return }
+        var o = p.frame.origin
+        o.y = max(target, o.y - CGFloat(900 * step))
+        p.setFrameOrigin(o)
+        if o.y <= target + 0.5 {
+            monitorFallTo = nil
+            deskOrigin = NSPoint(x: o.x - monitorGrabOffset.x, y: o.y - monitorGrabOffset.y)
+            goBackToDesk()
+        }
+    }
+
+    /// На същото ниво отива пеша, иначе скача.
+    func goBackToDesk() {
+        let lift = window.frame.height - view.feetY
+        let deskFeet = deskOrigin.y + lift
+        let feet = feetScreenY
+        let support = supportY(x0: window.frame.minX + view.bodyX0, x1: window.frame.minX + view.bodyX1, feet: feet)
+        if abs(deskFeet - feet) < 20 && feet - support < 5 {
+            deskWalk = true
+        } else {
+            returnToDesk()
+        }
+    }
+
+    func updateDeskWalk(_ step: Double) {
+        guard deskWalk else { return }
+        walking = true
+        if moveWindow(toward: deskOrigin, speed: CGFloat(300 * step)) {
+            deskWalk = false
+            walking = false
+            reattachMonitor()
+            saveWindowPosition()
+            if pet.working { say("Обратно на работа! Не ме дърпай!", seconds: 2.5) }
+        }
     }
 
     func updateDragYell() {

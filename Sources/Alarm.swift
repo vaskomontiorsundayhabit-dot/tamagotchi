@@ -2,7 +2,7 @@
 
 import AppKit
 
-enum HidePhase { case off, grabRat, grabCage, running, hidden, peeking }
+enum HidePhase { case off, grabRat, grabCage, running, hidden, peeking, returning }
 
 let peekLines = ["Отиде ли си?", "Тихо ли е вече?", "Страх ме е…", "Някой още ли звъни?",
                  "Ще изляза само ако е чисто…", "Пссст… опасно ли е?", "Аз не съм тук.", "Чувам те, звънче!"]
@@ -213,7 +213,7 @@ extension Game {
     func ringAlarm() {
         guard time - lastAlarm > 2, !pet.dead else { return }
         lastAlarm = time
-        if hidePhase == .off { startHiding() } else { comeOutOfHiding() }
+        if hidePhase == .off || hidePhase == .returning { startHiding() } else { comeOutOfHiding() }
     }
 
     func startHiding() {
@@ -256,11 +256,12 @@ extension Game {
     }
 
     func comeOutOfHiding() {
-        guard hidePhase != .off else { return }
+        guard hidePhase != .off, hidePhase != .returning else { return }
         closeQuestion()
-        hidePhase = .off
+        // връща се пеша (без странни скокове през екрана)
+        hidePhase = .returning
         bubbleText = nil
-        jump(toOrigin: hideHome)
+        facingLeft = !hideLeft
         anger = (anger - 10).clamped()
         say(["Чисто ли е? Излизам!", "Уф, мина ли? Връщам се!", "Може ли вече? Идвам!"].randomElement()!, seconds: 2.5)
     }
@@ -316,6 +317,14 @@ extension Game {
                 peekUntil = time + 4
                 nextHideAsk = time + 1.5
                 facingLeft = !hideLeft
+            }
+        case .returning:
+            walking = true
+            if moveWindow(toward: NSPoint(x: hideHome.x, y: y), speed: CGFloat(380 * step)) {
+                walking = false
+                hidePhase = .off
+                if abs(hideHome.y - y) > 4 { jump(toOrigin: hideHome) }
+                saveWindowPosition()
             }
         case .peeking:
             // наднича мълчаливо; излиза със звънчето или с клик върху него

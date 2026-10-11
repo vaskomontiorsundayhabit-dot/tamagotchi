@@ -307,6 +307,6 @@ extension Game {
     func cleanMess(_ m: MessPixel) {
         m.remove()
         messes.removeAll { $0 === m }
-        say("Благодаря, че почисти!", seconds: 2.5)
+        if !pet.asleep { say("Благодаря, че почисти!", seconds: 2.5) }
     }
 }

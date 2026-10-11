@@ -461,8 +461,8 @@ let shopItems: [ShopItem] = [
     ShopItem(id: "icecream", name: "Сладолед", price: 14, kind: .use, slot: "", info: "+15 радост, +10 ситост", icon: iconIceCream),
     ShopItem(id: "smoothie", name: "Смути", price: 18, kind: .use, slot: "", info: "+10 енергия, +10 здраве", icon: iconSmoothie),
     ShopItem(id: "popcorn", name: "Пуканки", price: 10, kind: .use, slot: "", info: "+20 радост, пуска клип", icon: iconPopcorn),
-    ShopItem(id: "cheese", name: "Сирене за плъха", price: 10, kind: .use, slot: "", info: "плъхът е сит и доволен", icon: iconCheese),
-    ShopItem(id: "toy", name: "Играчка за плъха", price: 15, kind: .use, slot: "", info: "плъхът не е самотен", icon: iconToy),
+    ShopItem(id: "cheese", name: "Сирене за плъха", price: 10, kind: .use, slot: "", info: "слага го в купичката; плъхът е сит", icon: iconCheese),
+    ShopItem(id: "toy", name: "Топче за плъха", price: 40, kind: .upgrade, slot: "", info: "стои до клетката; плъхът си играе с него", icon: iconToy),
     ShopItem(id: "party", name: "Парти шапка", price: 40, kind: .wear, slot: "hat", info: "за купон", icon: hatParty),
     ShopItem(id: "beanie", name: "Зимна шапка", price: 60, kind: .wear, slot: "hat", info: "топло е", icon: hatBeanie),
     ShopItem(id: "bow", name: "Панделка", price: 30, kind: .wear, slot: "hat", info: "сладко", icon: hatBow),
@@ -496,18 +496,42 @@ let shopItems: [ShopItem] = [
 
 // MARK: - Изглед на магазина
 
+/// Разделите в магазина.
+let shopTabs = ["ХРАНА", "ОБЛЕКЛО", "ПОДОБРЕНИЯ", "ЛЮБИМЦИ"]
+let petShopIds: Set<String> = ["friend", "rat", "cheese", "toy", "wheel", "feeder", "lens"]
+
+func shopTab(_ item: ShopItem) -> Int {
+    if petShopIds.contains(item.id) { return 3 }
+    switch item.kind {
+    case .use: return 0
+    case .wear: return 1
+    default: return 2
+    }
+}
+
 final class ShopView: NSView {
     weak var game: Game?
     var hover: Int?
+    var tab = 0
+    var hoverTab: Int?
 
-    static let cols = 7
+    static let cols = 6
     static let tileW: CGFloat = 112
     static let tileH: CGFloat = 94
     static let pad: CGFloat = 14
-    static let header: CGFloat = 44
+    static let header: CGFloat = 80
     static var size: NSSize {
-        let rows = (shopItems.count + cols - 1) / cols
+        let most = (0..<shopTabs.count).map { t in shopItems.filter { shopTab($0) == t }.count }.max() ?? 1
+        let rows = (most + cols - 1) / cols
         return NSSize(width: pad * 2 + tileW * CGFloat(cols), height: header + tileH * CGFloat(rows) + 44)
+    }
+
+    /// Нещата в избрания раздел (индекси в shopItems).
+    var visible: [Int] { shopItems.indices.filter { shopTab(shopItems[$0]) == tab } }
+
+    private func tabRect(_ t: Int) -> NSRect {
+        let w = (bounds.width - ShopView.pad * 2) / CGFloat(shopTabs.count)
+        return NSRect(x: ShopView.pad + CGFloat(t) * w, y: 42, width: w - 6, height: 28)
     }
 
     override var isFlipped: Bool { true }
@@ -521,6 +545,7 @@ final class ShopView: NSView {
                                        owner: self, userInfo: nil))
     }
 
+    /// i е поредният номер в раздела.
     private func tileRect(_ i: Int) -> NSRect {
         NSRect(x: ShopView.pad + CGFloat(i % ShopView.cols) * ShopView.tileW,
                y: ShopView.header + CGFloat(i / ShopView.cols) * ShopView.tileH,
@@ -529,11 +554,20 @@ final class ShopView: NSView {
 
     private var closeRect: NSRect { NSRect(x: bounds.width - 34, y: 10, width: 22, height: 22) }
 
-    private func hit(_ p: NSPoint) -> Int? { shopItems.indices.first { tileRect($0).contains(p) } }
+    /// Връща индекса в shopItems.
+    private func hit(_ p: NSPoint) -> Int? {
+        let v = visible
+        guard let n = v.indices.first(where: { tileRect($0).contains(p) }) else { return nil }
+        return v[n]
+    }
+
+    private func slot(of item: Int) -> Int { visible.firstIndex(of: item) ?? 0 }
 
     override func mouseMoved(with event: NSEvent) {
-        let h = hit(convert(event.locationInWindow, from: nil))
-        if h != hover { hover = h; needsDisplay = true }
+        let p = convert(event.locationInWindow, from: nil)
+        let h = hit(p)
+        let ht = shopTabs.indices.first { tabRect($0).contains(p) }
+        if h != hover || ht != hoverTab { hover = h; hoverTab = ht; needsDisplay = true }
     }
 
     override func mouseExited(with event: NSEvent) { hover = nil; needsDisplay = true }
@@ -541,9 +575,16 @@ final class ShopView: NSView {
     override func mouseDown(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
         if closeRect.contains(p) { game?.closeShop(); return }
+        if let t = shopTabs.indices.first(where: { tabRect($0).contains(p) }) {
+            tab = t
+            hover = nil
+            game?.sfx("Tink")
+            needsDisplay = true
+            return
+        }
         if let i = hit(p) {
             let item = shopItems[i]
-            if p.y > tileRect(i).minY + 70, game?.canSell(item) == true {
+            if p.y > tileRect(slot(of: i)).minY + 70, game?.canSell(item) == true {
                 game?.sell(item)
             } else {
                 game?.shopAction(item)
@@ -599,8 +640,16 @@ final class ShopView: NSView {
         text("\(pet.coins) МОНЕТИ", b.width - 164, 14, 13, 0xffd166)
         text("X", closeRect.midX, closeRect.minY + 2, 15, 0xe63946, center: true)
 
-        for (i, item) in shopItems.enumerated() {
-            let r = tileRect(i)
+        // разделите
+        for (t, name) in shopTabs.enumerated() {
+            let r = tabRect(t)
+            NSColor(hex: t == tab ? 0x5dade2 : (hoverTab == t ? 0x3a3a50 : 0x26263a)).setFill(); r.fill()
+            text(name, r.midX, r.minY + 7, 11, t == tab ? 0x1b1b24 : 0xffffff, center: true)
+        }
+
+        for (n, i) in visible.enumerated() {
+            let item = shopItems[i]
+            let r = tileRect(n)
             NSColor(hex: hover == i ? 0x3a3a50 : 0x26263a).setFill(); r.fill()
             let w = CGFloat(item.icon[0].count), h = CGFloat(item.icon.count)
             let s = min(3, 26 / max(w, h))
@@ -637,6 +686,7 @@ extension Game {
         p.contentView = v
         p.acceptsMouseMovedEvents = true
         shopPanel = p
+        shopOpenedAt = time
         NSApp.activate(ignoringOtherApps: true)
         p.makeKeyAndOrderFront(nil)
         p.makeFirstResponder(v)
@@ -745,14 +795,10 @@ extension Game {
                 playClip()
             case "cheese":
                 ratFedAt = Date()
+                cheeseUntil = time + 10 * 60
                 ratView?.heartsUntil = time + 2
                 ratSay("Сирене! Цик-цик-цик!", 2.5)
                 say(hasRat ? "\(ratLabel.capitalized) обожава сирене!" : "Сирене… ама нямаме плъх. Ще го изям аз!", seconds: 2.5)
-            case "toy":
-                ratPlayedAt = Date()
-                ratView?.heartsUntil = time + 2
-                ratSay("Играчка! Цик!", 2.5)
-                say(hasRat ? "Нова играчка за \(ratLabel)!" : "Играчка за плъх… ама нямаме плъх.", seconds: 2.5)
             default: break
             }
         }
