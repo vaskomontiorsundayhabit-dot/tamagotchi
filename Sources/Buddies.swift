@@ -66,7 +66,7 @@ let buddyChats: [(String, String)] = [
     ("Тази платформа твоя ли е?", "Нарисувах я сутринта!"),
     ("Да направим купон довечера?", "Аз нося музиката!"),
     ("Ти ли си най-бързият тук?", "След Пиксчо… може би."),
-    ("Колко е часът?", "Време за пиксели!"),
+    ("Колко е часът?", "{час}! Време за пиксели!"),
 ]
 
 let buddyKinds: [BuddyKind] = [
@@ -283,7 +283,7 @@ extension Game {
 
     func buddySay(_ b: Buddy, _ text: String, _ seconds: Double) {
         b.view.text = text
-        b.view.textUntil = time + seconds
+        b.view.textUntil = time + readTime(text, seconds)
     }
 
     func updateBuddies(_ step: Double) {
@@ -562,7 +562,14 @@ extension Game {
         } else if r < 4, let o2 = others.randomElement() {
             // говорят си помежду си (няколко реплики)
             let (a, c) = buddyChats.randomElement()!
-            startDialog([(b.kind.id, a), (o2.kind.id, c), (b.kind.id, ["Хаха!", "Точно така.", "Ще видим!", "Права си!"].randomElement()!)])
+            var lines: [(String, String)] = [(b.kind.id, a), (o2.kind.id, c),
+                                             (b.kind.id, ["Хаха!", "Точно така.", "Ще видим!", "Права си!"].randomElement()!)]
+            // и другите (и Пиксчо) се включват
+            for o3 in others where o3 !== o2 { lines.append((o3.kind.id, groupInterjections.randomElement()!)) }
+            if !pet.asleep && hidePhase == .off && Bool.random() { lines.append(("pet", groupInterjections.randomElement()!)) }
+            startDialog(lines)
+        } else if r == 6, b.kind.id == "photo", !photos.isEmpty, !pet.asleep {
+            maybeShowPhoto(b)
         } else if r < 6, ratIsOut, let rp = ratPanel {
             // отива да си играе с плъха
             b.playRat = true
@@ -698,11 +705,14 @@ extension Game {
                 b.nextFlash = time + Double.random(in: 4...9)
                 v.flashAt = time
                 sfx("Tink", every: 3)
+                // от време на време наистина снима Пиксчо
+                if Int.random(in: 0..<12) == 0 { takePhoto() }
             }
             let lens = pet.has("lens")
             if b.workSeconds >= (lens ? 10 : 15) * 60 {
                 b.workSeconds = 0
                 earnCoins(lens ? 25 : 15)
+                takePhoto()
                 buddySay(b, "Готова фотосесия! +\(lens ? 25 : 15) монети", 3.5)
             }
         case "music":
@@ -854,6 +864,7 @@ extension Game {
             add(iconHug, "Прегърни \(pet.name)", 4)
             add(iconFlag, "Състезание с \(pet.name)", 7)
             add(iconTalk, "Да си поговорят", 9)
+            if id == "photo" { add(propCamera, "Покажи снимките", 10) }
             add(iconHouse, "Иди си до вкъщи", 8)
         }
         let box = buddyScreenBox(b)
@@ -904,6 +915,9 @@ extension Game {
             buddySay(b, "Добре, отивам си до вкъщи. Звънни ми!", 3)
         case 9:
             if dialog.isEmpty && !pet.asleep { buddyConversation(b) }
+        case 10:
+            buddySay(b, photos.isEmpty ? "Още нямам снимки! Ще снимам." : "Ето моите снимки!", 2.5)
+            openAlbum()
         default:
             break
         }

@@ -279,7 +279,7 @@ extension Game {
 
     func ratSay(_ text: String, _ seconds: Double) {
         ratView?.text = text
-        ratView?.textUntil = time + seconds
+        ratView?.textUntil = time + readTime(text, seconds)
     }
 
     /// Мястото на плъха (краката), или на клетката, ако е вътре.

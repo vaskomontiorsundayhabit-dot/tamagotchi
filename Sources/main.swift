@@ -1076,7 +1076,8 @@ final class PetView: NSView {
         // мониторът не се клати заедно с него
         var petGrid = sp.grid
         var monGrid: Grid?
-        if sway && sp.monW > 0 {
+        // мониторите се рисуват отделно: не се клатят и не гличват заедно с него
+        if (sway || atDesk) && sp.monW > 0 {
             var mg = Grid(repeating: Array(repeating: ".", count: canvasW), count: canvasH)
             for y in sp.monY..<min(canvasH, sp.monY + sp.monH) {
                 for x in sp.monX..<min(canvasW, sp.monX + sp.monW) { mg[y][x] = petGrid[y][x]; petGrid[y][x] = "." }
@@ -2379,6 +2380,7 @@ final class Game: NSObject, NSApplicationDelegate {
     var jumpHeight: CGFloat = 80
     var autoWorking = false
     var unansweredQuestion: Int?
+    var unansweredQ: Question?
     var questionIndex = 0
     var inventoryOpen = false
     var monitorDetached = false
@@ -2575,6 +2577,9 @@ final class Game: NSObject, NSApplicationDelegate {
     var artistQueue: [(Int, Int)] = []
     var artistNextCell: Double = 0
     var artistWhat = ""
+    var albumPanel: NSPanel?
+    var albumOpened: Double = 0
+    var albumUntil: Double = 0
     var nextRoofCheck: Double = 0
     var nextRainWake: Double = 0
     var nextRoofAsk: Double = 60
@@ -2810,6 +2815,7 @@ final class Game: NSObject, NSApplicationDelegate {
         updateTargetGame(step)
         updateBirthday()
         updateArtistPainting()
+        updateAlbum()
         updateRace(step)
         updateJealousy()
         updateWeather(step)
@@ -3092,8 +3098,12 @@ final class Game: NSObject, NSApplicationDelegate {
         // скрит е: мълчи, за да не го издаде
         if hidePhase == .hidden || hidePhase == .peeking || seekPhase == .hiding { return }
         bubbleText = text
-        bubbleUntil = time + seconds
+        // по-дългите съобщения стоят по-дълго, за да се прочетат
+        bubbleUntil = time + readTime(text, seconds)
     }
+
+    /// Колко време да стои едно съобщение (поне колкото е казано, повече за дълги).
+    func readTime(_ text: String, _ seconds: Double) -> Double { max(seconds, 1.8 + Double(text.count) * 0.07) }
 
     func addXP(_ amount: Int) {
         guard !pet.dead, amount > 0 else { return }
@@ -3168,10 +3178,12 @@ final class Game: NSObject, NSApplicationDelegate {
             say(pick(annoyedLines, avoiding: &lastLine), seconds: 3)
             return
         }
-        if let qi = unansweredQuestion, questionPanel == nil, qi < questions.count {
+        // не си му отговорил: казва защо е сърдит и пита пак същото
+        if questionPanel == nil, let q = unansweredQ ?? unansweredQuestion.flatMap({ $0 < questions.count ? questions[$0] : nil }) {
             start(.angry, length: 1.5)
-            say("Сърдит съм, защото не ми отговори! Питам пак:", seconds: 3)
-            ask(questions[qi], index: qi)
+            say("Сърдит съм, защото не ми отговори! Питам пак: \(q.text)", seconds: 3)
+            ask(q, index: unansweredQuestion ?? -1)
+            unansweredQ = nil
             return
         }
         if anger > 35 && !pet.working {

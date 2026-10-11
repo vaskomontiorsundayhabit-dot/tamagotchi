@@ -139,6 +139,7 @@ extension Game {
     func whatsWrong() -> String {
         if enclosed { return "Затвори ме! Страх ме е!" }
         if let w = want { return "Сърдит съм, защото искам \(wantText(w)) и никой не ми дава!" }
+        if let q = unansweredQ { return "Сърдит съм, защото не ми отговори на въпроса: „\(q.text)“ Цъкни ме и ще те питам пак!" }
         if questionPanel != nil || unansweredQuestion != nil { return "Не ми отговаряш на въпроса!" }
         if pet.fullness < 25 { return "Гладен съм! Затова съм сърдит!" }
         if pet.energy < 20 { return "Уморен съм и ми се спи!" }
@@ -212,6 +213,7 @@ extension Game {
                 if questionNags >= 3 {
                     closeQuestion()
                     unansweredQuestion = questionIndex >= 0 ? questionIndex : nil
+                    unansweredQ = v.question
                     annoy(15)
                     say("Добре, не ми говори! Сърдит съм!", seconds: 3)
                     nextQuestion = time + Double.random(in: 10 * 60...20 * 60)
@@ -258,6 +260,7 @@ extension Game {
         guard let q = questionView?.question, i < q.answers.count else { return }
         closeQuestion()
         unansweredQuestion = nil
+        unansweredQ = nil
         let (_, reply, effect) = q.answers[i]
         say(reply, seconds: 3)
         switch effect {

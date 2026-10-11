@@ -14,8 +14,13 @@ let talkTopics: [(topic: String, lines: [String])] = [
     ("сънищата", ["Какво сънува снощи?", "Валяха пиксели!", "Аз сънувах, че съм огромна!", "Някой ден ще бъдеш."]),
     ("купона", ["Да направим купон довечера?", "Ако има торта, да!", "Ще има и музика!", "Тогава съм вътре!"]),
     ("плъха", ["Плъхчето пак ли е гладно?", "Винаги е гладно.", "Като теб.", "Хей!"]),
+    ("часа", ["Колко е часът?", "{час}. Защо?", "Време ли е за пиксели?", "Винаги е време за пиксели!"]),
     ("рисунките", ["Тези платформи ти ли ги нарисува?", "Не, някой друг рисува тук…", "Мистерия!", "Пиксел-призраци."]),
 ]
+
+/// Когато и други се включат в разговора.
+let groupInterjections = ["И аз така мисля!", "Хаха, точно!", "Не съм съгласна!", "Аз пък мисля другояче…", "Ооо, интересно!",
+                          "Може ли и аз да кажа нещо?", "Вие двамата сте смешни!", "Кой иска пиксел?", "Чакайте, за какво говорим?"]
 
 /// Какво дразни Пиксчо във всяка професия: (тема, реплики, като първата е на Пиксчо).
 let annoyances: [String: (topic: String, lines: [String])] = [
@@ -49,13 +54,22 @@ extension Game {
 
     func updateDialog() {
         guard !dialog.isEmpty, time >= dialogAt else { return }
-        let (who, text) = dialog.removeFirst()
-        if who == "pet" {
+        let (who, raw) = dialog.removeFirst()
+        // {час} → истинския час
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        let text = raw.replacingOccurrences(of: "{час}", with: f.string(from: Date()))
+        if who == "rat" {
+            if ratIsOut { ratSay(text, 2.8) }
+        } else if who == "pet" {
             if !pet.asleep && hidePhase == .off { say(text, seconds: 2.8) }
         } else if let b = buddy(who) {
             buddySay(b, text, 2.8)
+        } else if !pet.asleep && hidePhase == .off {
+            // този, който трябваше да отговори, го няма: отговаря Пиксчо
+            say(text, seconds: 2.8)
         }
-        dialogAt = time + 3
+        dialogAt = time + readTime(text, 3) + 0.4
         if dialog.isEmpty { buddies.forEach { $0.chatting = false } }
     }
 
@@ -86,6 +100,13 @@ extension Game {
         let topic = talkTopics.randomElement()!
         var lines: [(String, String)] = []
         for (n, l) in topic.lines.enumerated() { lines.append((n % 2 == 0 ? id : "pet", l)) }
+        // всички, които са наоколо, се включват
+        let others = buddies.filter { $0 !== b && !$0.leaving && !buddyAsleep($0) }.map { $0.kind.id }
+        for (n, o) in others.prefix(3).enumerated() {
+            let at = min(lines.count, 2 + n * 2)
+            lines.insert((o, groupInterjections.randomElement()!), at: at)
+        }
+        if ratIsOut && Bool.random() { lines.append(("rat", ["Цик!", "Цик-цик! (и аз!)", "Цик? Цик."].randomElement()!)) }
         startDialog(lines)
         changeFriendship(id, 4)
         remember(id, topic: topic.topic, fight: false)
