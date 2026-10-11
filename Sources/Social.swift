@@ -67,6 +67,7 @@ extension Game {
             confettiStart = time
             start(.love, length: 3)
             sfx("Hero")
+            photoMoment("viral")
             say("СТАНАХ ВАЙРЪЛ! Видео №\(r.video): \(r.views) гледания! +\(coins) монети", seconds: 5)
         } else {
             say("Видео №\(r.video): \(r.views) гледания, \(r.likes) харесвания. +\(coins) монети", seconds: 4)

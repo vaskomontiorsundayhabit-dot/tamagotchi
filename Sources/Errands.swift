@@ -3,7 +3,7 @@
 
 import AppKit
 
-enum Errand: Equatable { case fetchMonitor, storeMonitor, feedRat, cuddleRat, ratToCage, ratOut, sleep, stepOn(NSPoint), eggCare, backToDesk, giveCheese, feedPet(String) }
+enum Errand: Equatable { case fetchMonitor, storeMonitor, feedRat, cuddleRat, ratToCage, ratOut, sleep, stepOn(NSPoint), eggCare, backToDesk, giveCheese, feedPet(String), waterPlant }
 
 let petNames = [
     "Бобо", "Чочо", "Пипи", "Фъстък", "Бисер", "Мики", "Зузу", "Тошко", "Кексче", "Пухчо",
@@ -238,6 +238,8 @@ extension Game {
             updateCheeseErrand(step)
         case .feedPet(let id):
             updateFeedPetErrand(id, step)
+        case .waterPlant:
+            updateWaterErrand(step)
         case .backToDesk:
             if errandStage == 0 {
                 if monitorDetached { goBackToDesk() }

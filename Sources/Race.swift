@@ -232,6 +232,7 @@ extension Game {
         pet.fun = (pet.fun + 10).clamped()
         addXP(5)
         var line = petWon ? "ПОБЕДА! Бях по-бърз от \(other)!" : "\(other) спечели… РЕВАНШ!"
+        if petWon { photoMoment("race") }
         if raceBet >= 0 {
             let right = (raceBet == 0) == petWon
             if right { earnCoins(20); line += " Позна! +20 монети" } else { line += " Загуби залога." }

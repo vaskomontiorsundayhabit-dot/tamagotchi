@@ -114,6 +114,7 @@ final class Buddy: NSObject {
     var nextSleepCheck: Double = 0
     var growSeconds: Double = 0
     var hugGo = false
+    var leaveAt: Double = 0
 
     init(kind: BuddyKind, guest: Bool, origin: NSPoint, game: Game) {
         self.kind = kind
@@ -402,6 +403,16 @@ extension Game {
             o.y = y
             p.setFrameOrigin(o)
             return
+        }
+        if b.leaveAt > 0 && time > b.leaveAt && !b.leaving {
+            b.leaveAt = 0
+            b.leaving = true
+            b.working = false
+            if !b.guest {
+                UserDefaults.standard.set(Date().addingTimeInterval(Double.random(in: 20 * 60...40 * 60)), forKey: "buddyAway_\(b.kind.id)")
+            }
+            buddySay(b, b.kind.female ? "Сърдита съм! Отивам си вкъщи!" : "Сърдит съм! Отивам си вкъщи!", 3)
+            pendingReply = (["Ех… може би прекалих.", "Добре де, върви си!", "Ще ти се обадя по-късно…"].randomElement()!, time + 3, false)
         }
         if racePhase != .off && raceBuddy === b { return }
         if inBuddyGame(b.kind.id) { return }
@@ -788,6 +799,7 @@ extension Game {
             }
         }
         artistWhat = pick.0
+        artistTargetX = x + w / 2
         b.wanderX = x + w / 2
         buddySay(b, "Рисувам \(pick.0)!", 3)
     }
@@ -795,7 +807,15 @@ extension Game {
     /// Рисува по едно квадратче, като анимация.
     func updateArtistPainting() {
         guard !artistQueue.isEmpty, time > artistNextCell else { return }
-        artistNextCell = time + 0.12
+        // рисува на живо: само когато е застанала до рисунката, пиксел по пиксел
+        guard let artist = buddy("artist"), !buddyAsleep(artist), !artist.leaving else { return }
+        if abs(buddyScreenBox(artist).midX - artistTargetX) > 90 {
+            artist.wanderX = artistTargetX
+            return
+        }
+        artist.working = true
+        artist.view.flashAt = time
+        artistNextCell = time + 0.28
         let (k, c) = artistQueue.removeFirst()
         drawCells[k] = c
         redrawDrawing()
@@ -925,6 +945,7 @@ extension Game {
 
     func buddyJoins(_ b: Buddy) {
         guard b.guest else { return }
+        photoMoment("newfriend")
         b.guest = false
         b.leaving = false
         if !joinedBuddies.contains(b.kind.id) { joinedBuddies.append(b.kind.id) }

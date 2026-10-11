@@ -11,6 +11,8 @@ struct Photo {
 let photoCaptions: [String: String] = [
     "work": "МОНТИРА", "sleep": "СПИ", "eat": "ЯДЕ", "drunk": "СЛЕД КАФЕ", "sick": "БОЛЕН", "rat": "С ПЛЪХЧЕТО",
     "friends": "С ПРИЯТЕЛИ", "play": "ИГРАЕ", "rain": "В ДЪЖДА", "pose": "ПОЗИРА", "gold": "ЗЛАТЕН",
+    "ratsolo": "ПЛЪХЧЕТО", "hatch": "ИЗЛЮПВАНЕТО!", "birthday": "РОЖДЕН ДЕН", "race": "ПОБЕДА!", "levelup": "НОВО НИВО",
+    "viral": "ВАЙРЪЛ!", "newfriend": "НОВ ПРИЯТЕЛ", "tv": "ТВ ВЕЧЕР",
 ]
 
 final class AlbumView: NSView {
@@ -47,6 +49,33 @@ final class AlbumView: NSView {
         let poses: [String: Pose] = ["sleep": .sleep, "work": .type, "play": .wave, "friends": .wave, "drunk": .wobble]
         let face = faces[ph.scene] ?? .happy
         let pose = poses[ph.scene] ?? .idle
+        // снимка на приятел или на плъха
+        if ph.scene.hasPrefix("b_"), let k = game.buddyKind(String(ph.scene.dropFirst(2))) {
+            let bs = buildSprite(level: max(1, ph.level), face: .happy, pose: .wave, frame: 0, working: false)
+            let span = CGFloat(max(bs.maxX - bs.minX + 1, bs.maxY - bs.minY + 1))
+            let sc = min(3, (pic.height - 8) / span)
+            let body = NSColor(hex: k.color)
+            drawGrid(bs.grid, x: pic.midX - CGFloat(bs.minX + bs.maxX + 1) / 2 * sc, y: pic.maxY - 4 - CGFloat(bs.groundY + 1) * sc, s: sc,
+                     palette: { c in
+                         switch c {
+                         case "B": return body
+                         case "D": return body.blended(withFraction: 0.22, of: .black)
+                         case "L": return body.blended(withFraction: 0.45, of: .white)
+                         case "A": return body.blended(withFraction: 0.08, of: .black)
+                         default: return game.color(c)
+                         }
+                     })
+            NSGraphicsContext.current?.restoreGraphicsState()
+            caption(game.buddyName(k).uppercased(), ph, r)
+            return
+        }
+        if ph.scene == "ratsolo" {
+            drawGrid(RatView.ratGrid(frame: 0, running: false), x: pic.midX - 24, y: pic.maxY - 26, s: 3, palette: { c in
+                c == "R" ? NSColor(hex: 0xff8fab) : game.color(c) })
+            NSGraphicsContext.current?.restoreGraphicsState()
+            caption(game.ratLabel.uppercased(), ph, r)
+            return
+        }
         let sp = buildSprite(level: max(1, ph.level), face: face, pose: pose, frame: 0, working: ph.scene == "work", worn: game.pet.worn,
                              variant: game.bodyVariant)
         let span = CGFloat(max(sp.maxX - sp.minX + 1, sp.maxY - sp.minY + 1))
@@ -71,11 +100,15 @@ final class AlbumView: NSView {
         default: break
         }
         NSGraphicsContext.current?.restoreGraphicsState()
+        caption(photoCaptions[ph.scene] ?? "", ph, r)
+    }
+
+    private func caption(_ text: String, _ ph: Photo, _ r: NSRect) {
         let f = DateFormatter()
         f.dateFormat = "d.MM HH:mm"
         let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 8, weight: .heavy),
                                                 .foregroundColor: NSColor(hex: 0x2b2b3a)]
-        let cap = "\(photoCaptions[ph.scene] ?? "") · \(f.string(from: ph.date))" as NSString
+        let cap = "\(text) · \(f.string(from: ph.date))" as NSString
         let cs = cap.size(withAttributes: a)
         cap.draw(at: NSPoint(x: r.midX - cs.width / 2, y: r.maxY - 18), withAttributes: a)
     }
@@ -144,9 +177,18 @@ extension Game {
         return "pose"
     }
 
-    func takePhoto() {
+    func takePhoto(scene forced: String? = nil) {
         var raw = UserDefaults.standard.array(forKey: "photos") as? [[String: Any]] ?? []
-        raw.append(["scene": currentScene, "t": Date().timeIntervalSince1970, "level": bodyCells])
+        var scene = forced ?? currentScene
+        var level = bodyCells
+        if forced == nil {
+            // понякога снима приятелите или плъха
+            let others = buddies.filter { $0.kind.id != "photo" && !$0.leaving }
+            let r = Int.random(in: 0..<10)
+            if r < 3, let o = others.randomElement() { scene = "b_" + o.kind.id; level = buddyLevel(o.kind.id) }
+            else if r < 5 && ratIsOut { scene = "ratsolo" }
+        }
+        raw.append(["scene": scene, "t": Date().timeIntervalSince1970, "level": level])
         if raw.count > 60 { raw.removeFirst(raw.count - 60) }
         UserDefaults.standard.set(raw, forKey: "photos")
     }
@@ -179,6 +221,15 @@ extension Game {
         if time > albumUntil || NSEvent.pressedMouseButtons != 0 && !p.frame.contains(NSEvent.mouseLocation) && time - albumOpened > 0.4 {
             closeAlbum()
         }
+    }
+
+    /// Важен момент: ако фотографката е тук, снима го.
+    func photoMoment(_ scene: String) {
+        guard let b = buddy("photo"), !buddyAsleep(b), !b.leaving else { return }
+        takePhoto(scene: scene)
+        b.view.flashAt = time
+        buddySay(b, ["Щрак! Това е за албума!", "Исторически момент! Щрак!", "Тази снимка ще е в рамка!"].randomElement()!, 2.5)
+        sfx("Tink")
     }
 
     /// Пикселка понякога сама показва някоя снимка.

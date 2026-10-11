@@ -90,6 +90,7 @@ extension Game {
     }
 
     func celebrateBirthday() {
+        photoMoment("birthday")
         let age = petAge
         confettiStart = time
         sfx("Hero")

@@ -320,6 +320,26 @@ let iconTarget = grid([
     ".RWWWWR.",
     "..RRRR..",
 ])
+let iconWater = grid([
+    "........",
+    ".EEEE...",
+    "E.EEEEE.",
+    "..EEEEEC",
+    "..EEEE.C",
+    "..EEEE..",
+    "...EE..C",
+    "........",
+])
+let iconTV = grid([
+    "..K..K..",
+    "...KK...",
+    "KKKKKKKK",
+    "KCCCCCCK",
+    "KCWCCCCK",
+    "KCCCCCCK",
+    "KKKKKKKK",
+    ".K....K.",
+])
 let iconFlag = grid([
     "KKKKKKK.",
     "KWSWSWK.",

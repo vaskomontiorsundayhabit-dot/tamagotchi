@@ -474,6 +474,7 @@ extension Game {
         start(.love, length: 3)
         if k.alive {
             say("ИЗЛЮПИ СЕ! Ооо, колко е сладко! Аз съм татко!", seconds: 4)
+            photoMoment("hatch")
             nextNameAsk = time + 6
         } else {
             say("Излюпи се… камъче?! Златно камъче! Хм… пак ще го обичам.", seconds: 4.5)

@@ -1112,8 +1112,14 @@ final class PetView: NSView {
         if t < game.reviveUntil {
             // след обновяване: пикселите долитат отвсякъде и се събират (възкръсва)
             let k = CGFloat(max(0, min(1, 1 - (game.reviveUntil - t) / 3.5)))
-            NSColor(hex: 0xfff6a6, alpha: 0.3 * (1 - k * k)).setFill()
-            NSRect(x: centerX - bodyW, y: 0, width: bodyW * 2, height: feetY).fill()
+            // искрици около него (без правоъгълник)
+            for i in 0..<14 {
+                let a = Double(i) * 0.45 + t * 3
+                let rr = (bodyW * 0.9 + 20) * (1 - k * 0.5)
+                NSColor(hex: i % 2 == 0 ? 0xfff6a6 : 0xffd166, alpha: 0.9 * (1 - k)).setFill()
+                NSRect(x: centerX + CGFloat(cos(a)) * rr, y: vy(sp.top) + (feetY - vy(sp.top)) / 2 + CGFloat(sin(a)) * rr * 0.6,
+                       width: 4, height: 4).fill()
+            }
             for (row, line) in petGrid.enumerated() {
                 for (col, ch) in line.enumerated() {
                     guard let c = game.color(ch) else { continue }
@@ -2580,6 +2586,14 @@ final class Game: NSObject, NSApplicationDelegate {
     var albumPanel: NSPanel?
     var albumOpened: Double = 0
     var albumUntil: Double = 0
+    var recentTopics: [String] = []
+    var artistTargetX: CGFloat = 0
+    var wateringUntil: Double = 0
+    var nextPlantNag: Double = 0
+    var tvPanel: NSPanel?
+    var tvUntil: Double = 0
+    var nextTVLine: Double = 0
+    var tvDay = ""
     var nextRoofCheck: Double = 0
     var nextRainWake: Double = 0
     var nextRoofAsk: Double = 60
@@ -2816,6 +2830,7 @@ final class Game: NSObject, NSApplicationDelegate {
         updateBirthday()
         updateArtistPainting()
         updateAlbum()
+        updateTV()
         updateRace(step)
         updateJealousy()
         updateWeather(step)
@@ -3116,6 +3131,7 @@ final class Game: NSObject, NSApplicationDelegate {
             leveled = true
         }
         if leveled {
+            photoMoment("levelup")
             start(.levelUp, length: 2.5)
             say(pet.level <= 250 ? "НИВО \(pet.level)! Пораснах!" : "НИВО \(pet.level)! Вече съм огромен!", seconds: 3.5)
         }
@@ -3527,6 +3543,8 @@ final class Game: NSObject, NSApplicationDelegate {
             MiniButton(icon: iconBag, label: inventoryOpen ? "Скрий инвентара" : "Инвентар", enabled: true,
                        action: { [weak self] in self?.toggleInventory() }),
             MiniButton(icon: iconCake, label: "Рожден ден", enabled: true, action: { [weak self] in self?.birthdayInfo() }),
+            MiniButton(icon: iconTV, label: tvPanel == nil ? "ТВ вечер (гледат компилациите)" : "Изключи телевизора", enabled: true,
+                       action: { [weak self] in self?.toggleTV() }),
         ]
         showMiniMenu(title: "Още", stats: [], buttons: buttons, above: NSPoint(x: pr.midX, y: pr.maxY))
     }

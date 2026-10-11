@@ -6,6 +6,9 @@ import AppKit
 final class PlantView: NSView {
     weak var game: Game?
     override var isFlipped: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func mouseDown(with event: NSEvent) { game?.openPlantMenu() }
+    override func rightMouseDown(with event: NSEvent) { game?.openPlantMenu() }
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let st = game.plantStage
@@ -15,9 +18,17 @@ final class PlantView: NSView {
         NSRect(x: bounds.midX - 14, y: bottom - 14, width: 28, height: 14).fill()
         NSColor(hex: 0x5c3a1e).setFill()
         NSRect(x: bounds.midX - 16, y: bottom - 16, width: 32, height: 4).fill()
+        // капки, докато го полива
+        if game.time < game.wateringUntil {
+            NSColor(hex: 0x48cae4).setFill()
+            for i in 0..<6 {
+                let ph = CGFloat((game.time * 2 + Double(i) / 6).truncatingRemainder(dividingBy: 1))
+                NSRect(x: bounds.midX - 10 + CGFloat(i) * 4, y: 6 + ph * (bottom - 26), width: 2, height: 4).fill()
+            }
+        }
         guard st > 0 else { return }
-        let h = CGFloat([0, 12, 30, 48][min(3, st)])
-        let sway = CGFloat(sin(game.time * 1.5)) * 2
+        let h = CGFloat([0, 12, 30, 48][min(3, st)]) * (game.plantWater < 20 ? 0.75 : 1)
+        let sway = CGFloat(sin(game.time * 1.5)) * 2 + (game.plantWater < 20 ? 6 : 0)
         NSColor(hex: 0x52b788).setFill()
         NSRect(x: bounds.midX - 1.5 + sway / 2, y: bottom - 16 - h, width: 3, height: h).fill()
         if st >= 2 {
@@ -101,7 +112,6 @@ extension Game {
             else { UserDefaults.standard.set(Double(x), forKey: "plantX") }
             let p = overlayPanel(NSRect(x: x, y: vf.minY, width: s.width, height: s.height), key: false)
             p.level = .floating
-            p.ignoresMouseEvents = true
             let v = PlantView(frame: NSRect(origin: .zero, size: s))
             v.game = self
             p.contentView = v
@@ -109,12 +119,68 @@ extension Game {
             plantPanel = p
         }
         plantPanel?.contentView?.needsDisplay = true
-        if plantStage >= 3 && time > nextFruit && foods.count < 10, let p = plantPanel {
-            nextFruit = time + 15 * 60
+        // вода: изсъхва бавно; дъждът го полива
+        plantWater = max(0, plantWater - 1.0 / 30 / 180)
+        if raining { plantWater = min(100, plantWater + 1.0 / 30 / 6) }
+        if plantWater < 25 && time > nextPlantNag && !pet.asleep && hidePhase == .off {
+            nextPlantNag = time + 10 * 60
+            say("Цветето е жадно! Трябва да го полеем.", seconds: 3)
+            if errands.isEmpty && !busyMoving && !pet.working && !playingGame && Int.random(in: 0..<3) > 0 { runErrands([.waterPlant]) }
+        }
+        let fruitEvery: Double = plantWater > 50 ? 8 * 60 : (plantWater > 20 ? 15 * 60 : .greatestFiniteMagnitude)
+        if plantStage >= 3 && time > nextFruit && foods.count < 10 && plantWater > 20, let p = plantPanel {
+            nextFruit = time + fruitEvery
             let f = FoodPixel(color: foodColors.randomElement()!, at: NSPoint(x: p.frame.midX - 15, y: p.frame.maxY - 20), game: self)
             f.falls = true
             foods.append(f)
             if !pet.asleep { say("Цветето даде пиксел-плод!", seconds: 2.5) }
+        }
+    }
+
+    var plantWater: Double {
+        get { UserDefaults.standard.object(forKey: "plantWater") as? Double ?? 60 }
+        set { UserDefaults.standard.set(min(100, max(0, newValue)), forKey: "plantWater") }
+    }
+
+    func openPlantMenu() {
+        guard let p = plantPanel else { return }
+        let buttons = [
+            MiniButton(icon: iconWater, label: "Полей", enabled: true, action: { [weak self] in
+                guard let self else { return }
+                if !self.pet.asleep && self.errands.isEmpty && !self.busyMoving && !self.monitorDetached {
+                    self.runBreakErrands([.waterPlant])
+                } else {
+                    self.waterPlantNow()
+                }
+            }),
+        ]
+        showMiniMenu(title: ["", "Кълн", "Растение", "Цвете"][min(3, plantStage)],
+                     stats: [("Вода", plantWater / 100, 0x48cae4), ("Растеж", Double(plantStage) / 3, 0x52b788)],
+                     buttons: buttons, above: NSPoint(x: p.frame.midX, y: p.frame.maxY))
+    }
+
+    func waterPlantNow() {
+        plantWater = 100
+        wateringUntil = time + 2.5
+        sfx("Bottle")
+    }
+
+    /// Пиксчо отива до цветето и го полива.
+    func updateWaterErrand(_ step: Double) {
+        guard let p = plantPanel else { nextErrand(); return }
+        switch errandStage {
+        case 0:
+            say("Отивам да полея цветето!", seconds: 2)
+            errandStage = 1
+        case 1:
+            if walkTo(feet: NSPoint(x: p.frame.midX, y: p.frame.minY), speed: 280, step) {
+                waterPlantNow()
+                say(["Пий, цветенце!", "Ето ти водичка!", "Расти голямо!"].randomElement()!, seconds: 2)
+                errandStage = 2
+                errandStart = time
+            }
+        default:
+            if time - errandStart > 2.5 { nextErrand() }
         }
     }
 
