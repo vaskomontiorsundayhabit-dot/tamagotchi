@@ -150,6 +150,38 @@ extension Game {
         binView = v
     }
 
+    /// Десен бутон върху пиксел: кофата се показва и пикселът лети в нея.
+    func throwInBin(_ food: FoodPixel) {
+        guard foods.contains(where: { $0 === food }), !food.flying else { return }
+        showBin(near: food)
+        guard binPanel != nil else { return }
+        binHideAt = 0
+        // вече не е храна на екрана: само лети към кофата
+        foods.removeAll { $0 === food }
+        binFlights.append((food, food.panel.frame.origin, time))
+    }
+
+    func updateBinFlights() {
+        guard let bin = binPanel else { binFlights.forEach { $0.0.remove() }; binFlights.removeAll(); return }
+        var keep: [(FoodPixel, NSPoint, Double)] = []
+        for (f, from, t0) in binFlights {
+            let k = CGFloat(min(1, (time - t0) / 0.5))
+            let to = NSPoint(x: bin.frame.midX - f.panel.frame.width / 2, y: bin.frame.minY + 20)
+            f.panel.setFrameOrigin(NSPoint(x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k + 80 * k * (1 - k)))
+            if k >= 1 {
+                f.remove()
+                binView?.gulpAt = time
+                binHideAt = time + 0.9
+                if !pet.asleep && hidePhase == .off {
+                    say(f.spoiled ? "Браво, развален беше!" : "Ей, тоя можеше да го изям!", seconds: 2)
+                }
+            } else {
+                keep.append((f, from, t0))
+            }
+        }
+        binFlights = keep
+    }
+
     /// Пуснат пиксел върху кофата? Тогава го изхвърля.
     func tryBin(_ food: FoodPixel) -> Bool {
         guard let p = binPanel else { return false }
@@ -169,6 +201,7 @@ extension Game {
     }
 
     func updateBin() {
+        updateBinFlights()
         binView?.needsDisplay = true
         if binPanel != nil && binHideAt > 0 && time > binHideAt {
             binPanel?.orderOut(nil)

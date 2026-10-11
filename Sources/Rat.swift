@@ -3,7 +3,7 @@
 
 import AppKit
 
-enum RatGoal { case food(FoodPixel), pixel, ball, toy, cheese }
+enum RatGoal { case food(FoodPixel), pixel, ball, toy, cheese, wheel }
 
 let ratAngryLines = ["Цик! Гладен съм! Забрави ме!", "Цик-цик! Къде ми е храната?!", "Сърдит съм ти, цик!",
                      "Никой не се грижи за мен… цик.", "ЦИК! Купичката е празна!"]
@@ -121,6 +121,32 @@ final class CheeseView: NSView {
     }
 }
 
+/// Колелото на плъха (на пода, търкаля се, когато плъхът тича вътре).
+final class WheelView: NSView {
+    weak var game: Game?
+    override var isFlipped: Bool { true }
+    override func draw(_ dirtyRect: NSRect) {
+        guard let game else { return }
+        let c = NSPoint(x: bounds.midX, y: bounds.midY)
+        let r = bounds.width / 2 - 3
+        let ring = NSBezierPath(ovalIn: NSRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
+        NSColor(hex: 0x8d99ae).setStroke(); ring.lineWidth = 4; ring.stroke()
+        NSColor(hex: 0x6a6a80).setFill()
+        for k in 0..<6 {
+            let a = game.wheelAngle + Double(k) * .pi / 3
+            for d in stride(from: CGFloat(4), to: r - 2, by: 4) {
+                NSRect(x: c.x + CGFloat(cos(a)) * d - 1.5, y: c.y + CGFloat(sin(a)) * d - 1.5, width: 3, height: 3).fill()
+            }
+        }
+        if game.time < game.ratInWheelUntil {
+            let g = RatView.ratGrid(frame: Int(game.time * 12), running: true)
+            let s: CGFloat = 1.8
+            drawGrid(g, x: c.x - CGFloat(g[0].count) * s / 2, y: c.y + r - 4 - CGFloat(g.count) * s, s: s,
+                     flip: game.wheelDir > 0, palette: { ch in ch == "R" ? NSColor(hex: 0xff8fab) : game.color(ch) })
+        }
+    }
+}
+
 // MARK: - Клетката
 
 final class CageView: NSView {
@@ -166,9 +192,9 @@ final class CageView: NSView {
         NSRect(x: r.minX - 2, y: r.minY, width: r.width + 4, height: 5).fill()
         NSRect(x: r.midX - 6, y: r.minY - 6, width: 12, height: 6).fill()
         let owned = game.pet.owned.filter { game.pet.has($0) }
-        let inWheel = game.ratInCage && owned.contains("wheel") && Int(game.time / 10) % 3 == 0
+        let inWheel = false   // колелото вече е навън, на пода
         // колелото (вътре, вдясно)
-        if owned.contains("wheel") {
+        if inWheel && owned.contains("wheel") {
             let c = NSPoint(x: r.maxX - 20, y: r.maxY - 24)
             let ring = NSBezierPath(ovalIn: NSRect(x: c.x - 15, y: c.y - 15, width: 30, height: 30))
             NSColor(hex: 0x8d99ae).setStroke(); ring.lineWidth = 3; ring.stroke()
@@ -317,8 +343,22 @@ extension Game {
         let ratHit = NSRect(x: p.frame.midX - 28, y: p.frame.minY, width: 56, height: 28).contains(m)
         if p.ignoresMouseEvents == ratHit { p.ignoresMouseEvents = !ratHit }
 
-        // в състезание: мести го състезанието
+        updateWheel(step)
+        // в колелото: тича вътре, колелото се търкаля
+        if time < ratInWheelUntil, let w = wheelPanel {
+            p.alphaValue = 0
+            p.setFrameOrigin(NSPoint(x: w.frame.midX - RatView.size.width / 2, y: w.frame.minY))
+            return
+        } else if ratInWheelUntil > 0 {
+            ratInWheelUntil = 0
+            p.alphaValue = 1
+            ratPlayedAt = Date()
+            ratView?.heartsUntil = time + 2
+            ratSay("Уф! Завъртя ми се главата! Цик!", 2)
+        }
+        // в състезание или в игра с приятел: мести го играта
         if racePhase != .off && raceBuddy == nil { return }
+        if inBuddyGame("rat") { if !p.isVisible { p.orderFrontRegardless() }; return }
         if ratInCage && !carryingRat {
             if p.isVisible { p.orderOut(nil) }
             chasing = false
@@ -401,6 +441,9 @@ extension Game {
             case .toy:
                 guard pet.has("toy") else { ratGoal = nil; p.setFrameOrigin(o); return }
                 gx = o.x
+            case .wheel:
+                guard let w = wheelPanel else { ratGoal = nil; p.setFrameOrigin(o); return }
+                gx = w.frame.midX - half
             case .cheese:
                 guard let c = cheesePanel else { ratGoal = nil; p.setFrameOrigin(o); return }
                 gx = c.frame.midX - half + (o.x + half < c.frame.midX ? -26 : 26)
@@ -499,6 +542,12 @@ extension Game {
         if let b = ball, fetchPhase == .waiting, !b.flying, !b.carried, time > nextBallSteal {
             nextBallSteal = time + Double.random(in: 40...120)
             if Int.random(in: 0..<100) < 40 { ratGoal = .ball; ratSay("Топка! Цик!", 1.5); return }
+        }
+        // влиза в колелото и се търкаля с него
+        if wheelPanel != nil && time > nextRatWheel && !chasing {
+            nextRatWheel = time + Double.random(in: 3 * 60...6 * 60)
+            ratGoal = .wheel
+            return
         }
         // играе си сам с топчето до клетката
         if pet.has("toy") && time > nextRatToy && !chasing {
@@ -611,6 +660,40 @@ extension Game {
         }
     }
 
+    /// Колелото на пода: появява се, ако е купено; търкаля се с плъха вътре.
+    func updateWheel(_ step: Double) {
+        let want = pet.has("wheel") && hasRat && window.isVisible
+        if !want { wheelPanel?.orderOut(nil); wheelPanel = nil; ratInWheelUntil = 0; return }
+        let vf = NSScreen.main?.visibleFrame ?? .zero
+        if wheelPanel == nil {
+            let size = NSSize(width: 58, height: 58)
+            var x = vf.minX + 260
+            if let saved = UserDefaults.standard.object(forKey: "wheelX") as? Double { x = CGFloat(saved) }
+            let p = overlayPanel(NSRect(x: x, y: vf.minY, width: size.width, height: size.height), key: false)
+            p.level = .floating
+            p.ignoresMouseEvents = true
+            let v = WheelView(frame: NSRect(origin: .zero, size: size))
+            v.game = self
+            p.contentView = v
+            p.orderFrontRegardless()
+            wheelPanel = p
+        }
+        guard let w = wheelPanel else { return }
+        w.contentView?.needsDisplay = true
+        guard time < ratInWheelUntil else { return }
+        var o = w.frame.origin
+        let nx = o.x + wheelDir * CGFloat(45 * step)
+        if nx < vf.minX + 10 || nx > vf.maxX - w.frame.width - 10 || buddyBlockedAt(nx + w.frame.width / 2 + wheelDir * 32, vf.minY) {
+            wheelDir = -wheelDir
+        } else {
+            o.x = nx
+        }
+        o.y = vf.minY
+        w.setFrameOrigin(o)
+        wheelAngle += Double(wheelDir) * step * 3
+        UserDefaults.standard.set(Double(o.x), forKey: "wheelX")
+    }
+
     func startRatChase() {
         guard let p = ratPanel else { return }
         chasing = true
@@ -641,6 +724,10 @@ extension Game {
             start(.angry, length: 1.5)
             say("ЕЙ! Открадна ми пиксел! ВЪРНИ ГО!", seconds: 2.5)
             if !chasing && !busyMoving { startRatChase() }
+        case .wheel:
+            ratInWheelUntil = time + Double.random(in: 15...25)
+            wheelDir = Bool.random() ? 1 : -1
+            ratSay("Колелото! Цик-цик!", 1.5)
         case .cheese:
             ratEatingCheese = true
             ratSay("СИРЕНЕ! Цик-цик-цик!", 2.5)

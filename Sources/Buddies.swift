@@ -113,6 +113,7 @@ final class Buddy: NSObject {
     var nextWander: Double = 0
     var nextSleepCheck: Double = 0
     var growSeconds: Double = 0
+    var hugGo = false
 
     init(kind: BuddyKind, guest: Bool, origin: NSPoint, game: Game) {
         self.kind = kind
@@ -145,6 +146,7 @@ final class BuddyView: NSView {
     var walking = false
     var facingLeft = false
     var flashAt: Double = -10
+    var heartsUntil: Double = 0
     static let scale: CGFloat = 3     // като Пиксчо: всяко ниво е още едно квадратче
     static let size = NSSize(width: CGFloat(canvasW) * 3 + 20, height: 40 + CGFloat(canvasH) * 3 + 10)
     var spriteBox = NSRect.zero        // заетата част (за кликовете)
@@ -213,6 +215,13 @@ final class BuddyView: NSView {
                     ("♪" as NSString).draw(at: NSPoint(x: cx + 20 + CGFloat(i) * 12 + CGFloat(sin(t * 3 + Double(i))) * 4,
                                                        y: midY - 20 - CGFloat(ph) * 40), withAttributes: a)
                 }
+            }
+        }
+        if t < heartsUntil {
+            // прегръдка: сърца над двамата
+            for i in 0..<3 {
+                let ph = CGFloat((t * 0.8 + Double(i) * 0.33).truncatingRemainder(dividingBy: 1))
+                drawGrid(heartGrid, x: spriteBox.midX - 24 + CGFloat(i) * 16, y: spriteBox.minY - 6 - ph * 26, s: 2.5, palette: game.color)
             }
         }
         if asleep {
@@ -312,6 +321,18 @@ extension Game {
             let free = buddyKinds.filter { !joinedBuddies.contains($0.id) }
             if let k = free.randomElement() { arriveAsGuest(k, vf: vf) }
         }
+        // препил с кафе: плаши приятелите и те си отиват до вкъщи
+        if isHyper && time - scaredBuddiesAt > 20 * 60 && !buddies.isEmpty {
+            scaredBuddiesAt = time
+            for b in buddies where !b.leaving {
+                b.leaving = true
+                b.working = false
+                if !b.guest { UserDefaults.standard.set(Date().addingTimeInterval(30 * 60), forKey: "buddyAway_\(b.kind.id)") }
+                buddySay(b, ["Ох, пак е изпил сто кафета! Отивам си!", "Страшен е така! Чао!", "Ще дойда, като се успокои!"]
+                    .randomElement()!, 3)
+                changeFriendship(b.kind.id, -5)
+            }
+        }
         for (i, b) in buddies.enumerated() { updateBuddy(b, index: i, step, pr: pr, vf: vf) }
         let gone = buddies.filter { $0.leaving && !$0.panel.frame.intersects(vf.insetBy(dx: -5, dy: -5)) }
         gone.forEach { $0.remove() }
@@ -383,6 +404,35 @@ extension Game {
             return
         }
         if racePhase != .off && raceBuddy === b { return }
+        if inBuddyGame(b.kind.id) { return }
+        // отива да прегърне Пиксчо: допират се и излизат сърца
+        if b.hugGo && !asleep {
+            let side: CGFloat = buddyScreenBox(b).midX < pr.midX ? -1 : 1
+            let goalMid = pr.midX + side * (pr.width / 2 + buddyScreenBox(b).width / 2 - 14)
+            let dx = goalMid - buddyScreenBox(b).midX
+            o.y = y
+            if abs(dx) > 5 {
+                v.walking = true
+                v.facingLeft = dx < 0
+                o.x += (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(160 * step))
+            } else {
+                b.hugGo = false
+                v.walking = false
+                v.facingLeft = side > 0
+                v.heartsUntil = time + 3
+                v.face = .happy
+                buddySay(b, "Прегръдка!", 2.5)
+                if !pet.asleep {
+                    facingLeft = side < 0
+                    start(.love, length: 3)
+                    say(["Ооо, и аз те обичам, \(buddyName(b.kind))!", "Гуш-гуш!", "Най-добрата прегръдка!"].randomElement()!, seconds: 2.5)
+                }
+                changeFriendship(b.kind.id, 5)
+                sfx("Purr")
+            }
+            p.setFrameOrigin(o)
+            return
+        }
 
         // собствен сън: изморява се (нощем повече), спи си и става
         let hour = Calendar.current.component(.hour, from: Date())
@@ -507,6 +557,8 @@ extension Game {
             b.food = food
             b.target = NSPoint(x: food.panel.frame.midX - BuddyView.size.width / 2, y: food.panel.frame.minY - v.feetY + 40)
             buddySay(b, "Пиксел!", 1.5)
+        } else if r == 3, buddyGame == nil, !others.isEmpty || ratIsOut {
+            startBuddyGame()
         } else if r < 4, let o2 = others.randomElement() {
             // говорят си помежду си (няколко реплики)
             let (a, c) = buddyChats.randomElement()!
@@ -517,8 +569,8 @@ extension Game {
             b.target = NSPoint(x: rp.frame.midX - BuddyView.size.width / 2, y: o.y)
             buddySay(b, "\(ratLabel.capitalized)! Ела да си играем!", 2)
         } else if r < 7, petFree {
-            buddySay(b, "Прегръдка!", 2); start(.love, length: 2)
-            sfx("Purr")
+            b.hugGo = true
+            buddySay(b, "Идвам да те гушна!", 2)
         } else if r < 8 && b.kind.id == "gamer" && racePhase == .off && petFree {
             buddySay(b, "Хайде на състезание, \(pet.name)!", 3)
             offerRace(with: b)
@@ -795,10 +847,8 @@ extension Game {
             sfx("Pop")
         case 4:
             if buddyAsleep(b) { buddySay(b, "Спя…", 1.5); return }
-            buddySay(b, "Прегръдка!", 2)
-            start(.love, length: 2)
-            if !pet.asleep { say("Ооо, и аз те обичам, \(buddyName(b.kind))!", seconds: 2.5) }
-            sfx("Purr")
+            b.hugGo = true
+            buddySay(b, "Идвам да те гушна!", 2)
         case 5:
             askName(id)
         case 6:

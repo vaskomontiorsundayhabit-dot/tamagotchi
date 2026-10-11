@@ -430,7 +430,8 @@ extension Game {
         let ageH = Int(Date().timeIntervalSince(eggLaid) / 3600)
         let items: [(Grid, String, String)] = [(iconWarm, "Стопли", "warm"), (iconTurn, "Обърни", "turn"), (iconClean, "Почисти", "clean"),
                                                (iconTalk, "Говори му", "talk"), (iconSing, "Пей му", "sing"),
-                                               (iconBlanket, "Завий с одеалце", "blanket")]
+                                               (iconBlanket, eggBlanket ? "Махни одеалцето" : "Завий с одеалце",
+                                                eggBlanket ? "unblanket" : "blanket")]
         let buttons = items.map { item in
             MiniButton(icon: item.0, label: item.1, enabled: item.2 != "clean" || eggDirty, action: { [weak self] in
                 self?.requestEggCare(item.2)
@@ -446,6 +447,11 @@ extension Game {
     }
 
     func requestEggCare(_ what: String) {
+        if what == "unblanket" {
+            eggBlanket = false
+            if !pet.asleep { say("Махнах одеалцето.", seconds: 2) }
+            return
+        }
         // Пиксчо отива до яйцето и го прави сам (ако може)
         if !pet.asleep && !pet.dead && hidePhase == .off && !playingGame && errands.isEmpty && !busyMoving && !monitorDetached {
             pendingEggCare = what

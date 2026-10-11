@@ -941,7 +941,7 @@ final class PetView: NSView {
         else if game.walking { pose = .walk }
         else if game.action == .wave { pose = .dance }
         else if game.action == .love || game.action == .levelUp { pose = .wave }
-        else if game.isDrunk && !atDesk { pose = .wobble }
+        else if (game.isDrunk || game.toiletHolding) && !atDesk { pose = .wobble }
         else if atDesk { pose = .type }
         else { pose = .idle }
 
@@ -987,6 +987,41 @@ final class PetView: NSView {
             NSColor(white: 0, alpha: 0.18).setFill()
             NSBezierPath(ovalIn: NSRect(x: centerX - bodyW / 2 - 6, y: oy + CGFloat(sp.groundY + 1) * s - 3,
                                         width: bodyW + 12, height: 5)).fill()
+        }
+
+        // купените неща се виждат: стол зад него, докато монтира; лампа до него, докато спи
+        let groundLine = oy + CGFloat(sp.groundY + 1) * s
+        if atDesk && pet.has("chair") {
+            let cw = bodyW + 16, chx = centerX - cw / 2
+            NSColor(hex: 0x5c3a1e).setFill()
+            NSRect(x: chx, y: groundLine - 26, width: cw, height: 6).fill()
+            NSRect(x: flip ? chx + cw - 6 : chx, y: groundLine - 60, width: 6, height: 40).fill()
+            NSRect(x: chx + 4, y: groundLine - 20, width: 4, height: 20).fill()
+            NSRect(x: chx + cw - 8, y: groundLine - 20, width: 4, height: 20).fill()
+        }
+        if pet.has("lamp") && (pet.asleep || Calendar.current.component(.hour, from: Date()) >= 20) {
+            let lx = centerX - bodyW / 2 - 40
+            if pet.asleep {
+                NSColor(hex: 0xffd166, alpha: 0.18).setFill()
+                NSBezierPath(ovalIn: NSRect(x: lx - 40, y: groundLine - 110, width: 110, height: 110)).fill()
+            }
+            NSColor(hex: 0x2b2b3a).setFill()
+            NSRect(x: lx + 12, y: groundLine - 50, width: 3, height: 50).fill()
+            NSRect(x: lx + 4, y: groundLine - 3, width: 19, height: 3).fill()
+            NSColor(hex: pet.asleep ? 0xffd166 : 0xf4a261).setFill()
+            NSRect(x: lx, y: groundLine - 64, width: 27, height: 14).fill()
+            NSRect(x: lx + 4, y: groundLine - 70, width: 19, height: 6).fill()
+        }
+        if atDesk && pet.has("piggy") {
+            let px = flip ? centerX - bodyW / 2 - 50 : centerX + bodyW / 2 + 12
+            drawGrid(iconPiggy, x: px, y: groundLine - 22, s: 2.5, palette: game.color)
+            if t - game.lastCoinAt < 0.8 {
+                NSColor(hex: 0xffd166).setFill()
+                NSRect(x: px + 8, y: groundLine - 30 - CGFloat(1 - (t - game.lastCoinAt) / 0.8) * 20, width: 5, height: 5).fill()
+            }
+        }
+        if pet.has("magnet") && !pet.asleep && !atDesk {
+            drawGrid(iconMagnet, x: centerX + bodyW / 2 + 8, y: vy(sp.top) - 6 + CGFloat(sin(t * 2)) * 3, s: 2, palette: game.color)
         }
 
         let ctx = NSGraphicsContext.current
@@ -1454,6 +1489,11 @@ final class FoodView: NSView {
         window.setFrameOrigin(NSPoint(x: windowStart.x + p.x - start.x, y: windowStart.y + p.y - start.y))
     }
 
+    // десен бутон: пикселът отива в кофата
+    override func rightMouseDown(with event: NSEvent) {
+        if let food { game?.throwInBin(food) }
+    }
+
     override func mouseUp(with event: NSEvent) {
         dragStart = nil
         guard let food, !food.flying else { return }
@@ -1728,7 +1768,7 @@ final class RetroView: NSView {
         let white: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.white]
         let yellow: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor(hex: 0xffd166)]
         (pet.name.uppercased() as NSString).draw(at: NSPoint(x: 14, y: 12), withAttributes: white)
-        let lvl = "НИВО \(pet.level)" as NSString
+        let lvl = "НИВО \(pet.level) · \(game.bodyCells + 8) ПИКС." as NSString
         let lw = lvl.size(withAttributes: yellow).width
         lvl.draw(at: NSPoint(x: b.width - 14 - lw, y: 12), withAttributes: yellow)
         let coins = "\(pet.coins) МОНЕТИ" as NSString
@@ -2480,6 +2520,24 @@ final class Game: NSObject, NSApplicationDelegate {
     var ratEatingCheese = false
     var nextCheeseNom: Double = 0
     var smallPets: [SmallPet] = []
+    var binFlights: [(FoodPixel, NSPoint, Double)] = []
+    var goldUntil: Double = 0
+    var lastCoinAt: Double = -10
+    var petRoofed = false
+    var toiletHolding = false
+    var toiletHoldSince: Double = 0
+    var nextHoldLine: Double = 0
+    var wheelPanel: NSPanel?
+    var wheelAngle: Double = 0
+    var wheelDir: CGFloat = 1
+    var ratInWheelUntil: Double = 0
+    var nextRatWheel: Double = 2 * 60
+    var nextRoofCheck: Double = 0
+    var nextRainWake: Double = 0
+    var nextRoofAsk: Double = 60
+    var buddyGame: BuddyGameState?
+    var gameBall: NSPanel?
+    var scaredBuddiesAt: Double = -1000
     var nextPetCare: Double = 5 * 60
     var pendingEggCare: String?
     var snackFood: FoodPixel?
@@ -2695,6 +2753,7 @@ final class Game: NSObject, NSApplicationDelegate {
         updateMiniMenu()
         updateDialog()
         updateSmallPets(step)
+        updateBuddyGame(step)
         updateRace(step)
         updateJealousy()
         updateWeather(step)
@@ -2784,6 +2843,11 @@ final class Game: NSObject, NSApplicationDelegate {
             var body = NSColor(hex: bodyColor)
             if pet.health < 40 { body = body.blended(withFraction: 0.6, of: NSColor(hex: 0xb5c49a)) ?? body }
             if action == .angry || anger > 60 { body = body.blended(withFraction: 0.35, of: NSColor(hex: 0xe63946)) ?? body }
+            if time < goldUntil {
+                // златен пиксел: блести в злато
+                let shine = 0.55 + 0.15 * sin(time * 4)
+                body = body.blended(withFraction: CGFloat(shine), of: NSColor(hex: 0xffc300)) ?? body
+            }
             if c == "D" { return body.blended(withFraction: 0.22, of: .black) ?? body }
             if c == "A" { return body.blended(withFraction: 0.08, of: .black) ?? body }
             if c == "L" { return body.blended(withFraction: 0.45, of: .white) ?? body }
@@ -2977,7 +3041,8 @@ final class Game: NSObject, NSApplicationDelegate {
 
     func addXP(_ amount: Int) {
         guard !pet.dead, amount > 0 else { return }
-        pet.xp += amount
+        // златен е: двоен опит
+        pet.xp += time < goldUntil ? amount * 2 : amount
         var leveled = false
         while pet.xp >= pet.xpNeeded {
             pet.xp -= pet.xpNeeded
@@ -3339,14 +3404,7 @@ final class Game: NSObject, NSApplicationDelegate {
             v.actions = [
                 RetroButton(icon: pet.working ? iconPause : iconMonitor, label: pet.working ? "Спри работа" : "Работи",
                             value: nil, action: asleep ? nil : #selector(toggleWork)),
-                RetroButton(icon: iconBall, label: fetchPhase == .off ? "Игра: донеси" : "Спри „донеси“",
-                            value: nil, action: asleep ? nil : #selector(toggleFetch)),
-                RetroButton(icon: iconLaser, label: laserPanel == nil ? "Игра: гони точката" : "Спри играта",
-                            value: nil, action: asleep ? nil : #selector(toggleLaser)),
-                RetroButton(icon: iconBalloon, label: balloonPanel == nil ? "Игра: балон" : "Спри балона",
-                            value: nil, action: asleep ? nil : #selector(toggleBalloon)),
-                RetroButton(icon: iconSeek, label: "Игра: криеница", value: nil, action: asleep ? nil : #selector(startSeek)),
-                RetroButton(icon: iconFlag, label: "Състезание (със залог)", value: nil, action: asleep ? nil : #selector(raceFromMenu)),
+                RetroButton(icon: iconBall, label: "Игри", value: nil, action: asleep ? nil : #selector(openGamesMenu)),
                 RetroButton(icon: iconPhone, label: "Обади се на приятел", value: nil, action: asleep ? nil : #selector(callFriendFromRetro)),
                 RetroButton(icon: asleep ? iconSun : iconMoon, label: asleep ? "Събуди" : "Приспи", value: nil, action: #selector(toggleSleep)),
                 RetroButton(icon: iconShop, label: "Магазин", value: nil, action: #selector(openShop)),
@@ -3378,6 +3436,26 @@ final class Game: NSObject, NSApplicationDelegate {
         p.orderFrontRegardless()
         retroPanel = p
         retroLastInside = time
+    }
+
+    /// Всички игри на едно място.
+    @objc func openGamesMenu() {
+        let pr = petScreenRect()
+        var buttons = [
+            MiniButton(icon: iconBall, label: fetchPhase == .off ? "Донеси топката" : "Спри „донеси“", enabled: true,
+                       action: { [weak self] in self?.toggleFetch() }),
+            MiniButton(icon: iconLaser, label: laserPanel == nil ? "Гони точката" : "Спри играта", enabled: true,
+                       action: { [weak self] in self?.toggleLaser() }),
+            MiniButton(icon: iconBalloon, label: balloonPanel == nil ? "Балон" : "Спри балона", enabled: true,
+                       action: { [weak self] in self?.toggleBalloon() }),
+            MiniButton(icon: iconSeek, label: "Криеница", enabled: true, action: { [weak self] in self?.startSeek() }),
+            MiniButton(icon: iconFlag, label: "Състезание (със залог)", enabled: true, action: { [weak self] in self?.raceFromMenu() }),
+        ]
+        if buddies.filter({ !$0.guest }).count + (hasRat ? 1 : 0) >= 2 || buddies.count >= 2 {
+            buttons.append(MiniButton(icon: iconHug, label: "Приятелите да играят", enabled: true,
+                                      action: { [weak self] in self?.startBuddyGame() }))
+        }
+        showMiniMenu(title: "Игри", stats: [], buttons: buttons, above: NSPoint(x: pr.midX, y: pr.maxY))
     }
 
     @objc func toggleRatCage() {

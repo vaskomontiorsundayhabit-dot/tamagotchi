@@ -195,9 +195,16 @@ extension Game {
             for i in v.drops.indices {
                 v.drops[i].y -= v.drops[i].speed * CGFloat(step)
                 v.drops[i].x -= (weatherKind == .snow ? 0 : 60) * CGFloat(step)
-                if v.drops[i].y < 0 { v.drops[i].y = sf.height + 10; v.drops[i].x = CGFloat.random(in: 0...sf.width + 100) }
+                // капките спират в нарисуваното (покрив)
+                let sx = sf.minX + v.drops[i].x, sy = sf.minY + v.drops[i].y
+                let hitsDrawing = !drawCells.isEmpty && drawCells[cellKey(Int(floor(sx / drawCell)), Int(floor(sy / drawCell)))] != nil
+                if v.drops[i].y < 0 || hitsDrawing {
+                    v.drops[i].y = sf.height + 10
+                    v.drops[i].x = CGFloat.random(in: 0...sf.width + 100)
+                }
             }
         }
+        updateRainShelter()
         if weatherKind == .storm && time > nextThunder {
             nextThunder = time + Double.random(in: 25...70)
             v.flashAt = time
@@ -211,6 +218,73 @@ extension Game {
         v.needsDisplay = true
     }
 
-    /// Чадър над него, когато вали.
-    var umbrellaUp: Bool { weatherOn && (weatherKind == .rain || weatherKind == .storm) && !pet.asleep && hidePhase == .off }
+    var raining: Bool { weatherOn && (weatherKind == .rain || weatherKind == .storm) }
+
+    /// Чадър над него, когато вали и няма покрив.
+    var umbrellaUp: Bool { raining && !petRoofed && !pet.asleep && hidePhase == .off }
+
+    /// Има ли нарисуван покрив над правоъгълника.
+    func roofOver(_ r: NSRect) -> Bool {
+        guard !drawCells.isEmpty else { return false }
+        let c0 = Int(floor(r.minX / drawCell)), c1 = Int(floor(r.maxX / drawCell))
+        let top = Int(floor(r.maxY / drawCell))
+        for (k, _) in drawCells {
+            let (x, y) = cellFromKey(k)
+            if x >= c0 && x <= c1 && y >= top - 1 { return true }
+        }
+        return false
+    }
+
+    /// Място под покрив (нарисувано достатъчно високо над пода) най-близо до x.
+    func roofSpot(near x: CGFloat, floor: CGFloat, height: CGFloat) -> CGFloat? {
+        var best: CGFloat?
+        for (k, _) in drawCells {
+            let (cx, cy) = cellFromKey(k)
+            let cellY = CGFloat(cy) * drawCell
+            guard cellY > floor + height + 4, cellY < floor + height + 400 else { continue }
+            let px = (CGFloat(cx) + 0.5) * drawCell
+            if best == nil || abs(px - x) < abs(best! - x) { best = px }
+        }
+        return best
+    }
+
+    /// Вали: буди ги, искат покрив; ако има нарисуван, отиват под него.
+    func updateRainShelter() {
+        guard time > nextRoofCheck else { return }
+        nextRoofCheck = time + 1
+        guard raining else { petRoofed = false; return }
+        let pr = petScreenRect()
+        let wasRoofed = petRoofed
+        petRoofed = roofOver(pr.insetBy(dx: 10, dy: 0))
+        if petRoofed && !wasRoofed && !pet.asleep { say("Ааа, сухо! Благодаря за покрива!", seconds: 2.5) }
+        if !petRoofed {
+            if pet.asleep && time > nextRainWake {
+                nextRainWake = time + 10 * 60
+                pet.asleep = false
+                say("Мокър съм! Вали върху мен! Нарисувай ми покрив!", seconds: 3.5)
+                annoy(8, reason: "валеше върху мен")
+            } else if !pet.asleep && time > nextRoofAsk && hidePhase == .off {
+                nextRoofAsk = time + 8 * 60
+                if let x = roofSpot(near: pr.midX, floor: floorY, height: pr.height), !busyMoving && !pet.working {
+                    walkTarget = x - bodyCenterOffset
+                    say("Отивам под покрива!", seconds: 2)
+                } else {
+                    say(["Вали! Нарисувай ми покрив!", "Капе ми на главата! Искам покрив!"].randomElement()!, seconds: 3)
+                }
+            }
+        }
+        // приятелите също искат покрив
+        for b in buddies where !b.leaving {
+            let box = buddyScreenBox(b)
+            if roofOver(box.insetBy(dx: 6, dy: 0)) { continue }
+            if b.sleeping && Int.random(in: 0..<30) == 0 {
+                b.sleeping = false
+                b.energy = max(b.energy, 40)
+                buddySay(b, "Вали! Събудих се мокр\(b.kind.female ? "а" : "")! Искам покрив!", 3)
+            } else if !b.sleeping && Int.random(in: 0..<40) == 0 {
+                if let x = roofSpot(near: box.midX, floor: floorY, height: box.height) { b.wanderX = x }
+                else { buddySay(b, "Вали! Някой да нарисува покрив!", 2.5) }
+            }
+        }
+    }
 }

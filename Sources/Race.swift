@@ -75,6 +75,8 @@ extension Game {
         clearForGame()
         cancelErrands()
         chasing = false
+        // не тича с мониторите: те си остават на бюрото
+        if pet.working { takeWorkBreak() }
         raceBet = bet
         if bet >= 0 {
             if pet.coins < 10 { raceBet = -1 } else { pet.coins -= 10 }
@@ -233,6 +235,7 @@ extension Game {
         raceBuddy = nil
         walking = false
         saveWindowPosition()
+        if workBreak && monitorDetached { runErrands([.backToDesk]) }
     }
 
     /// Най-горният нарисуван пиксел в правоъгълника (или nil).

@@ -476,7 +476,7 @@ let shopItems: [ShopItem] = [
     ShopItem(id: "candy", name: "Бонбон", price: 8, kind: .use, slot: "", info: "+15 радост, +5 ситост", icon: iconCandy),
     ShopItem(id: "energy", name: "Енергийна напитка", price: 35, kind: .use, slot: "", info: "+50 енергия, но се напива за 5 мин", icon: iconEnergyDrink),
     ShopItem(id: "vitamins", name: "Витамини", price: 25, kind: .use, slot: "", info: "+20 здраве, лекува по-бързо", icon: iconVitamins),
-    ShopItem(id: "gold", name: "Златен пиксел", price: 60, kind: .use, slot: "", info: "+40 опит", icon: iconGold),
+    ShopItem(id: "gold", name: "Златен пиксел", price: 60, kind: .use, slot: "", info: "+40 опит и блести в злато 10 мин (двоен опит)", icon: iconGold),
     ShopItem(id: "donut", name: "Поничка", price: 12, kind: .use, slot: "", info: "+20 ситост, +5 радост", icon: iconDonut),
     ShopItem(id: "icecream", name: "Сладолед", price: 14, kind: .use, slot: "", info: "+15 радост, +10 ситост", icon: iconIceCream),
     ShopItem(id: "smoothie", name: "Смути", price: 18, kind: .use, slot: "", info: "+10 енергия, +10 здраве", icon: iconSmoothie),
@@ -798,7 +798,11 @@ extension Game {
                 pet.health = (pet.health + 20).clamped()
                 if isSick { cure(minutes: 20) } else { say("Витамини! Здрав съм като пиксел!", seconds: 2.5) }
             case "gold":
-                say("Златен пиксел! +40 опит", seconds: 3)
+                // блести в злато 10 минути и печели двоен опит
+                goldUntil = time + 10 * 60
+                confettiStart = time
+                sfx("Hero")
+                say("ЗЛАТЕН СЪМ! 10 минути двоен опит! +40 опит", seconds: 3.5)
                 addXP(40)
             case "donut":
                 if pet.fullness >= 90 { pet.overfull = min(100, pet.overfull + 20) }
@@ -920,6 +924,7 @@ extension Game {
 
     func earnCoins(_ n: Int) {
         guard n > 0 else { return }
+        lastCoinAt = time
         pet.coins += pet.has("piggy") ? Int((Double(n) * 1.25).rounded(.up)) : n
     }
 
