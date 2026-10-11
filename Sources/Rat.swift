@@ -304,6 +304,8 @@ extension Game {
             if c.ignoresMouseEvents == cageHit { c.ignoresMouseEvents = !cageHit }
         }
 
+        // в състезание: мести го състезанието
+        if racePhase != .off && raceBuddy == nil { return }
         if ratInCage && !carryingRat {
             if p.isVisible { p.orderOut(nil) }
             chasing = false
@@ -740,6 +742,7 @@ extension Game {
 
     func ratClicked() {
         sfx("Purr")
+        attentionToOthers()
         if ratAngry {
             ratSay(ratHungryMinutes > ratHungerLimit ? "Цик! Гладен съм!" : "Цик… скучно ми е.", 2.5)
             if !pet.asleep { say("\(ratLabel.capitalized) ми се сърди… трябва да се погрижа за него.", seconds: 3) }

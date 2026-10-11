@@ -300,6 +300,16 @@ let iconBattle = grid([
     ".KBBBBK.",
     "..KKKK..",
 ])
+let iconFlag = grid([
+    "KKKKKKK.",
+    "KWSWSWK.",
+    "KSWSWSK.",
+    "KWSWSWK.",
+    "KKKKKKK.",
+    "K.......",
+    "K.......",
+    "KK......",
+])
 let iconLaser = grid([
     "........",
     "..RR....",
@@ -482,14 +492,13 @@ let shopItems: [ShopItem] = [
     ShopItem(id: "scarf", name: "Шал", price: 50, kind: .wear, slot: "neck", info: "уютно", icon: iconScarf),
     ShopItem(id: "monitor2", name: "Още един монитор", price: 250, kind: .stack, slot: "", info: "още един монитор над другите (до 4); всеки дава още монети от работа", icon: iconMonitor),
     ShopItem(id: "monitorup", name: "Подобри монитора", price: 150, kind: .levelup, slot: "", info: "по-хубав монитор (до ниво 3); всяко ниво: видео с 10% по-бързо", icon: iconMonitorUp),
-    ShopItem(id: "friend", name: "Приятелка", price: 400, kind: .upgrade, slot: "", info: "приятелка фотограф: снима, носи монети, краде му храна", icon: iconFriend),
     ShopItem(id: "rat", name: "Пиксел плъх", price: 120, kind: .upgrade, slot: "", info: "домашен любимец с клетка; трябва да се храни и гушка", icon: iconRat),
     ShopItem(id: "chair", name: "Удобен стол", price: 180, kind: .upgrade, slot: "", info: "работата го изморява с 30% по-малко", icon: iconChair),
     ShopItem(id: "piggy", name: "Касичка", price: 220, kind: .upgrade, slot: "", info: "+25% монети от всичко", icon: iconPiggy),
     ShopItem(id: "fastedit", name: "Бърз монтаж", price: 200, kind: .upgrade, slot: "", info: "видео за 20 минути вместо 30", icon: iconEnergy),
     ShopItem(id: "wheel", name: "Колело за плъха", price: 100, kind: .upgrade, slot: "", info: "плъхът по-рядко скучае", icon: iconWheel),
     ShopItem(id: "feeder", name: "Автохранилка", price: 140, kind: .upgrade, slot: "", info: "плъхът огладнява 2 пъти по-бавно", icon: iconFeeder),
-    ShopItem(id: "lens", name: "Обектив за приятелката", price: 160, kind: .upgrade, slot: "", info: "по-чести и по-скъпи фотосесии", icon: iconLens),
+    ShopItem(id: "lens", name: "Обектив за фотографката", price: 160, kind: .upgrade, slot: "", info: "фотографката (ако живее при вас) снима по-често и по-скъпо", icon: iconLens),
     ShopItem(id: "lamp", name: "Нощна лампа", price: 90, kind: .upgrade, slot: "", info: "наспива се по-бързо", icon: iconLamp),
     ShopItem(id: "magnet", name: "Пикселен магнит", price: 150, kind: .upgrade, slot: "", info: "пикселите-храна идват по-често", icon: iconMagnet),
 ]
@@ -498,7 +507,7 @@ let shopItems: [ShopItem] = [
 
 /// Разделите в магазина.
 let shopTabs = ["ХРАНА", "ОБЛЕКЛО", "ПОДОБРЕНИЯ", "ЛЮБИМЦИ"]
-let petShopIds: Set<String> = ["friend", "rat", "cheese", "toy", "wheel", "feeder", "lens"]
+let petShopIds: Set<String> = ["rat", "cheese", "toy", "wheel", "feeder", "lens"]
 
 func shopTab(_ item: ShopItem) -> Int {
     if petShopIds.contains(item.id) { return 3 }

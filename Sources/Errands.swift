@@ -23,6 +23,7 @@ struct Letter {
     let job: String
     let reward: Int
     let minutes: Int
+    let workMinutes: Int
     let arrived: Double
 }
 
@@ -87,7 +88,7 @@ final class LetterView: NSView {
                                                    .foregroundColor: NSColor(hex: 0x2b2b3a)]
         ("ПИСМО ОТ: \(l.from.uppercased())" as NSString).draw(at: NSPoint(x: 14, y: 12), withAttributes: head)
         let name = game?.pet.name ?? "Пиксчо"
-        let text = "Здравей, \(name)!\nТрябва ми \(l.job). Можеш ли да го монтираш до \(l.minutes) минути?\nПлащам \(l.reward) монети."
+        let text = "Здравей, \(name)!\nТрябва ми \(l.job). Срок: \(l.minutes) минути (работа около \(l.workMinutes) мин).\nПлащам \(l.reward) монети."
         (text as NSString).draw(with: NSRect(x: 14, y: 32, width: b.width - 28, height: 100),
                                 options: [.usesLineFragmentOrigin], attributes: body)
         for (r, title, color) in [(acceptRect, "ПРИЕМИ", 0x52b788), (declineRect, "ОТКАЖИ", 0xe63946)] {
@@ -344,16 +345,17 @@ extension Game {
 
     var ratName: String? { UserDefaults.standard.string(forKey: "ratName") }
     var ratLabel: String { ratName ?? "плъхчето" }
-    var friendName: String { UserDefaults.standard.string(forKey: "friendName") ?? "Пиксчочка" }
 
     func updateNames(_ idle: Bool) {
         guard idle, questionPanel == nil, letterPanel == nil, errands.isEmpty, !playingGame, time > nextNameAsk else { return }
         if pet.owned.contains("rat") && ratName == nil { askName("rat") }
-        else if pet.owned.contains("friend") && UserDefaults.standard.string(forKey: "friendName") == nil { askName("friend") }
+        else if let id = joinedBuddies.first(where: { !buddyHasName($0) }) { askName(id) }
     }
 
     @objc func renameRat() { askName("rat") }
-    @objc func renameFriend() { askName("friend") }
+    @objc func renameBuddy(_ sender: NSMenuItem) {
+        if let id = sender.representedObject as? String { askName(id) }
+    }
 
     func askName(_ who: String) {
         nextNameAsk = time + 10 * 60
@@ -361,7 +363,7 @@ extension Game {
         var n = petNames.randomElement()!
         while n == pendingName { n = petNames.randomElement()! }
         pendingName = n
-        let what = who == "rat" ? "плъхчето" : "приятелката ми"
+        let what = who == "rat" ? "плъхчето" : (buddyKind(who).map { "новия ни приятел (\($0.job))" } ?? "приятеля ми")
         ask(Question(text: "Как да кръстим \(what)? Харесва ли ти „\(n)“?", answers: [
             ("ХАРЕСВА МИ", "„\(n)“! Чудесно име!", .acceptName), ("ДРУГО", "Хм… чакай да помисля.", .nextName),
         ]), index: -1)
@@ -374,8 +376,8 @@ extension Game {
             UserDefaults.standard.set(n, forKey: "ratName")
             ratSay("Цик! Аз съм \(n)!", 3)
         } else {
-            UserDefaults.standard.set(n, forKey: "friendName")
-            friendSay("Аз съм \(n)! Харесва ми!", 3)
+            UserDefaults.standard.set(n, forKey: "buddyName_\(pendingNameFor)")
+            if let b = buddy(pendingNameFor) { buddySay(b, "Аз съм \(n)! Харесва ми!", 3) }
         }
         start(.love, length: 1.5)
     }
@@ -383,8 +385,9 @@ extension Game {
     // --- писма с поръчки ---
 
     func sendLetter() {
+        let m = Int.random(in: 45...90)
         letter = Letter(from: clientNames.randomElement()!, job: clientJobs.randomElement()!,
-                        reward: Int.random(in: 4...15) * 10, minutes: Int.random(in: 45...90), arrived: time)
+                        reward: Int.random(in: 4...15) * 10, minutes: m, workMinutes: Int(Double(m) * Double.random(in: 0.3...0.55)), arrived: time)
         let vf = NSScreen.main?.visibleFrame ?? .zero
         let s = EnvelopeView.size
         let p = overlayPanel(NSRect(x: vf.maxX - s.width - 30, y: vf.maxY - s.height - 20, width: s.width, height: s.height), key: false)
@@ -441,6 +444,8 @@ extension Game {
             pet.orderText = l.job
             pet.orderDeadline = Date().addingTimeInterval(Double(l.minutes) * 60)
             pet.orderReward = l.reward
+            pet.orderWorkNeeded = Double(l.workMinutes) * 60
+            pet.orderWorkDone = 0
             sfx("Glass")
             say("Приемам „\(l.job)“! Ще го направя навреме!", seconds: 3)
             if !pet.working && !pet.asleep && !pet.dead && errands.isEmpty && hidePhase == .off && !isSick && pet.energy >= 15 {

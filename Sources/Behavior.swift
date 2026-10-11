@@ -15,7 +15,8 @@ let dragWorkLines = [
 let drawRequests = ["сърце", "къща", "дърво", "стълбичка", "слънце", "котка", "ракета", "цвете", "кораб", "звезда"]
 
 enum Reaction { case happy, angry(Double), work, shop, clip, play, nothing, comeOut, sleep, seek, laser, balloon,
-                 feedRat, cuddleRat, jump, draw, acceptName, nextName }
+                 feedRat, cuddleRat, jump, draw, acceptName, nextName, buddyStay, buddyGo,
+                 raceBetPet, raceBetOther, raceNoBet }
 
 struct Question {
     let text: String
@@ -92,7 +93,8 @@ final class QuestionView: NSView {
 
     private func buttonRects() -> [NSRect] {
         let n = CGFloat(question?.answers.count ?? 2)
-        let w: CGFloat = 96, gap: CGFloat = 10
+        let gap: CGFloat = 10
+        let w: CGFloat = min(96, (bounds.width - 24 - gap * (n - 1)) / n)
         let x0 = (bounds.width - (n * w + (n - 1) * gap)) / 2
         return (0..<Int(n)).map { NSRect(x: x0 + CGFloat($0) * (w + gap), y: bounds.height - 42, width: w, height: 28) }
     }
@@ -283,6 +285,11 @@ extension Game {
         case .draw: startDrawing()
         case .acceptName: acceptName()
         case .nextName: askName(pendingNameFor)
+        case .buddyStay: buddyAnswer(stay: true)
+        case .buddyGo: buddyAnswer(stay: false)
+        case .raceBetPet: beginRace(bet: 0)
+        case .raceBetOther: beginRace(bet: 1)
+        case .raceNoBet: beginRace(bet: -1)
         }
         addXP(2)
     }

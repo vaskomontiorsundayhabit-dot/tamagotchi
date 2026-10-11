@@ -641,6 +641,8 @@ struct Pet: Codable {
     var orderText: String?             // поръчка от клиент
     var orderDeadline: Date?
     var orderReward = 0
+    var orderWorkNeeded: Double = 0    // колко секунди работа иска поръчката
+    var orderWorkDone: Double = 0
     var extraMonitors = 0              // допълнителни монитори (до 3)
     var monitorLevel = 1               // ниво на монитора (1…3)
     var sickUntil: Date?
@@ -678,6 +680,8 @@ struct Pet: Codable {
         orderText = try c.decodeIfPresent(String.self, forKey: .orderText) ?? orderText
         orderDeadline = try c.decodeIfPresent(Date.self, forKey: .orderDeadline) ?? orderDeadline
         orderReward = try c.decodeIfPresent(Int.self, forKey: .orderReward) ?? orderReward
+        orderWorkNeeded = try c.decodeIfPresent(Double.self, forKey: .orderWorkNeeded) ?? orderWorkNeeded
+        orderWorkDone = try c.decodeIfPresent(Double.self, forKey: .orderWorkDone) ?? orderWorkDone
         extraMonitors = try c.decodeIfPresent(Int.self, forKey: .extraMonitors) ?? extraMonitors
         monitorLevel = try c.decodeIfPresent(Int.self, forKey: .monitorLevel) ?? monitorLevel
         sickUntil = try c.decodeIfPresent(Date.self, forKey: .sickUntil) ?? sickUntil
@@ -1212,6 +1216,27 @@ final class PetView: NSView {
             }
         }
 
+        // прогрес над монитора: видеото и поръчката
+        if atDesk && monitorRect != .zero {
+            var bars: [(String, Double, Int)] = [("ВИДЕО", game.videoProgress, 0x48cae4)]
+            if let op = game.orderProgress { bars.insert(("ПОРЪЧКА", op, 0xffd166), at: 0) }
+            let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 8, weight: .heavy),
+                                                    .foregroundColor: NSColor.white]
+            let bw = max(70, monitorRect.width)
+            for (i, bar) in bars.enumerated() {
+                let y = monitorRect.minY - 14 - CGFloat(bars.count - 1 - i) * 13
+                let r = NSRect(x: monitorRect.midX - bw / 2, y: y, width: bw, height: 10)
+                NSColor(hex: 0x1b1b24, alpha: 0.9).setFill(); r.fill()
+                NSColor(hex: bar.2).setFill()
+                NSRect(x: r.minX + 1, y: r.minY + 1, width: (r.width - 2) * CGFloat(bar.1), height: r.height - 2).fill()
+                let label = "\(bar.0) \(Int(bar.1 * 100))%" as NSString
+                let ls = label.size(withAttributes: a)
+                NSColor(hex: 0x1b1b24, alpha: 0.6).setFill()
+                NSRect(x: r.midX - ls.width / 2 - 2, y: r.minY, width: ls.width + 4, height: r.height).fill()
+                label.draw(at: NSPoint(x: r.midX - ls.width / 2, y: r.minY - 0.5), withAttributes: a)
+            }
+        }
+
         // бутон за изключване на монитора
         if atDesk && monitorRect != .zero && !game.isDrunk {
             let r = powerRect
@@ -1223,6 +1248,22 @@ final class PetView: NSView {
             NSRect(x: r.minX + 5, y: r.minY + 7, width: 1, height: 4).fill()
             NSRect(x: r.maxX - 6, y: r.minY + 7, width: 1, height: 4).fill()
             NSRect(x: r.minX + 5, y: r.maxY - 5, width: 6, height: 1).fill()
+        }
+
+        // чадър, когато вали навън
+        if game.umbrellaUp && !pet.dead {
+            let ux = centerX + (flip ? -bodyW / 3 : bodyW / 3)
+            let top = headTop - 34
+            NSColor(hex: 0x2b2b3a).setFill()
+            NSRect(x: ux - 1, y: top + 8, width: 3, height: max(10, vy(sp.top + (sp.bottom - sp.top) / 2) - top - 8)).fill()
+            let colors = [0xe63946, 0xffd166, 0x48cae4]
+            for i in 0..<6 {
+                let w = CGFloat(12 + i * 8)
+                NSColor(hex: colors[(i / 2) % 3]).setFill()
+                NSRect(x: ux - w / 2, y: top + CGFloat(i) * 2, width: w, height: 3).fill()
+            }
+            NSColor(hex: 0x2b2b3a).setFill()
+            NSRect(x: ux - 30, y: top + 12, width: 60, height: 2).fill()
         }
 
         // сънува: облаче с точки, за да знаеш, че можеш да видиш съня (посочи го)
@@ -2261,6 +2302,15 @@ final class Game: NSObject, NSApplicationDelegate {
         (pet.owned.contains("fastedit") ? 20 * 60 : 30 * 60) * (1 - 0.1 * Double(pet.monitorLevel - 1))
     }
     var coinMultiplier: Int { 1 + pet.extraMonitors }
+    /// Колко бързо върви поръчката (1 = нормално).
+    var orderSpeed: Double {
+        (pet.owned.contains("fastedit") ? 1.5 : 1) * (1 + 0.1 * Double(pet.monitorLevel - 1)) * (1 + 0.15 * Double(pet.extraMonitors))
+    }
+    var videoProgress: Double { min(1, pet.workSeconds / videoLength) }
+    var orderProgress: Double? {
+        guard pet.orderText != nil, pet.orderWorkNeeded > 0 else { return nil }
+        return min(1, pet.orderWorkDone / pet.orderWorkNeeded)
+    }
     var monitorCount: Int { 1 + pet.extraMonitors }
     var recentCoffees: Int { coffeeTimes.filter { time - $0 < 60 * 60 }.count }
     var isHyper: Bool { isDrunk && recentCoffees >= 3 }
@@ -2304,11 +2354,37 @@ final class Game: NSObject, NSApplicationDelegate {
     var pendingRatings: [(video: Int, views: Int, likes: Int, viral: Bool, at: Double)] = []
     var nextOrder: Double = 4 * 60
     var nextDayTalk: Double = 5 * 60
-    var friendPanel: NSPanel?
-    var friendView: FriendView?
-    var friendTarget: NSPoint?
-    var friendFood: FoodPixel?
-    var nextFriendAct: Double = 60
+    var buddies: [Buddy] = []
+    var nextVisit: Double = 10 * 60
+    var pendingBuddy: String?
+    var racePhase = RacePhase.off
+    var raceBuddy: Buddy?
+    var raceBet = -1
+    var raceFloor: CGFloat = 0
+    var raceStartX: CGFloat = 0
+    var raceFinishX: CGFloat = 0
+    var raceOppX: CGFloat = 0
+    var raceT0: Double = 0
+    var raceCount = 0
+    var raceNextSpeed: Double = 0
+    var racePetSpeed: Double = 200
+    var raceOppSpeed: Double = 200
+    var raceFlagPanel: NSPanel?
+    var nextRaceOffer: Double = 20 * 60
+    var othersClicks: [Double] = []
+    var lastPetted: Double = 0
+    var nextJealous: Double = 0
+    var jealousAt: Double = -1000
+    var weatherKind = WeatherKind.clear
+    var weatherTemp: Double?
+    var weatherCity = ""
+    var weatherLat: Double?
+    var weatherLon: Double?
+    var weatherLoading = false
+    var nextWeatherFetch: Double = 8
+    var weatherPanel: NSPanel?
+    var weatherView: WeatherView?
+    var nextThunder: Double = 30
     var pendingReply: (text: String, at: Double, angry: Bool)?
     var ratPanel: NSPanel?
     var ratView: RatView?
@@ -2373,12 +2449,6 @@ final class Game: NSObject, NSApplicationDelegate {
     var pendingNameFor = ""
     var pendingName = ""
     var nextTiredAsk: Double = 3 * 60
-    var friendWorking = false
-    var friendSleeping = false
-    var friendFull: Double = 80
-    var friendWorkSeconds: Double = 0
-    var friendWorkStart: Double = 0
-    var friendShots = 0
     var nextFriendFlash: Double = 0
     var nextFriendLine: Double = 0
     var nextFriendWork: Double = 4 * 60
@@ -2393,11 +2463,11 @@ final class Game: NSObject, NSApplicationDelegate {
 
     var busyMoving: Bool { rolling || fetchPhase == .running || fetchPhase == .returning || toiletPhase != .off || jumping || hidePhase != .off
         || chasing || seekPhase != .off || !errands.isEmpty || laserPanel != nil || balloonPanel != nil || deskWalk
-        || snackFood != nil }
+        || snackFood != nil || racePhase != .off }
     /// Движи се сам (без игрите, в които ходи по земята и гравитацията важи).
     var movingSelf: Bool {
         rolling || toiletPhase != .off || jumping || hidePhase != .off || chasing || seekPhase != .off || !errands.isEmpty
-            || deskWalk || snackFood != nil
+            || deskWalk || snackFood != nil || racePhase != .off
     }
 
     // обновяване
@@ -2498,10 +2568,15 @@ final class Game: NSObject, NSApplicationDelegate {
             say("Готово видео №\(pet.videos)! +40 опит, +\(coins) монети", seconds: 4)
             addXP(40)
             createCompilation()
-            completeOrderIfAny()
         }
         if pet.working {
             pet.workCoinSeconds += step
+            // поръчката си има собствен прогрес; с подобренията върви по-бързо
+            if pet.orderText != nil {
+                if pet.orderWorkNeeded <= 0 { pet.orderWorkNeeded = 30 * 60 }
+                pet.orderWorkDone += step * orderSpeed
+                if pet.orderWorkDone >= pet.orderWorkNeeded { completeOrderIfAny() }
+            }
         }
         if workingBefore && !pet.working && !pet.asleep && !pet.dead && errands.isEmpty && hidePhase == .off {
             say("Стига толкова, капнах…", seconds: 3)
@@ -2545,7 +2620,10 @@ final class Game: NSObject, NSApplicationDelegate {
         updateHealth(step)
         updateHiding(step)
         updateDreams()
-        updateFriend(step)
+        updateBuddies(step)
+        updateRace(step)
+        updateJealousy()
+        updateWeather(step)
         updateFriendReply()
         updateRat(step)
         updateRatBall()
@@ -2862,6 +2940,7 @@ final class Game: NSObject, NSApplicationDelegate {
     func petIt() {
         if pet.dead { say("…", seconds: 1.5); return }
         if seekPhase == .hiding { foundInSeek(); return }
+        pettedWhileJealous()
         if hidePhase == .hidden || hidePhase == .peeking { comeOutOfHiding(); return }
         followUntil = time + 8
         clickTimes.append(time)
@@ -3193,6 +3272,7 @@ final class Game: NSObject, NSApplicationDelegate {
                 RetroButton(icon: iconBalloon, label: balloonPanel == nil ? "Игра: балон" : "Спри балона",
                             value: nil, action: asleep ? nil : #selector(toggleBalloon)),
                 RetroButton(icon: iconSeek, label: "Игра: криеница", value: nil, action: asleep ? nil : #selector(startSeek)),
+                RetroButton(icon: iconFlag, label: "Състезание (със залог)", value: nil, action: asleep ? nil : #selector(raceFromMenu)),
                 RetroButton(icon: asleep ? iconSun : iconMoon, label: asleep ? "Събуди" : "Приспи", value: nil, action: #selector(toggleSleep)),
                 RetroButton(icon: iconShop, label: "Магазин", value: nil, action: #selector(openShop)),
                 RetroButton(icon: iconPencil, label: "Рисувай платформи", value: nil, action: #selector(startDrawing)),
@@ -3247,6 +3327,12 @@ final class Game: NSObject, NSApplicationDelegate {
         else if recentCoffees > 0 { parts.append("КАФЕ ×\(recentCoffees) (БОДЪР)") }
         if pet.tired > 3 { parts.append("НЕДОСПАЛ: \(Int(pet.tired)) Ч") }
         if let o = orderText { parts.append(o) }
+        if let p = orderProgress {
+            let left = max(0, (pet.orderWorkNeeded - pet.orderWorkDone) / orderSpeed / 60)
+            parts.append("ПОРЪЧКА: \(Int(p * 100))% (ОЩЕ ~\(Int(left.rounded(.up))) МИН РАБОТА)")
+        }
+        if let w = weatherText { parts.append(w.uppercased()) }
+        if pet.working { parts.append("ВИДЕО №\(pet.videos + 1): \(Int(videoProgress * 100))%") }
         if isSick, let until = pet.sickUntil { parts.append("БОЛЕН: " + clock(until.timeIntervalSinceNow)) }
         if pet.overfull > 0.5 { parts.append("КОРЕМЧЕ: " + clock(pet.overfull / 10 * 60)) }
         if hasRat && ratAngry { parts.append("\(ratLabel.uppercased()) Е СЪРДИТ") }
@@ -3355,10 +3441,18 @@ final class Game: NSObject, NSApplicationDelegate {
         item("Пиксели-храна по екрана", #selector(toggleFoodPixels), on: foodPixelsOn)
         item("Звънче за тревога на екрана", #selector(toggleBell), on: bellOn)
         item("Звуци", #selector(toggleSounds), on: soundsOn)
+        item("Истинското време навън", #selector(toggleWeather), on: weatherOn)
+        if let w = weatherText { item(w, nil) }
         if foodPixelsOn { item("Пусни пиксел сега", #selector(spawnFoodNow), enabled: foods.count < 12) }
         item("Смени името…", #selector(rename))
         if hasRat { item("Кръсти плъхчето…", #selector(renameRat)) }
-        if pet.owned.contains("friend") { item("Кръсти приятелката…", #selector(renameFriend)) }
+        for id in joinedBuddies {
+            guard let k = buddyKind(id) else { continue }
+            let it = NSMenuItem(title: "Кръсти \(buddyName(k)) (\(k.job))…", action: #selector(renameBuddy(_:)), keyEquivalent: "")
+            it.target = self
+            it.representedObject = id
+            menu.addItem(it)
+        }
         if #available(macOS 13.0, *) {
             item("Пускай при включване", #selector(toggleLogin), on: SMAppService.mainApp.status == .enabled)
         }

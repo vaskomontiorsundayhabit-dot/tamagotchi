@@ -312,7 +312,7 @@ extension Game {
             }
         case 4:
             if let f = friendPanel {
-                put(feetX: f.frame.midX + 30, feetY: f.frame.maxY - (friendView?.feetY ?? 0))
+                put(feetX: f.frame.midX + 30, feetY: f.frame.maxY - friendFeetY)
                 window.order(.below, relativeTo: f.windowNumber)
             }
         case 5:
