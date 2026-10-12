@@ -7,7 +7,12 @@ final class PlantView: NSView {
     weak var game: Game?
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) { game?.openPlantMenu() }
+    let drag = Dragger()
+    override func mouseDown(with event: NSEvent) { drag.down(window) }
+    override func mouseDragged(with event: NSEvent) { drag.dragged(window) }
+    override func mouseUp(with event: NSEvent) {
+        if drag.up() { game?.plantDropped() } else { game?.openPlantMenu() }
+    }
     override func rightMouseDown(with event: NSEvent) { game?.openPlantMenu() }
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
@@ -104,12 +109,15 @@ extension Game {
     func updatePlant() {
         let show = plantStage > 0 && window.isVisible && !minimalMode
         if !show { plantPanel?.orderOut(nil); plantPanel = nil; return }
-        let vf = NSScreen.main?.visibleFrame ?? .zero
+        var vf = NSScreen.main?.visibleFrame ?? .zero
         if plantPanel == nil {
             let s = NSSize(width: 50, height: 90)
             var x = vf.minX + 340
             if let saved = UserDefaults.standard.object(forKey: "plantX") as? Double { x = CGFloat(saved) }
             else { UserDefaults.standard.set(Double(x), forKey: "plantX") }
+            // на екрана, на който е оставено (ако го няма, на главния)
+            if let sc = NSScreen.screens.first(where: { x + 25 >= $0.frame.minX && x + 25 < $0.frame.maxX }) { vf = sc.visibleFrame }
+            x = min(max(x, vf.minX), vf.maxX - s.width)
             let p = overlayPanel(NSRect(x: x, y: vf.minY, width: s.width, height: s.height), key: false)
             p.level = .floating
             let v = PlantView(frame: NSRect(origin: .zero, size: s))
@@ -119,6 +127,18 @@ extension Game {
             plantPanel = p
         }
         plantPanel?.contentView?.needsDisplay = true
+        // пуснато във въздуха: пада обратно на пода
+        if let p = plantPanel, let v = p.contentView as? PlantView, !v.drag.active {
+            let c = NSPoint(x: p.frame.midX, y: p.frame.minY + 10)
+            let floorY = (screenAt(c) ?? NSScreen.main)?.visibleFrame.minY ?? p.frame.minY
+            if p.frame.minY > floorY + 0.5 {
+                plantFallSpeed = min(plantFallSpeed + 1.2, 30)
+                p.setFrameOrigin(NSPoint(x: p.frame.minX, y: max(floorY, p.frame.minY - plantFallSpeed)))
+            } else {
+                plantFallSpeed = 0
+                if p.frame.minY < floorY - 0.5 { p.setFrameOrigin(NSPoint(x: p.frame.minX, y: floorY)) }
+            }
+        }
         // вода: изсъхва бавно; дъждът го полива
         plantWater = max(0, plantWater - 1.0 / 30 / 180)
         if raining { plantWater = min(100, plantWater + 1.0 / 30 / 6) }
@@ -140,6 +160,15 @@ extension Game {
     var plantWater: Double {
         get { UserDefaults.standard.object(forKey: "plantWater") as? Double ?? 60 }
         set { UserDefaults.standard.set(min(100, max(0, newValue)), forKey: "plantWater") }
+    }
+
+    /// Цветето е преместено с мишката: помни мястото.
+    func plantDropped() {
+        guard let p = plantPanel else { return }
+        let vf = (screenAt(NSPoint(x: p.frame.midX, y: p.frame.midY)) ?? NSScreen.main)?.visibleFrame ?? .zero
+        let x = min(max(p.frame.minX, vf.minX), vf.maxX - p.frame.width)
+        p.setFrameOrigin(NSPoint(x: x, y: max(p.frame.minY, vf.minY)))
+        UserDefaults.standard.set(Double(x), forKey: "plantX")
     }
 
     func openPlantMenu() {

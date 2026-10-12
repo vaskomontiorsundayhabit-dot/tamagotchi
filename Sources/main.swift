@@ -2567,6 +2567,7 @@ final class Game: NSObject, NSApplicationDelegate {
     var ratInWheelUntil: Double = 0
     var nextRatWheel: Double = 2 * 60
     var plantPanel: NSPanel?
+    var plantFallSpeed: CGFloat = 0
     var nextFruit: Double = 60
     var targetPanel: NSPanel?
     var targetUntil: Double = 0
