@@ -83,6 +83,44 @@ let iconHouse = grid([
     ".KKKKKK.",
 ])
 
+/// Влачене на малките прозорчета (приятели, любимци, яйце): клик или преместване.
+final class Dragger {
+    private var start: NSPoint?
+    private var origin = NSPoint.zero
+    private(set) var moved = false
+    var active: Bool { start != nil && moved }
+
+    func down(_ w: NSWindow?) {
+        start = NSEvent.mouseLocation
+        origin = w?.frame.origin ?? .zero
+        moved = false
+    }
+
+    /// true, ако вече се влачи.
+    @discardableResult
+    func dragged(_ w: NSWindow?) -> Bool {
+        guard let s = start, let w else { return false }
+        let p = NSEvent.mouseLocation
+        if abs(p.x - s.x) + abs(p.y - s.y) > 4 { moved = true }
+        if moved { w.setFrameOrigin(NSPoint(x: origin.x + p.x - s.x, y: origin.y + p.y - s.y)) }
+        return moved
+    }
+
+    /// true, ако беше влачене (а не клик).
+    func up() -> Bool {
+        let m = moved
+        start = nil
+        moved = false
+        return m
+    }
+}
+
+/// Кликовете минават през празното; докато се влачи, прозорчето остава хванато.
+func setClickable(_ p: NSPanel, _ hit: Bool) {
+    if NSEvent.pressedMouseButtons != 0 && !p.ignoresMouseEvents { return }
+    if p.ignoresMouseEvents == hit { p.ignoresMouseEvents = !hit }
+}
+
 struct MiniButton {
     let icon: Grid
     let label: String

@@ -23,7 +23,14 @@ final class RatView: NSView {
     static let tailTop: CGFloat = 46
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) { game?.ratClicked() }
+    let drag = Dragger()
+    override func mouseDown(with event: NSEvent) { drag.down(window) }
+    override func mouseDragged(with event: NSEvent) {
+        if drag.dragged(window), game?.ratHeld == false { game?.ratHeld = true; game?.ratSay("Цииик! Пусни ме!", 1.5) }
+    }
+    override func mouseUp(with event: NSEvent) {
+        if drag.up() { game?.ratHeld = false } else { game?.ratClicked() }
+    }
     override func rightMouseDown(with event: NSEvent) { game?.openRatMenu() }
 
     static func ratGrid(frame: Int, running: Bool) -> Grid {
@@ -341,7 +348,8 @@ extension Game {
         // кликовете минават през празните части на прозорчетата
         let m = NSEvent.mouseLocation
         let ratHit = NSRect(x: p.frame.midX - 28, y: p.frame.minY, width: 56, height: 28).contains(m)
-        if p.ignoresMouseEvents == ratHit { p.ignoresMouseEvents = !ratHit }
+        setClickable(p, ratHit)
+        if ratHeld { v.running = true; return }
 
         updateWheel(step)
         // в колелото: тича вътре, колелото се търкаля

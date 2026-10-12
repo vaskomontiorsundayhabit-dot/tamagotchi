@@ -16,7 +16,7 @@ let drawRequests = ["сърце", "къща", "дърво", "стълбичка"
 
 enum Reaction { case happy, angry(Double), work, shop, clip, play, nothing, comeOut, sleep, seek, laser, balloon,
                  feedRat, cuddleRat, jump, draw, acceptName, nextName, buddyStay, buddyGo,
-                 raceBetPet, raceBetOther, raceNoBet, update }
+                 raceBetPet, raceBetOther, raceNoBet, update, visitYes, visitNo }
 
 struct Question {
     let text: String
@@ -233,7 +233,7 @@ extension Game {
     func ask(_ q: Question, index: Int) {
         guard window.isVisible else { return }
         questionIndex = index
-        let qs = NSSize(width: QuestionView.size.width, height: QuestionView.height(for: q))
+        let qs = NSSize(width: q.answers.count >= 4 ? 420 : QuestionView.size.width, height: QuestionView.height(for: q))
         let v = QuestionView(frame: NSRect(origin: .zero, size: qs))
         v.game = self
         v.question = q
@@ -294,6 +294,8 @@ extension Game {
         case .raceBetOther: beginRace(bet: 1)
         case .raceNoBet: beginRace(bet: -1)
         case .update: if availableBuild > currentBuild && !updating { installUpdate() }
+        case .visitYes: visitAnswer(true)
+        case .visitNo: visitAnswer(false)
         }
         addXP(2)
     }

@@ -2594,6 +2594,12 @@ final class Game: NSObject, NSApplicationDelegate {
     var tvUntil: Double = 0
     var nextTVLine: Double = 0
     var tvDay = ""
+    var pendingVisitor: String?
+    var approvedReturn: Set<String> = []
+    var nextVisitAsk: Double = 0
+    var ratHeld = false
+    var eggHeld = false
+    var babyHeld = false
     var nextRoofCheck: Double = 0
     var nextRainWake: Double = 0
     var nextRoofAsk: Double = 60

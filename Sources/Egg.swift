@@ -87,7 +87,21 @@ final class EggView: NSView {
     static let size = NSSize(width: 64, height: 76)
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) { game?.openEggMenu() }
+    let drag = Dragger()
+    override func mouseDown(with event: NSEvent) { drag.down(window) }
+    override func mouseDragged(with event: NSEvent) { if drag.dragged(window) { game?.eggHeld = true } }
+    override func mouseUp(with event: NSEvent) {
+        guard let game else { return }
+        if drag.up() {
+            game.eggHeld = false
+            if let w = window {
+                UserDefaults.standard.set(Double(w.frame.midX), forKey: "eggX")
+                game.eggFallFrom = w.frame.minY
+            }
+        } else {
+            game.openEggMenu()
+        }
+    }
     override func rightMouseDown(with event: NSEvent) { game?.openEggMenu() }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -172,7 +186,12 @@ final class BabyView: NSView {
     static let size = NSSize(width: 120, height: 60)
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) { game?.babyClicked() }
+    let drag = Dragger()
+    override func mouseDown(with event: NSEvent) { drag.down(window) }
+    override func mouseDragged(with event: NSEvent) { if drag.dragged(window) { game?.babyHeld = true } }
+    override func mouseUp(with event: NSEvent) {
+        if drag.up() { game?.babyHeld = false } else { game?.babyClicked() }
+    }
     override func rightMouseDown(with event: NSEvent) { game?.openBabyMenu() }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -280,16 +299,24 @@ extension Game {
         }
         guard let p = eggPanel else { return }
         p.contentView?.needsDisplay = true
-        // пада отгоре при появата
-        if eggFallFrom != nil {
+        if eggHeld { return }
+        // подът под самото яйце (на неговия екран) — никога не пада извън екрана
+        let eggScreen = NSScreen.screens.first { $0.frame.minX <= p.frame.midX && $0.frame.maxX > p.frame.midX } ?? NSScreen.main
+        let evf = eggScreen?.visibleFrame ?? vf
+        if p.frame.midX < evf.minX + 20 || p.frame.midX > evf.maxX - 20 || p.frame.minY < evf.minY - 1 || p.frame.minY > evf.maxY {
+            let nx = min(max(p.frame.midX, evf.minX + 40), evf.maxX - 40)
+            p.setFrameOrigin(NSPoint(x: nx - p.frame.width / 2, y: max(evf.minY, min(p.frame.minY, evf.maxY - p.frame.height))))
+            UserDefaults.standard.set(Double(nx), forKey: "eggX")
+        }
+        // пада (при появата или като го пуснеш)
+        if eggFallFrom != nil || p.frame.minY > evf.minY + 1 {
             var o = p.frame.origin
-            o.y = max(vf.minY, o.y - CGFloat(500 * step))
+            o.y = max(evf.minY, o.y - CGFloat(500 * step))
             p.setFrameOrigin(o)
-            if o.y <= vf.minY { eggFallFrom = nil; sfx("Tink") }
+            if o.y <= evf.minY { eggFallFrom = nil; sfx("Tink") }
             return
         }
-        // при тревога Пиксчо не го оставя: и то се скрива (не се вижда)
-        p.alphaValue = hidePhase == .hidden || hidePhase == .peeking ? 0 : 1
+        p.alphaValue = 1
 
         // топлината пада; мръсотия; стои топло → бавно трупа грижа
         let m = step / 60
@@ -506,8 +533,14 @@ extension Game {
         v.needsDisplay = true
         let m = NSEvent.mouseLocation
         let hit = NSRect(x: p.frame.midX - 18, y: p.frame.minY, width: 36, height: 28).contains(m)
-        if p.ignoresMouseEvents == hit { p.ignoresMouseEvents = !hit }
+        setClickable(p, hit)
+        if babyHeld { return }
         var o = p.frame.origin
+        if o.y > vf.minY + 1 {
+            o.y = max(vf.minY, o.y - CGFloat(800 * step))
+            p.setFrameOrigin(o)
+            return
+        }
         o.y = vf.minY
         p.alphaValue = hidePhase == .hidden || hidePhase == .peeking ? 0 : 1
         guard k.alive, !pet.asleep else { v.walking = false; p.setFrameOrigin(o); return }

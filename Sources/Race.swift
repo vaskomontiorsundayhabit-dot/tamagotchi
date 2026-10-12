@@ -53,7 +53,8 @@ extension Game {
             ask(Question(text: "Състезание до другия край на екрана: \(pet.name) срещу \(other)! На кого залагаш 10 монети?",
                          answers: [(pet.name.uppercased(), "Знаех си! Ще те направя богат!", .raceBetPet),
                                    (other.uppercased(), "Какво?! Срещу мен?! Ще видиш!", .raceBetOther),
-                                   ("БЕЗ ЗАЛОГ", "Добре, само за кеф!", .raceNoBet)]), index: -1)
+                                   ("БЕЗ ЗАЛОГ", "Добре, само за кеф!", .raceNoBet),
+                                   ("НЕ", "Добре, друг път.", .nothing)]), index: -1)
         } else {
             ask(Question(text: "Състезание до другия край на екрана: \(pet.name) срещу \(other)! Да почваме ли?",
                          answers: [("ДА", "На старта!", .raceNoBet), ("НЕ", "Ох… друг път.", .nothing)]), index: -1)

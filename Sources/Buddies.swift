@@ -115,6 +115,7 @@ final class Buddy: NSObject {
     var growSeconds: Double = 0
     var hugGo = false
     var leaveAt: Double = 0
+    var held = false
 
     init(kind: BuddyKind, guest: Bool, origin: NSPoint, game: Game) {
         self.kind = kind
@@ -153,8 +154,18 @@ final class BuddyView: NSView {
     var spriteBox = NSRect.zero        // заетата част (за кликовете)
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) {
-        if let buddy { game?.buddyClicked(buddy) }
+    let drag = Dragger()
+    override func mouseDown(with event: NSEvent) { drag.down(window) }
+    override func mouseDragged(with event: NSEvent) {
+        if drag.dragged(window), let buddy, !buddy.held {
+            buddy.held = true
+            game?.buddySay(buddy, ["Ей! Къде ме носиш?", "Уиии!", "Пусни ме!"].randomElement()!, 1.5)
+        }
+    }
+    override func mouseUp(with event: NSEvent) {
+        guard let buddy else { return }
+        if drag.up() { buddy.held = false; buddy.wanderX = nil; buddy.nextWander = (game?.time ?? 0) + 30 }
+        else { game?.buddyClicked(buddy) }
     }
     override func rightMouseDown(with event: NSEvent) {
         guard let game, let buddy else { return }
@@ -308,8 +319,16 @@ extension Game {
                 }
             }
         }
+        // не си отговорил на обаждането: пита пак след малко
+        if pendingVisitor != nil && questionPanel == nil { pendingVisitor = nil; nextVisitAsk = time + 5 * 60 }
         for id in joinedBuddies where buddy(id) == nil && !buddyIsAway(id) {
             guard let k = buddyKind(id) else { continue }
+            // връща се от вкъщи: първо звъни и пита (при пускане на програмата идва направо)
+            if time > 10 && !approvedReturn.contains(id) {
+                if pendingVisitor == nil && questionPanel == nil && !pet.asleep && hidePhase == .off { askVisit(k) }
+                continue
+            }
+            approvedReturn.remove(id)
             // идва от ръба на екрана
             let b = Buddy(kind: k, guest: false, origin: NSPoint(x: vf.minX - BuddyView.size.width, y: vf.minY), game: self)
             buddies.append(b)
@@ -320,7 +339,10 @@ extension Game {
         if time > nextVisit && idle && !buddies.contains(where: { $0.guest }) {
             nextVisit = time + Double.random(in: 25 * 60...45 * 60)
             let free = buddyKinds.filter { !joinedBuddies.contains($0.id) }
-            if let k = free.randomElement() { arriveAsGuest(k, vf: vf) }
+            if let k = free.randomElement() {
+                // гостът първо звъни и пита дали може да дойде
+                if pendingVisitor == nil && questionPanel == nil && !pet.asleep { askVisit(k) }
+            }
         }
         // препил с кафе: плаши приятелите и те си отиват до вкъщи
         if isHyper && time - scaredBuddiesAt > 20 * 60 && !buddies.isEmpty {
@@ -347,8 +369,14 @@ extension Game {
         var o = p.frame.origin
         let asleep = buddyAsleep(b)
         v.needsDisplay = true
-        let hit = buddyHover(b)
-        if p.ignoresMouseEvents == hit { p.ignoresMouseEvents = !hit }
+        setClickable(p, buddyHover(b))
+        // хванат с мишката: не мърда сам; пуснат: пада на пода
+        if b.held { v.walking = false; return }
+        if o.y > y + 1 && !inBuddyGame(b.kind.id) && !(racePhase != .off && raceBuddy === b) {
+            o.y = max(y, o.y - CGFloat(800 * step))
+            p.setFrameOrigin(o)
+            return
+        }
 
         // тревога: всички бягат зад ръба
         if hidePhase != .off && hidePhase != .returning {
@@ -628,6 +656,34 @@ extension Game {
         }
         pendingReply = (visits == 1 ? (k.female ? "О, гости! Добре дошла!" : "О, гости! Добре дошъл!")
                         : "\(buddyName(k))! Пак си тук! Радвам се!", time + 3, false)
+    }
+
+    /// Приятелят звъни: „Може ли да дойда?“ — ти решаваш.
+    func askVisit(_ k: BuddyKind) {
+        guard time > nextVisitAsk else { return }
+        pendingVisitor = k.id
+        phoneUntil = time + 4
+        sfx("Glass")
+        let home = joinedBuddies.contains(k.id)
+        ask(Question(text: home ? "\(buddyName(k)) звъни: иска да се върне от вкъщи. Да дойде ли?"
+                                : "\(buddyName(k)) (\(k.job)) звъни: може ли да дойде на гости?", answers: [
+            ("ДА", "Ела! Чакаме те!", .visitYes), ("НЕ", "Сега не може, друг път!", .visitNo),
+        ]), index: -1)
+    }
+
+    func visitAnswer(_ yes: Bool) {
+        guard let id = pendingVisitor, let k = buddyKind(id) else { return }
+        pendingVisitor = nil
+        let home = joinedBuddies.contains(id)
+        if yes {
+            if home { approvedReturn.insert(id) } else {
+                let pr = petScreenRect()
+                arriveAsGuest(k, vf: screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero)
+            }
+        } else if home {
+            // остава си вкъщи още малко
+            UserDefaults.standard.set(Date().addingTimeInterval(30 * 60), forKey: "buddyAway_\(id)")
+        }
     }
 
     func visitsNeeded(_ id: String) -> Int {

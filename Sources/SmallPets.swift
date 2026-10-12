@@ -112,6 +112,7 @@ final class SmallPet: NSObject {
     var nextTalk: Double = 0
     var chasingRat = false
     var trail: [(NSPoint, Double)] = []
+    var held = false
 
     init(kind: SmallPetKind, origin: NSPoint, size: NSSize, game: Game) {
         self.kind = kind
@@ -143,7 +144,15 @@ final class SmallPetView: NSView {
     var heartsUntil: Double = 0
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) { if let pet { game?.openSmallPetMenu(pet) } }
+    let drag = Dragger()
+    override func mouseDown(with event: NSEvent) { drag.down(window) }
+    override func mouseDragged(with event: NSEvent) {
+        if drag.dragged(window), let pet, !pet.held { pet.held = true; game?.smallPetSay(pet, pet.kind.sound + "!", 1.5) }
+    }
+    override func mouseUp(with event: NSEvent) {
+        guard let pet else { return }
+        if drag.up() { pet.held = false; pet.targetX = nil; pet.flyTarget = nil } else { game?.openSmallPetMenu(pet) }
+    }
     override func rightMouseDown(with event: NSEvent) { if let pet { game?.openSmallPetMenu(pet) } }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -262,8 +271,15 @@ extension Game {
         let m = NSEvent.mouseLocation
         let hitR = NSRect(x: panel.frame.midX - 26, y: panel.frame.minY, width: 52, height: k.id == "fish" ? 60 : 30)
         let hit = hitR.contains(m)
-        if panel.ignoresMouseEvents == hit { panel.ignoresMouseEvents = !hit }
+        setClickable(panel, hit)
+        if p.held { return }
         var o = panel.frame.origin
+        // пуснат от мишката: пада на пода (папагалът си лети)
+        if k.id != "parrot" && o.y > vf.minY + 1 {
+            o.y = max(vf.minY, o.y - CGFloat(800 * step))
+            panel.setFrameOrigin(o)
+            return
+        }
         let half = panel.frame.width / 2
         let hungry = smallPetHungry(k.id)
 
