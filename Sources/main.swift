@@ -2451,6 +2451,9 @@ final class Game: NSObject, NSApplicationDelegate {
     var peekUntil: Double = 0
     var nextHideAsk: Double = 0
     var hiddenSince: Date?
+    /// „Скрий“: всичко живее както обикновено, само че нищо не се вижда.
+    var hideAll = false
+    var savedLook: [ObjectIdentifier: (CGFloat, Bool)] = [:]
     var peekCount = 0
     var dreamPanel: NSPanel?
     var dreamView: DreamView?
@@ -2713,7 +2716,8 @@ final class Game: NSObject, NSApplicationDelegate {
         } else {
             callHome()
         }
-        if d.object(forKey: "hidden") as? Bool != true { window.orderFrontRegardless() }
+        window.orderFrontRegardless()
+        hideAll = d.object(forKey: "hidden") as? Bool == true
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
@@ -2744,6 +2748,7 @@ final class Game: NSObject, NSApplicationDelegate {
     // --- цикъл ---
 
     @objc func tick() {
+        restoreLook()
         let now = Date()
         let dt = now.timeIntervalSince(lastTick)
         lastTick = now
@@ -2877,6 +2882,28 @@ final class Game: NSObject, NSApplicationDelegate {
             checkForUpdate(manual: false)
         }
         view.needsDisplay = true
+        applyHideAll()
+    }
+
+    private var ownPanels: [NSWindow] { NSApp.windows.filter { $0 is FreePanel || $0 is KeyPanel } }
+
+    /// В началото на всеки такт прозорците си връщат истинския вид, за да работи всичко както обикновено.
+    func restoreLook() {
+        guard !savedLook.isEmpty else { return }
+        for w in ownPanels {
+            if let s = savedLook[ObjectIdentifier(w)] { w.alphaValue = s.0; w.ignoresMouseEvents = s.1 }
+        }
+        savedLook.removeAll()
+    }
+
+    /// В края на такта, ако е скрит: всичко става невидимо и пропуска кликовете.
+    func applyHideAll() {
+        guard hideAll else { return }
+        for w in ownPanels {
+            savedLook[ObjectIdentifier(w)] = (w.alphaValue, w.ignoresMouseEvents)
+            w.alphaValue = 0
+            w.ignoresMouseEvents = true
+        }
     }
 
     /// Ядосване, гличове, голямото съобщение и търкалянето.
@@ -2908,7 +2935,7 @@ final class Game: NSObject, NSApplicationDelegate {
 
     /// Прозорецът пропуска кликовете навсякъде, освен върху самия Пиксчо.
     func updateMouse() {
-        let inside = window.isVisible && petScreenRect().contains(NSEvent.mouseLocation)
+        let inside = window.isVisible && !hideAll && petScreenRect().contains(NSEvent.mouseLocation)
         if !isDragging && window.ignoresMouseEvents == inside { window.ignoresMouseEvents = !inside }
         if view.hovering != inside { view.hovering = inside }
     }
@@ -3689,7 +3716,7 @@ final class Game: NSObject, NSApplicationDelegate {
             statusItem.button?.performClick(nil)
             statusItem.menu = nil
         } else {
-            if !window.isVisible { toggleWindow() }
+            if hideAll { toggleWindow() }
             if retroPanel == nil { openRetro() } else { closeRetro() }
         }
     }
@@ -3718,7 +3745,7 @@ final class Game: NSObject, NSApplicationDelegate {
         item(drawing ? "Спри рисуването" : "Рисувай с пиксели (платформи)", drawing ? #selector(stopDrawingAction) : #selector(startDrawing))
         item("Изтрий всичко нарисувано", #selector(clearDrawingAction), enabled: !drawCells.isEmpty)
         menu.addItem(.separator())
-        item(window.isVisible ? "Скрий" : "Покажи", #selector(toggleWindow))
+        item(hideAll ? "Покажи" : "Скрий", #selector(toggleWindow))
         item("Повикай в ъгъла", #selector(callHome))
         item("Разхожда се", #selector(toggleWander), on: wander)
         item("Пиксели-храна по екрана", #selector(toggleFoodPixels), on: foodPixelsOn)
@@ -3756,9 +3783,15 @@ final class Game: NSObject, NSApplicationDelegate {
     }
 
     @objc func toggleWindow() {
-        if window.isVisible { window.orderOut(nil); closeRetro() } else { window.orderFrontRegardless() }
-        UserDefaults.standard.set(!window.isVisible, forKey: "hidden")
-        noteHidden(!window.isVisible)
+        hideAll.toggle()
+        if hideAll {
+            closeRetro(); closeMiniMenu(); closeQuestion(); closeShop()
+            applyHideAll()
+        } else {
+            restoreLook()
+            window.orderFrontRegardless()
+        }
+        UserDefaults.standard.set(hideAll, forKey: "hidden")
     }
 
     @objc func toggleWander() { wander.toggle(); walkTarget = nil }
@@ -3771,7 +3804,7 @@ final class Game: NSObject, NSApplicationDelegate {
         rolling = false
         window.setFrameOrigin(NSPoint(x: xRange(vf).upperBound - 20, y: vf.minY - (window.frame.height - view.feetY)))
         window.orderFrontRegardless()
-        UserDefaults.standard.set(false, forKey: "hidden")
+        if hideAll { toggleWindow() }
         saveWindowPosition()
     }
 

@@ -231,7 +231,7 @@ extension Game {
     }
 
     func ask(_ q: Question, index: Int) {
-        guard window.isVisible else { return }
+        guard window.isVisible, !hideAll else { return }
         questionIndex = index
         let qs = NSSize(width: q.answers.count >= 4 ? 420 : QuestionView.size.width, height: QuestionView.height(for: q))
         let v = QuestionView(frame: NSRect(origin: .zero, size: qs))

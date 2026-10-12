@@ -37,7 +37,7 @@ extension Game {
     @objc func toggleSounds() { soundsOn.toggle() }
 
     func sfx(_ name: String, every: Double = 0.4) {
-        guard soundsOn, window.isVisible else { return }
+        guard soundsOn, window.isVisible, !hideAll else { return }
         if let last = lastSounds[name], time - last < every { return }
         lastSounds[name] = time
         NSSound(named: NSSound.Name(name))?.play()
