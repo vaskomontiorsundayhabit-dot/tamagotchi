@@ -202,6 +202,11 @@ extension Game {
     func updateQuestions(_ idle: Bool) {
         if let p = questionPanel, let v = questionView {
             positionQuestion(p)
+            // телефонът звъни 30 секунди; ако не вдигнеш, е пропуснато обаждане (без да се сърди Пиксчо)
+            if pendingVisitor != nil && questionIndex == -1 && v.question?.text.contains("звъни") == true {
+                if time - questionAsked > 30 { closeQuestion() }
+                return
+            }
             if time - questionAsked > 45 {
                 questionAsked = time
                 questionNags += 1

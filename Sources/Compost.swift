@@ -3,49 +3,149 @@
 
 import AppKit
 
+/// Колко голямо е цветето на всеки етап: кълн → растение → цвете → храст → дърво (и дървото расте без край).
+func plantSize(_ st: Int) -> NSSize {
+    if st < 8 { return NSSize(width: 60, height: 90 + CGFloat(max(0, st - 3)) * 8) }
+    if st < 15 { return NSSize(width: 70 + CGFloat(st - 8) * 8, height: 92 + CGFloat(st - 8) * 7) }
+    let t = CGFloat(st - 15)
+    let crown = min(36 + t * 3, 110)
+    let trunk = min(50 + t * 10, 420)
+    return NSSize(width: crown * 2 + 20, height: trunk + crown * 2 + 16)
+}
+
+func plantName(_ st: Int) -> String {
+    st <= 0 ? "" : st == 1 ? "Кълн" : st == 2 ? "Растение" : st < 8 ? "Цвете" : st < 15 ? "Храст" : "Дърво"
+}
+
+/// „цветето“, „храстът“, „дървото“…
+func plantDefinite(_ st: Int) -> String {
+    st <= 1 ? "кълнът" : st == 2 ? "растението" : st < 8 ? "цветето" : st < 15 ? "храстът" : "дървото"
+}
+
+/// Броят на цветовете: колкото повече компост, толкова повече цъфти.
+func plantBlossoms(_ st: Int) -> Int { st < 3 ? 0 : min(60, st - 2) }
+
+private func plantHash(_ i: Int) -> Int {
+    var x = UInt32(truncatingIfNeeded: i &* 2654435761 &+ 12345)
+    x ^= x >> 13; x = x &* 0x5bd1e995; x ^= x >> 15
+    return Int(x % 100000)
+}
+
 final class PlantView: NSView {
     weak var game: Game?
+    let drag = Dragger()
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    let drag = Dragger()
     override func mouseDown(with event: NSEvent) { drag.down(window) }
     override func mouseDragged(with event: NSEvent) { drag.dragged(window) }
     override func mouseUp(with event: NSEvent) {
         if drag.up() { game?.plantDropped() } else { game?.openPlantMenu() }
     }
     override func rightMouseDown(with event: NSEvent) { game?.openPlantMenu() }
+
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let st = game.plantStage
         let bottom = bounds.height - 2
-        // саксия
-        NSColor(hex: 0x8b5a2b).setFill()
-        NSRect(x: bounds.midX - 14, y: bottom - 14, width: 28, height: 14).fill()
-        NSColor(hex: 0x5c3a1e).setFill()
-        NSRect(x: bounds.midX - 16, y: bottom - 16, width: 32, height: 4).fill()
+        let thirsty = game.plantWater < 20
+        let leaf = NSColor(hex: 0x52b788).blended(withFraction: thirsty ? 0.45 : 0, of: NSColor(hex: 0x9c6644)) ?? NSColor(hex: 0x52b788)
+        let leaf2 = NSColor(hex: 0x2d6a4f).blended(withFraction: thirsty ? 0.45 : 0, of: NSColor(hex: 0x9c6644)) ?? NSColor(hex: 0x2d6a4f)
+        let sway = CGFloat(sin(game.time * 1.5)) * 2 + (thirsty ? 4 : 0)
+        let mx = bounds.midX
+        let petals = [0xff8fab, 0xffd166, 0xc77dff, 0xffffff, 0xe63946]
+        func blossom(_ x: CGFloat, _ y: CGFloat, _ i: Int, _ s: CGFloat = 3) {
+            NSColor(hex: petals[plantHash(i) % petals.count]).setFill()
+            for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+                NSRect(x: x + CGFloat(dx) * s * 2 - s, y: y + CGFloat(dy) * s * 2 - s, width: s * 2, height: s * 2).fill()
+            }
+            NSColor(hex: 0xffd166).setFill()
+            NSRect(x: x - s, y: y - s, width: s * 2, height: s * 2).fill()
+        }
+        // саксия (дървото е в земята)
+        if st < 15 {
+            let pw: CGFloat = st < 8 ? 28 : 40
+            NSColor(hex: 0x8b5a2b).setFill()
+            NSRect(x: mx - pw / 2, y: bottom - 14, width: pw, height: 14).fill()
+            NSColor(hex: 0x5c3a1e).setFill()
+            NSRect(x: mx - pw / 2 - 2, y: bottom - 16, width: pw + 4, height: 4).fill()
+        } else {
+            NSColor(hex: 0x5c3a1e).setFill()
+            NSRect(x: mx - 30, y: bottom - 6, width: 60, height: 6).fill()
+            NSRect(x: mx - 20, y: bottom - 10, width: 40, height: 4).fill()
+        }
         // капки, докато го полива
         if game.time < game.wateringUntil {
             NSColor(hex: 0x48cae4).setFill()
-            for i in 0..<6 {
-                let ph = CGFloat((game.time * 2 + Double(i) / 6).truncatingRemainder(dividingBy: 1))
-                NSRect(x: bounds.midX - 10 + CGFloat(i) * 4, y: 6 + ph * (bottom - 26), width: 2, height: 4).fill()
+            for i in 0..<8 {
+                let ph = CGFloat((game.time * 2 + Double(i) / 8).truncatingRemainder(dividingBy: 1))
+                NSRect(x: mx - 14 + CGFloat(i) * 4, y: 6 + ph * (bottom - 26), width: 2, height: 4).fill()
             }
         }
         guard st > 0 else { return }
-        let h = CGFloat([0, 12, 30, 48][min(3, st)]) * (game.plantWater < 20 ? 0.75 : 1)
-        let sway = CGFloat(sin(game.time * 1.5)) * 2 + (game.plantWater < 20 ? 6 : 0)
-        NSColor(hex: 0x52b788).setFill()
-        NSRect(x: bounds.midX - 1.5 + sway / 2, y: bottom - 16 - h, width: 3, height: h).fill()
-        if st >= 2 {
-            NSRect(x: bounds.midX - 12 + sway, y: bottom - 16 - h * 0.6, width: 10, height: 5).fill()
-            NSRect(x: bounds.midX + 2 + sway, y: bottom - 16 - h * 0.4, width: 10, height: 5).fill()
+        if st < 8 {
+            // стрък с листа и цветове по него
+            let h = (st < 3 ? CGFloat([0, 12, 30][st]) : 48 + CGFloat(st - 3) * 8) * (thirsty ? 0.75 : 1)
+            let base = bottom - 16
+            leaf.setFill()
+            NSRect(x: mx - 1.5 + sway / 2, y: base - h, width: 3, height: h).fill()
+            if st >= 2 {
+                NSRect(x: mx - 12 + sway, y: base - h * 0.6, width: 10, height: 5).fill()
+                NSRect(x: mx + 2 + sway, y: base - h * 0.4, width: 10, height: 5).fill()
+            }
+            if st >= 3 {
+                blossom(mx + sway, base - h - 4, 0)
+                // всеки нов цвят: на клонче встрани
+                for i in 1..<plantBlossoms(st) {
+                    let side: CGFloat = i % 2 == 0 ? -1 : 1
+                    let y = base - h * (0.85 - CGFloat(i - 1) * 0.16)
+                    leaf.setFill()
+                    NSRect(x: side > 0 ? mx + sway / 2 : mx - 12 + sway / 2, y: y, width: 12, height: 2).fill()
+                    blossom(mx + side * 15 + sway * 0.7, y - 2, i, 2.5)
+                }
+            }
+            return
         }
-        if st >= 3 {
-            let cx = bounds.midX + sway, cy = bottom - 20 - h
-            NSColor(hex: 0xff8fab).setFill()
-            for (dx, dy) in [(-6, 0), (6, 0), (0, -6), (0, 6)] { NSRect(x: cx + CGFloat(dx) - 3, y: cy + CGFloat(dy) - 3, width: 6, height: 6).fill() }
-            NSColor(hex: 0xffd166).setFill()
-            NSRect(x: cx - 3, y: cy - 3, width: 6, height: 6).fill()
+        // храст или корона на дърво: кълбо от пикселни листа
+        let cell: CGFloat = 6
+        var cx = mx + sway / 2, cy: CGFloat, rx: CGFloat, ry: CGFloat
+        if st < 15 {
+            rx = bounds.width / 2 - 6
+            ry = (bottom - 14) / 2 - 4
+            cy = bottom - 14 - ry
+        } else {
+            let t = CGFloat(st - 15)
+            let crown = min(36 + t * 3, 110)
+            let trunkH = min(50 + t * 10, 420)
+            let tw = min(8 + t * 0.5, 22)
+            NSColor(hex: 0x8b5a2b).setFill()
+            NSRect(x: mx - tw / 2, y: bottom - 6 - trunkH - crown * 0.4, width: tw, height: trunkH + crown * 0.4).fill()
+            NSColor(hex: 0x5c3a1e).setFill()
+            NSRect(x: mx - tw / 2, y: bottom - 6 - trunkH - crown * 0.4, width: 3, height: trunkH + crown * 0.4).fill()
+            rx = crown; ry = crown
+            cy = bottom - 6 - trunkH - crown
+            cx = mx + sway
+        }
+        var spots: [NSPoint] = []
+        var i = 0
+        var y = cy - ry
+        while y < cy + ry {
+            var x = cx - rx
+            while x < cx + rx {
+                let dx = (x + cell / 2 - cx) / rx, dy = (y + cell / 2 - cy) / ry
+                if dx * dx + dy * dy <= 1 {
+                    (plantHash(i) % 3 == 0 ? leaf2 : leaf).setFill()
+                    NSRect(x: x, y: y, width: cell, height: cell).fill()
+                    spots.append(NSPoint(x: x + cell / 2, y: y + cell / 2))
+                }
+                x += cell; i += 1
+            }
+            y += cell
+        }
+        if !spots.isEmpty {
+            for n in 0..<plantBlossoms(st) {
+                let p = spots[plantHash(n * 7 + 3) % spots.count]
+                blossom(p.x, p.y, n, 2)
+            }
         }
     }
 }
@@ -92,26 +192,36 @@ extension Game {
             earnCoins(5)
             if !pet.asleep { say("Рециклирах 10 пиксела! +5 монети", seconds: 2.5) }
         }
-        guard spoiled else { return }
-        let compost = d.integer(forKey: "compost") + 1
+        if spoiled { addCompost(1) }
+    }
+
+    /// Компост за цветето: като се събере достатъчно, расте с един етап.
+    func addCompost(_ n: Int) {
+        let d = UserDefaults.standard
+        let compost = d.integer(forKey: "compost") + n
         d.set(compost, forKey: "compost")
-        if compost >= 3 && plantStage < 3 {
+        if compost >= plantNeed {
             d.set(0, forKey: "compost")
             plantStage += 1
-            if !pet.asleep {
-                say(["Компостът стана! Цветето порасна!", "От развалените пиксели расте цвете!", "Цветето цъфна!"][min(2, plantStage - 1)],
-                    seconds: 3)
-            }
+            let st = plantStage
+            let line = st == 1 ? "От развалените пиксели поникна кълн!" : st == 2 ? "Компостът стана! Растението порасна!"
+                : st == 3 ? "Цветето цъфна!" : st < 8 ? "Цветето пусна още един цвят!" : st == 8 ? "Цветето стана ХРАСТ!"
+                : st < 15 ? "Храстът порасна и цъфна още!" : st == 15 ? "Храстът стана ДЪРВО!" : "Дървото порасна още!"
+            if !pet.asleep { say(line, seconds: 3) }
+            if st == 8 || st == 15 { confettiStart = time; sfx("Hero") }
         }
     }
 
-    /// Цветето: расте от компоста; цъфнало, пуска пиксел-плод на всеки 15 минути.
+    /// Колко развалени пиксела трябват за следващия етап (малко повече, колкото е по-голямо).
+    var plantNeed: Int { plantStage < 3 ? 3 : min(10, 3 + (plantStage - 3) / 3) }
+
+    /// Цветето: расте от компоста без край; колкото повече цветове, толкова по-често дава пиксел-плод.
     func updatePlant() {
         let show = plantStage > 0 && window.isVisible && !minimalMode
         if !show { plantPanel?.orderOut(nil); plantPanel = nil; return }
         var vf = NSScreen.main?.visibleFrame ?? .zero
         if plantPanel == nil {
-            let s = NSSize(width: 50, height: 90)
+            let s = plantSize(plantStage)
             var x = vf.minX + 340
             if let saved = UserDefaults.standard.object(forKey: "plantX") as? Double { x = CGFloat(saved) }
             else { UserDefaults.standard.set(Double(x), forKey: "plantX") }
@@ -121,12 +231,21 @@ extension Game {
             let p = overlayPanel(NSRect(x: x, y: vf.minY, width: s.width, height: s.height), key: false)
             p.level = .floating
             let v = PlantView(frame: NSRect(origin: .zero, size: s))
+            v.autoresizingMask = [.width, .height]
             v.game = self
             p.contentView = v
             p.orderFrontRegardless()
             plantPanel = p
         }
         plantPanel?.contentView?.needsDisplay = true
+        // порасло: прозорчето става по-голямо (стои на същото място)
+        if let p = plantPanel, p.frame.size != plantSize(plantStage) {
+            let ns = plantSize(plantStage)
+            let sf = (screenAt(NSPoint(x: p.frame.midX, y: p.frame.minY + 5)) ?? NSScreen.main)?.visibleFrame ?? vf
+            let x = min(max(p.frame.midX - ns.width / 2, sf.minX), sf.maxX - ns.width)
+            p.setFrame(NSRect(x: x, y: p.frame.minY, width: ns.width, height: ns.height), display: true)
+            UserDefaults.standard.set(Double(x), forKey: "plantX")
+        }
         // пуснато във въздуха: пада обратно на пода
         if let p = plantPanel, let v = p.contentView as? PlantView, !v.drag.active {
             let c = NSPoint(x: p.frame.midX, y: p.frame.minY + 10)
@@ -147,13 +266,22 @@ extension Game {
             say("Цветето е жадно! Трябва да го полеем.", seconds: 3)
             if errands.isEmpty && !busyMoving && !pet.working && !playingGame && Int.random(in: 0..<3) > 0 { runErrands([.waterPlant]) }
         }
-        let fruitEvery: Double = plantWater > 50 ? 8 * 60 : (plantWater > 20 ? 15 * 60 : .greatestFiniteMagnitude)
-        if plantStage >= 3 && time > nextFruit && foods.count < 10 && plantWater > 20, let p = plantPanel {
+        let blossoms = Double(plantBlossoms(plantStage))
+        let base: Double = plantWater > 50 ? 8 * 60 : (plantWater > 20 ? 15 * 60 : .greatestFiniteMagnitude)
+        let fruitEvery = max(90, base / (1 + 0.15 * max(0, blossoms - 1)))
+        let fresh = foods.filter { !$0.spoiled }.count
+        if plantStage >= 3 && time > nextFruit && fresh < 14 && plantWater > 20, let p = plantPanel {
             nextFruit = time + fruitEvery
-            let f = FoodPixel(color: foodColors.randomElement()!, at: NSPoint(x: p.frame.midX - 15, y: p.frame.maxY - 20), game: self)
-            f.falls = true
-            foods.append(f)
-            if !pet.asleep { say("Цветето даде пиксел-плод!", seconds: 2.5) }
+            let n = plantStage >= 15 && Bool.random() ? 2 : 1
+            for _ in 0..<n {
+                let fx = p.frame.minX + CGFloat.random(in: 10...max(11, p.frame.width - 30))
+                let f = FoodPixel(color: foodColors.randomElement()!, at: NSPoint(x: fx, y: p.frame.maxY - 30), game: self)
+                f.falls = true
+                foods.append(f)
+            }
+            if !pet.asleep && Int.random(in: 0..<3) == 0 {
+                say("\(plantDefinite(plantStage).capitalizedFirst) даде пиксел-плод!", seconds: 2.5)
+            }
         }
     }
 
@@ -183,8 +311,9 @@ extension Game {
                 }
             }),
         ]
-        showMiniMenu(title: ["", "Кълн", "Растение", "Цвете"][min(3, plantStage)],
-                     stats: [("Вода", plantWater / 100, 0x48cae4), ("Растеж", Double(plantStage) / 3, 0x52b788)],
+        let compost = Double(UserDefaults.standard.integer(forKey: "compost"))
+        showMiniMenu(title: plantName(plantStage) + (plantStage >= 3 ? " · \(plantBlossoms(plantStage)) цв." : ""),
+                     stats: [("Вода", plantWater / 100, 0x48cae4), ("Растеж", compost / Double(plantNeed), 0x52b788)],
                      buttons: buttons, above: NSPoint(x: p.frame.midX, y: p.frame.maxY))
     }
 

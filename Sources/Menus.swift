@@ -116,7 +116,11 @@ final class Dragger {
 }
 
 /// Кликовете минават през празното; докато се влачи, прозорчето остава хванато.
-func setClickable(_ p: NSPanel, _ hit: Bool) {
+/// „Скрий“ е включено: нищо не хваща кликове.
+var everythingHidden = false
+
+func setClickable(_ p: NSPanel, _ hitWanted: Bool) {
+    let hit = hitWanted && !everythingHidden
     if NSEvent.pressedMouseButtons != 0 && !p.ignoresMouseEvents { return }
     if p.ignoresMouseEvents == hit { p.ignoresMouseEvents = !hit }
 }

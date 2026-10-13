@@ -2453,7 +2453,7 @@ final class Game: NSObject, NSApplicationDelegate {
     var hiddenSince: Date?
     /// „Скрий“: всичко живее както обикновено, само че нищо не се вижда.
     var hideAll = false
-    var savedLook: [ObjectIdentifier: (CGFloat, Bool)] = [:]
+    var savedLook: [ObjectIdentifier: CGFloat] = [:]
     var peekCount = 0
     var dreamPanel: NSPanel?
     var dreamView: DreamView?
@@ -2718,6 +2718,7 @@ final class Game: NSObject, NSApplicationDelegate {
         }
         window.orderFrontRegardless()
         hideAll = d.object(forKey: "hidden") as? Bool == true
+        everythingHidden = hideAll
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
@@ -2891,18 +2892,18 @@ final class Game: NSObject, NSApplicationDelegate {
     func restoreLook() {
         guard !savedLook.isEmpty else { return }
         for w in ownPanels {
-            if let s = savedLook[ObjectIdentifier(w)] { w.alphaValue = s.0; w.ignoresMouseEvents = s.1 }
+            if let a = savedLook[ObjectIdentifier(w)] { w.alphaValue = a }
         }
         savedLook.removeAll()
     }
 
-    /// В края на такта, ако е скрит: всичко става невидимо и пропуска кликовете.
+    /// В края на такта, ако е скрит: всичко става невидимо (напълно прозрачните прозорци пропускат кликовете).
+    /// ignoresMouseEvents не се пипа: явно зададено false кара прозореца да хваща кликове и в празното.
     func applyHideAll() {
         guard hideAll else { return }
         for w in ownPanels {
-            savedLook[ObjectIdentifier(w)] = (w.alphaValue, w.ignoresMouseEvents)
+            savedLook[ObjectIdentifier(w)] = w.alphaValue
             w.alphaValue = 0
-            w.ignoresMouseEvents = true
         }
     }
 
@@ -3784,12 +3785,14 @@ final class Game: NSObject, NSApplicationDelegate {
 
     @objc func toggleWindow() {
         hideAll.toggle()
+        everythingHidden = hideAll
         if hideAll {
             closeRetro(); closeMiniMenu(); closeQuestion(); closeShop()
             applyHideAll()
         } else {
             restoreLook()
             window.orderFrontRegardless()
+            reportMissedCalls()
         }
         UserDefaults.standard.set(hideAll, forKey: "hidden")
     }

@@ -57,6 +57,49 @@ let propBrush = grid([
     ".UU.....",
 ])
 
+let propCan = grid([
+    ".....C..",
+    "KKKKK.C.",
+    "KGGGKK.C",
+    "KGGGK.KK",
+    "KGGGK...",
+    "KKKKK...",
+])
+let propLetter = grid([
+    "WWWWWWWW",
+    "WRWWWWRW",
+    "WWRWWRWW",
+    "WWWRRWWW",
+    "WWWWWWWW",
+])
+let propFlask = grid([
+    "..KKK..",
+    "..KCK..",
+    "..KCK..",
+    ".KCCCK.",
+    "KCCGCCK",
+    "KCGGGCK",
+    ".KKKKK.",
+])
+let propRibbon = grid([
+    "PP......",
+    "..P.....",
+    "...PP...",
+    ".....P.U",
+    "......U.",
+    ".....U..",
+    "....U...",
+])
+let propLens = grid([
+    ".KKK....",
+    "KCCCK...",
+    "KCWCK...",
+    "KCCCK...",
+    ".KKKU...",
+    "....UU..",
+    ".....UU.",
+])
+
 /// Приятел с приятел си говорят.
 let buddyChats: [(String, String)] = [
     ("Видя ли какво монтира пак?", "Да! Пак експлозии!"),
@@ -81,6 +124,18 @@ let buddyKinds: [BuddyKind] = [
               lines: ["GG!", "Още едно ниво!", "Лаг! ЛАГ!", "Стриймвам на живо!", "Кой ще ме бие?"], prop: propPad),
     BuddyKind(id: "artist", job: "художничка", defaultName: "Боя", color: 0xc77dff, female: true,
               lines: ["Малко лилаво тук…", "Шедьовър!", "Рисувам ти платформа!", "Изкуството иска жертви."], prop: propBrush),
+    // нови непознати: идват на гости като другите и могат да останат
+    BuddyKind(id: "garden", job: "градинарка", defaultName: "Листичка", color: 0x95d5b2, female: true,
+              lines: ["Как расте цветето?", "Пръстта тук е чудесна!", "Всяко семе е чудо.", "Поливам, поливам…"], prop: propCan),
+    BuddyKind(id: "post", job: "пощальон", defaultName: "Пликчо", color: 0xe9c46a, female: false,
+              lines: ["Писмо за теб!", "Колетите не се носят сами!", "Подпиши тук, моля.", "Днес пощата е много."],
+              prop: propLetter),
+    BuddyKind(id: "science", job: "учен", defaultName: "Атомчо", color: 0x4cc9f0, female: false,
+              lines: ["Еврика!", "Пикселите са от още по-малки пиксели!", "Експериментът почти стана…", "Бум! Ой."], prop: propFlask),
+    BuddyKind(id: "dancer", job: "танцьорка", defaultName: "Пируетка", color: 0xf15bb5, female: true,
+              lines: ["Едно, две, три, завъртане!", "Танцувай с мен!", "Ритъмът е навсякъде!", "Оп-па!"], prop: propRibbon),
+    BuddyKind(id: "detective", job: "детектив", defaultName: "Лупко", color: 0xadb5bd, female: false,
+              lines: ["Хмм… подозрително.", "Тук е минал плъх!", "Следите водят към кошчето.", "Случаят е решен!"], prop: propLens),
 ]
 
 final class Buddy: NSObject {
@@ -314,13 +369,14 @@ extension Game {
             if let k = buddyKind(c.id), buddy(c.id) == nil {
                 if joinedBuddies.contains(c.id) {
                     UserDefaults.standard.removeObject(forKey: "buddyAway_\(c.id)")
+                    approvedReturn.insert(c.id)
                 } else {
                     arriveAsGuest(k, vf: vf)
                 }
             }
         }
         // не си отговорил на обаждането: пита пак след малко
-        if pendingVisitor != nil && questionPanel == nil { pendingVisitor = nil; nextVisitAsk = time + 5 * 60 }
+        if let id = pendingVisitor, questionPanel == nil { pendingVisitor = nil; missCall(id) }
         for id in joinedBuddies where buddy(id) == nil && !buddyIsAway(id) {
             guard let k = buddyKind(id) else { continue }
             // връща се от вкъщи: първо звъни и пита (при пускане на програмата идва направо)
@@ -332,7 +388,10 @@ extension Game {
             // идва от ръба на екрана
             let b = Buddy(kind: k, guest: false, origin: NSPoint(x: vf.minX - BuddyView.size.width, y: vf.minY), game: self)
             buddies.append(b)
-            if time > 5 { buddySay(b, ["Върнах се!", "Ето ме пак!", "Здрасти, \(pet.name)! Вкъщи беше скучно."].randomElement()!, 3) }
+            if time > 5 {
+                buddySay(b, ["Върнах се!", "Ето ме пак!", "Здрасти, \(pet.name)! Вкъщи беше скучно."].randomElement()!, 3)
+                afterArrival(b, giftChance: 3)
+            }
         }
         // гости
         let idle = !pet.asleep && hidePhase == .off && seekPhase == .off && racePhase == .off
@@ -600,9 +659,15 @@ extension Game {
             startBuddyGame()
         } else if r < 4, let o2 = others.randomElement() {
             // говорят си помежду си (няколко реплики)
-            let (a, c) = buddyChats.randomElement()!
-            var lines: [(String, String)] = [(b.kind.id, a), (o2.kind.id, c),
-                                             (b.kind.id, ["Хаха!", "Точно така.", "Ще видим!", "Права си!"].randomElement()!)]
+            var lines: [(String, String)]
+            if Int.random(in: 0..<10) < 7 {
+                // нов разговор от шаблон
+                let g = generatedTalk(female: b.kind.female)
+                lines = g.lines.enumerated().map { ($0.offset % 2 == 0 ? b.kind.id : o2.kind.id, $0.element) }
+            } else {
+                let (a, c) = buddyChats.randomElement()!
+                lines = [(b.kind.id, a), (o2.kind.id, c), (b.kind.id, ["Хаха!", "Точно така.", "Ще видим!", "Така е!"].randomElement()!)]
+            }
             // и другите (и Пиксчо) се включват
             for o3 in others where o3 !== o2 { lines.append((o3.kind.id, groupInterjections.randomElement()!)) }
             if !pet.asleep && hidePhase == .off && Bool.random() { lines.append(("pet", groupInterjections.randomElement()!)) }
@@ -639,6 +704,7 @@ extension Game {
         UserDefaults.standard.set(visits, forKey: "buddyVisits_\(k.id)")
         buddySay(b, visits == 1 ? "Здрасти! Аз съм \(buddyName(k)), \(k.job)!" : "Пак съм аз, \(buddyName(k))!", 3)
         sfx("Glass")
+        afterArrival(b, giftChance: visits == 1 ? 2 : 3)
         if pet.working || goingToWork {
             switch Int.random(in: 0..<3) {
             case 0:
@@ -660,7 +726,12 @@ extension Game {
 
     /// Приятелят звъни: „Може ли да дойда?“ — ти решаваш.
     func askVisit(_ k: BuddyKind) {
-        guard time > nextVisitAsk else { return }
+        guard time > nextVisitAsk, !buddyOffended(k.id) else { return }
+        if hideAll {
+            // звъни, но никой не вдига
+            missCall(k.id)
+            return
+        }
         pendingVisitor = k.id
         phoneUntil = time + 4
         sfx("Glass")
@@ -674,6 +745,10 @@ extension Game {
     func visitAnswer(_ yes: Bool) {
         guard let id = pendingVisitor, let k = buddyKind(id) else { return }
         pendingVisitor = nil
+        // вдигна: ще си каже, ако е звъняла много пъти
+        let missed = UserDefaults.standard.integer(forKey: "buddyMissed_\(id)")
+        UserDefaults.standard.set(0, forKey: "buddyMissed_\(id)")
+        if yes && missed >= 2 { UserDefaults.standard.set(missed, forKey: "buddyComplain_\(id)") }
         let home = joinedBuddies.contains(id)
         if yes {
             if home { approvedReturn.insert(id) } else {
@@ -684,6 +759,135 @@ extension Game {
             // остава си вкъщи още малко
             UserDefaults.standard.set(Date().addingTimeInterval(30 * 60), forKey: "buddyAway_\(id)")
         }
+    }
+
+    // --- пропуснати обаждания ---
+
+    var missedLog: [String] {
+        get { UserDefaults.standard.stringArray(forKey: "missedCalls") ?? [] }
+        set { UserDefaults.standard.set(newValue, forKey: "missedCalls") }
+    }
+
+    func missedCount(_ id: String) -> Int { UserDefaults.standard.integer(forKey: "buddyMissed_\(id)") }
+
+    func buddyOffended(_ id: String) -> Bool {
+        (UserDefaults.standard.object(forKey: "buddyOffended_\(id)") as? Date ?? .distantPast) > Date()
+    }
+
+    /// Звъняха, а никой не вдигна. След 3 пропуснати се сърдят и не звънят 2 часа.
+    func missCall(_ id: String) {
+        guard let k = buddyKind(id) else { return }
+        let d = UserDefaults.standard
+        let n = missedCount(id) + 1
+        d.set(n, forKey: "buddyMissed_\(id)")
+        nextVisitAsk = time + Double.random(in: 8 * 60...14 * 60)
+        changeFriendship(id, -2 * min(n, 5))
+        if hideAll { missedLog = missedLog + [id] }
+        if n >= 3 {
+            d.set(Date().addingTimeInterval(2 * 3600), forKey: "buddyOffended_\(id)")
+            if joinedBuddies.contains(id) { d.set(Date().addingTimeInterval(2 * 3600), forKey: "buddyAway_\(id)") }
+        }
+        if !hideAll && !pet.asleep {
+            say(n >= 3 ? "\(buddyName(k)) звъня \(n) пъти и вече ни се сърди…" : "Пропуснато обаждане от \(buddyName(k)).", seconds: 3)
+        }
+    }
+
+    /// Като се покаже пак: кой е звънял, докато го нямаше.
+    func reportMissedCalls() {
+        let log = missedLog
+        guard !log.isEmpty else { return }
+        missedLog = []
+        var names: [String] = []
+        var angry: [String] = []
+        for id in log {
+            guard let k = buddyKind(id) else { continue }
+            let n = buddyName(k)
+            if !names.contains(n) { names.append(n) }
+            if buddyOffended(id) && !angry.contains(n) { angry.append(n) }
+        }
+        guard !names.isEmpty else { return }
+        var text = "Докато ме нямаше, звъняха: \(names.joined(separator: ", "))."
+        if !angry.isEmpty { text += " \(angry.joined(separator: ", ")) вече ни се сърди. Звънни от телефона!" }
+        say(text, seconds: 5)
+    }
+
+    /// След пристигане: сърди се, ако не си вдигал, и понякога носи подарък.
+    func afterArrival(_ b: Buddy, giftChance: Int) {
+        let id = b.kind.id
+        let complain = UserDefaults.standard.integer(forKey: "buddyComplain_\(id)")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self, weak b] in
+            guard let self, let b, !b.leaving else { return }
+            if complain > 0 {
+                UserDefaults.standard.removeObject(forKey: "buddyComplain_\(id)")
+                self.buddySay(b, complain >= 3 ? "Звънях ти \(complain) пъти! Защо не вдигаш?!" : "Звънях ти, ама не вдигна…", 3.5)
+                if complain >= 3 { b.view.face = .angry }
+                if !self.pet.asleep { self.pendingReply = ("Извинявай! Бях много зает.", self.time + 3.5, false) }
+                return
+            }
+            if Int.random(in: 0..<10) < giftChance { self.bringGift(b) }
+        }
+    }
+
+    // --- подаръци ---
+
+    func dropGiftFood(near b: Buddy, count: Int) {
+        let box = buddyScreenBox(b)
+        for i in 0..<count {
+            let f = FoodPixel(color: foodColors.randomElement()!, at: NSPoint(x: box.midX - 20 + CGFloat(i) * 16, y: box.maxY + 10), game: self)
+            f.falls = true
+            foods.append(f)
+        }
+    }
+
+    /// Приятелят носи подарък: нещо според професията или монети, пиксели, рядко златен пиксел.
+    func bringGift(_ b: Buddy) {
+        let id = b.kind.id
+        sfx("Hero", every: 5)
+        if Int.random(in: 0..<12) == 0 {
+            buddySay(b, "Нося ти ЗЛАТЕН ПИКСЕЛ!", 3.5)
+            goldUntil = time + 10 * 60
+            confettiStart = time
+            addXP(40)
+            pendingReply = ("Злааато! Благодаря!", time + 3.5, false)
+            return
+        }
+        if Bool.random() {
+            switch id {
+            case "photo":
+                takePhoto()
+                buddySay(b, "Подарък: снимка за албума!", 3.5)
+            case "music", "dancer":
+                pet.fun = (pet.fun + 20).clamped()
+                buddySay(b, id == "music" ? "Подарък: написах ти песен! Ла-ла-лааа!" : "Подарък: научих те на нов танц!", 3.5)
+                start(.wave, length: 3)
+            case "chef":
+                dropGiftFood(near: b, count: 4)
+                buddySay(b, "Донесох ти кексчета от пиксели!", 3.5)
+            case "artist":
+                paintPlatform(b)
+            case "garden":
+                if plantStage == 0 { plantStage = 1 } else { addCompost(2) }
+                buddySay(b, "Подарък: торба тор за цветето!", 3.5)
+            case "science":
+                addXP(30)
+                buddySay(b, "Подарък: книга с опити! +30 опит", 3.5)
+            default:
+                let c = Int.random(in: 10...25)
+                earnCoins(c)
+                buddySay(b, "Нося ти подарък: \(c) монети!", 3.5)
+            }
+        } else if Bool.random() {
+            let c = Int.random(in: 10...25)
+            earnCoins(c)
+            buddySay(b, "Нося ти подарък: \(c) монети!", 3.5)
+        } else {
+            dropGiftFood(near: b, count: 3)
+            buddySay(b, "Донесох ти вкусни пиксели!", 3.5)
+        }
+        if !pet.asleep && hidePhase == .off {
+            pendingReply = (["Подарък?! Благодаря!", "Ооо, не трябваше!", "Ти си най-добрият приятел!"].randomElement()!, time + 3.8, false)
+        }
+        changeFriendship(id, 3)
     }
 
     func visitsNeeded(_ id: String) -> Int {
@@ -720,7 +924,9 @@ extension Game {
         head.isEnabled = false
         menu.addItem(head)
         for k in list {
-            let it = NSMenuItem(title: "\(buddyName(k)) (\(k.job))" + (joinedBuddies.contains(k.id) ? " · вкъщи" : ""),
+            let missed = missedCount(k.id)
+            let it = NSMenuItem(title: "\(buddyName(k)) (\(k.job))" + (joinedBuddies.contains(k.id) ? " · вкъщи" : "")
+                                    + (missed > 0 ? " · пропуснати: \(missed)" : "") + (buddyOffended(k.id) ? " · сърди се" : ""),
                                 action: #selector(callBuddyMenu(_:)), keyEquivalent: "")
             it.target = self
             it.representedObject = k.id
@@ -737,6 +943,14 @@ extension Game {
         say(["Ало, \(buddyName(k))? Ела у нас!", "Ало? \(buddyName(k))! Скучно ми е, идвай!", "Ринг-ринг… \(buddyName(k)), ела!"]
             .randomElement()!, seconds: 3.5)
         pendingCall = (id, time + Double.random(in: 6...10))
+        // връща обаждането: сдобряват се, но ще си каже
+        let missed = missedCount(id)
+        if missed > 0 || buddyOffended(id) {
+            UserDefaults.standard.set(max(missed, 1), forKey: "buddyComplain_\(id)")
+            UserDefaults.standard.set(0, forKey: "buddyMissed_\(id)")
+            UserDefaults.standard.removeObject(forKey: "buddyOffended_\(id)")
+            changeFriendship(id, 5)
+        }
     }
 
     /// Понякога сам звъни на някого, когато му е скучно.
@@ -755,7 +969,9 @@ extension Game {
         b.workStart = time
         b.workSeconds = 0
         let starts: [String: String] = ["photo": "Вадя фотоапарата!", "music": "Настройвам китарата!", "chef": "Пристягам престилката!",
-                                        "gamer": "Пускам стрийма!", "artist": "Вадя четките!"]
+                                        "gamer": "Пускам стрийма!", "artist": "Вадя четките!", "garden": "Вадя лейката!",
+                                        "post": "Отварям чантата с писма!", "science": "Слагам очилата!", "dancer": "Загрявам!",
+                                        "detective": "Вадя лупата!"]
         buddySay(b, starts[b.kind.id] ?? "Почвам работа!", 2.5)
     }
 
@@ -814,6 +1030,54 @@ extension Game {
             if b.workSeconds >= 6 * 60 {
                 b.workSeconds = 0
                 paintPlatform(b)
+            }
+        case "garden":
+            if b.workSeconds >= 8 * 60 {
+                b.workSeconds = 0
+                if plantStage == 0 {
+                    plantStage = 1
+                    buddySay(b, "Посадих ти семенце! Хвърляй развалените пиксели в кошчето, за да расте.", 4)
+                } else {
+                    waterPlantNow()
+                    addCompost(1)
+                    buddySay(b, "Полях \(plantStage >= 8 && plantStage < 15 ? "храста" : plantDefinite(plantStage)) и сложих тор!", 3)
+                }
+            }
+        case "post":
+            if b.workSeconds >= 12 * 60 {
+                b.workSeconds = 0
+                earnCoins(12)
+                buddySay(b, "Писмо с монети за теб! +12", 3)
+            }
+        case "science":
+            if b.workSeconds >= 12 * 60 {
+                b.workSeconds = 0
+                addXP(25)
+                sfx("Pop")
+                buddySay(b, "Експериментът успя! +25 опит за \(pet.name)!", 3)
+            }
+        case "dancer":
+            if time > b.nextDance && !pet.asleep && !pet.working && !busyMoving && action == .none {
+                b.nextDance = time + Double.random(in: 120...200)
+                start(.wave, length: 3)
+                pet.fun = (pet.fun + 4).clamped()
+                say(["Танцувам с теб!", "Завърти ме!", "Оп-па!"].randomElement()!, seconds: 2.5)
+            }
+            if b.workSeconds >= 15 * 60 {
+                b.workSeconds = 0
+                earnCoins(10)
+                buddySay(b, "Уроците по танци свършиха! +10 монети", 3.5)
+            }
+        case "detective":
+            if b.workSeconds >= 10 * 60 {
+                b.workSeconds = 0
+                if Bool.random() {
+                    earnCoins(10)
+                    buddySay(b, "Разследването разкри изгубени монети! +10", 3.5)
+                } else {
+                    dropGiftFood(near: b, count: 2)
+                    buddySay(b, "Намерих изгубени пиксели зад кошчето!", 3.5)
+                }
             }
         default:
             break
