@@ -3847,9 +3847,15 @@ final class Game: NSObject, NSApplicationDelegate {
         item("Спомени…", #selector(showMemorials))
         if !pet.dead { item("Ново животинче…", #selector(newPet)) }
         menu.addItem(.separator())
+        item("🌱 Към саксията (новото)", #selector(switchToPot))
         item("Версия \(currentBuild) · Провери за обновления", #selector(checkForUpdateManually))
         item("Изход", #selector(quit))
         return menu
+    }
+
+    @objc func switchToPot() {
+        save()
+        AppMode.switchTo(pixcho: false)
     }
 
     @objc func inventoryMenuAction(_ sender: NSMenuItem) {
@@ -4135,6 +4141,8 @@ final class Game: NSObject, NSApplicationDelegate {
 
 let app = NSApplication.shared
 let game = Game()
-app.delegate = game
+let pot = PotGame()
+// Саксията е новото; Пиксчо е архивираният живот (превключва се от иконката горе)
+if AppMode.isPixcho { app.delegate = game } else { app.delegate = pot }
 app.setActivationPolicy(.accessory)
 app.run()
