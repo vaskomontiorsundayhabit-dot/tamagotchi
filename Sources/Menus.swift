@@ -172,6 +172,14 @@ final class MiniMenuView: NSView {
 
     override func mouseExited(with event: NSEvent) { hover = nil; needsDisplay = true }
 
+    /// Десен бутон: назад към предишното меню (или затваря).
+    override func rightMouseDown(with event: NSEvent) {
+        guard let game else { return }
+        let back = game.miniMenuBack
+        game.closeMiniMenu()
+        back?()
+    }
+
     override func mouseDown(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
         guard let i = buttons.indices.first(where: { rect($0).contains(p) }), buttons[i].enabled else { return }
@@ -210,7 +218,7 @@ final class MiniMenuView: NSView {
             let pal: (Character) -> NSColor? = btn.enabled ? { c in game.color(c) } : { c in game.color(c) == nil ? nil : NSColor(hex: 0x4a4a60) }
             drawGrid(btn.icon, x: r.midX - w * s / 2, y: r.midY - h * s / 2, s: s, palette: pal)
         }
-        let label = hover.map { buttons[$0].label.uppercased() } ?? "ПОСОЧИ ИКОНКА"
+        let label = hover.map { buttons[$0].label.uppercased() } ?? (game.miniMenuBack != nil ? "ДЕСЕН БУТОН: НАЗАД" : "ПОСОЧИ ИКОНКА")
         let ls = label as NSString
         let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 10, weight: .heavy),
                                                 .foregroundColor: hover == nil ? NSColor(hex: 0x8d99ae) : NSColor.white]
@@ -221,9 +229,11 @@ final class MiniMenuView: NSView {
 
 extension Game {
     /// Показва малкото меню над дадено място на екрана.
-    func showMiniMenu(title: String, stats: [(String, Double, Int)], buttons: [MiniButton], above p: NSPoint) {
+    /// back: какво да се отвори с десен бутон (стъпка назад към предишното меню).
+    func showMiniMenu(title: String, stats: [(String, Double, Int)], buttons: [MiniButton], above p: NSPoint, back: (() -> Void)? = nil) {
         closeMiniMenu()
         closeRetro()
+        miniMenuBack = back
         let size = MiniMenuView.size(buttons: buttons.count, stats: stats.count)
         let v = MiniMenuView(frame: NSRect(origin: .zero, size: size))
         v.game = self

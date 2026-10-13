@@ -922,6 +922,7 @@ extension Game {
         let sameSlot = shopItems.filter { $0.slot == item.slot }.map { $0.id }
         pet.worn.removeAll { sameSlot.contains($0) }
         pet.worn.append(item.id)
+        friendsCommentOutfit(item.name)
     }
 
     /// Купено, но махнато?

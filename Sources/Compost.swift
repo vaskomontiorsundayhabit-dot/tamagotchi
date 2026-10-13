@@ -60,7 +60,8 @@ final class PlantView: NSView {
         let thirsty = game.plantWater < 20
         let leaf = NSColor(hex: 0x52b788).blended(withFraction: thirsty ? 0.45 : 0, of: NSColor(hex: 0x9c6644)) ?? NSColor(hex: 0x52b788)
         let leaf2 = NSColor(hex: 0x2d6a4f).blended(withFraction: thirsty ? 0.45 : 0, of: NSColor(hex: 0x9c6644)) ?? NSColor(hex: 0x2d6a4f)
-        let sway = CGFloat(sin(game.time * 1.5)) * 2 + (thirsty ? 4 : 0)
+        let dancing = game.time < game.plantDanceUntil
+        let sway = dancing ? CGFloat(sin(game.time * 9)) * 7 : CGFloat(sin(game.time * 1.5)) * 2 + (thirsty ? 4 : 0)
         let mx = bounds.midX
         let petals = [0xff8fab, 0xffd166, 0xc77dff, 0xffffff, 0xe63946]
         func blossom(_ x: CGFloat, _ y: CGFloat, _ i: Int, _ s: CGFloat = 3) {
@@ -82,6 +83,14 @@ final class PlantView: NSView {
             NSColor(hex: 0x5c3a1e).setFill()
             NSRect(x: mx - 30, y: bottom - 6, width: 60, height: 6).fill()
             NSRect(x: mx - 20, y: bottom - 10, width: 40, height: 4).fill()
+        }
+        // танцува: ноти около него
+        if dancing {
+            let a: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 12, weight: .heavy), .foregroundColor: NSColor(hex: 0xc77dff)]
+            for i in 0..<3 {
+                let ph = CGFloat((game.time * 0.7 + Double(i) / 3).truncatingRemainder(dividingBy: 1))
+                ("♪" as NSString).draw(at: NSPoint(x: 4 + CGFloat(i) * (bounds.width - 16) / 2, y: bounds.height * (0.7 - ph * 0.6)), withAttributes: a)
+            }
         }
         // капки, докато го полива
         if game.time < game.wateringUntil {

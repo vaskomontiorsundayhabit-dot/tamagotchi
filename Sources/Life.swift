@@ -104,7 +104,14 @@ final class MessView: NSView {
 
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) { if let mess { game?.cleanMess(mess) } }
+    // клик: почиства; влачене: местиш го (лайното на цветето го тори)
+    let drag = Dragger()
+    override func mouseDown(with event: NSEvent) { drag.down(window) }
+    override func mouseDragged(with event: NSEvent) { drag.dragged(window) }
+    override func mouseUp(with event: NSEvent) {
+        guard let mess else { return }
+        if drag.up() { game?.messDropped(mess) } else { game?.cleanMess(mess) }
+    }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let mess, let game else { return }
@@ -343,6 +350,22 @@ extension Game {
         }
         let cols = counts.filter { $0.value >= 4 }.map { (CGFloat($0.key) + 0.5) * drawCell }
         return cols.min(by: { abs($0 - x) < abs($1 - x) })
+    }
+
+    /// Пуснал е акото някъде: върху цветето е тор (расте и танцува), иначе пада на пода.
+    func messDropped(_ m: MessPixel) {
+        let f = m.panel.frame
+        if m.poop, let pp = plantPanel, plantStage > 0, pp.frame.insetBy(dx: -10, dy: -10).contains(NSPoint(x: f.midX, y: f.midY)) {
+            m.remove()
+            messes.removeAll { $0 === m }
+            addCompost(3)
+            plantDanceUntil = time + 10
+            sfx("Pop")
+            if !pet.asleep { say(["Тор! Цветето танцува от радост!", "Ха! Моето ако го направи по-голямо!", "Най-добрият тор!"].randomElement()!, seconds: 3) }
+            return
+        }
+        let vf = (screenAt(NSPoint(x: f.midX, y: f.midY)) ?? NSScreen.main)?.visibleFrame ?? .zero
+        m.panel.setFrameOrigin(NSPoint(x: min(max(f.minX, vf.minX), vf.maxX - f.width), y: vf.minY))
     }
 
     func cleanMess(_ m: MessPixel) {

@@ -174,6 +174,8 @@ final class Buddy: NSObject {
     var service: String?          // „mail“ или „garden“: идва само по работа
     var serviceDone = false
     var nextGamerThing: Double = 0
+    var nextPaint: Double = 0
+    var playPlant = false
 
     init(kind: BuddyKind, guest: Bool, origin: NSPoint, game: Game) {
         self.kind = kind
@@ -736,8 +738,11 @@ extension Game {
         } else if r < 8 && b.kind.id == "gamer" && racePhase == .off && petFree {
             buddySay(b, "Хайде на състезание, \(pet.name)!", 3)
             offerRace(with: b)
-        } else if petFree && !b.guest && (r < 10 || b.working && r < 11) {
-            // Пиксчо се дразни от нещо (зависи от професията) и се карат
+        } else if petFree && !b.guest && (r < 10 || b.working && r < 11)
+                    && Date().timeIntervalSince(UserDefaults.standard.object(forKey: "buddyArgAt_\(b.kind.id)") as? Date ?? .distantPast) > 3 * 3600
+                    && Bool.random() {
+            // Пиксчо се дразни от нещо (зависи от професията) и се карат, но не по-често от веднъж на 3 часа с един и същ
+            UserDefaults.standard.set(Date(), forKey: "buddyArgAt_\(b.kind.id)")
             buddyArgument(b)
         } else if petFree {
             buddyConversation(b)
@@ -1104,7 +1109,7 @@ extension Game {
         menu.addItem(head)
         for k in list {
             let missed = missedCount(k.id)
-            let it = NSMenuItem(title: "\(buddyName(k)) (\(k.job))" + (joinedBuddies.contains(k.id) ? " · вкъщи" : "")
+            let it = NSMenuItem(title: "\(buddyName(k)) (\(k.job)) · ♥ \(buddyFriendship(k.id))%" + (joinedBuddies.contains(k.id) ? " · вкъщи" : "")
                                     + (missed > 0 ? " · пропуснати: \(missed)" : "") + (buddyOffended(k.id) ? " · сърди се" : ""),
                                 action: #selector(callBuddyMenu(_:)), keyEquivalent: "")
             it.target = self
@@ -1180,6 +1185,20 @@ extension Game {
                 buddySay(b, "Готова фотосесия! +\(lens ? 25 : 15) монети", 3.5)
             }
         case "music":
+            // понякога отива да посвири на цветето и то танцува
+            if let pp = plantPanel, plantStage > 0 {
+                if !b.playPlant && Int.random(in: 0..<(30 * 240)) == 0 {
+                    b.playPlant = true
+                    b.wanderX = pp.frame.midX + 80
+                    b.nextWander = time + 40
+                    buddySay(b, "Ще посвиря на цветето!", 2.5)
+                } else if b.playPlant && abs(buddyScreenBox(b).midX - pp.frame.midX) < 130 {
+                    b.playPlant = false
+                    plantDanceUntil = time + 15
+                    buddySay(b, "♪ Песен за цветето! ♪", 3)
+                    if !pet.asleep { pendingReply = ("Виж! Цветето танцува!", time + 3, false) }
+                }
+            }
             if time > b.nextDance && !pet.asleep && !pet.working && !busyMoving && action == .none {
                 b.nextDance = time + Double.random(in: 90...180)
                 start(.wave, length: 3)
@@ -1231,9 +1250,10 @@ extension Game {
                 buddySay(b, "Стриймът свърши! +12 монети", 3.5)
             }
         case "artist":
-            if b.workSeconds >= 6 * 60 {
-                b.workSeconds = 0
-                paintPlatform(b)
+            // докато работи, рисува непрекъснато; понякога изтрива някоя стара рисунка
+            if artistQueue.isEmpty && time > b.nextPaint {
+                b.nextPaint = time + Double.random(in: 12...35)
+                if drawCells.count > 30 && Int.random(in: 0..<4) == 0 { eraseSomeDrawing(b) } else { paintPlatform(b) }
             }
         case "garden":
             if b.workSeconds >= 8 * 60 {
@@ -1341,18 +1361,76 @@ extension Game {
         artist.view.flashAt = time
         artistNextCell = time + 0.28
         let (k, c) = artistQueue.removeFirst()
-        drawCells[k] = c
+        if c < 0 { drawCells.removeValue(forKey: k) } else { drawCells[k] = c }   // отрицателен цвят: трие
         redrawDrawing()
         if artistQueue.isEmpty {
             saveDrawing()
             drawingChanged()
             if let b = buddy("artist") { buddySay(b, "Готово! \(artistWhat.capitalized)!", 3) }
             if !pet.asleep && hidePhase == .off {
-                say(artistWhat == "стена за тоалетната" ? "Благодаря! Сега никой да не гледа!" :
+                say(artistWhat == "гумичка" ? "Ей, тя изтри една рисунка!" :
+                    artistWhat == "стена за тоалетната" ? "Благодаря! Сега никой да не гледа!" :
                     artistWhat == "платформа" || artistWhat == "стълби" ? "Ооо, ново място за скачане! Благодаря!"
                     : "Каква хубава рисунка!", seconds: 2.5)
             }
         }
+    }
+
+    /// Художничката изтрива парче от някоя рисунка (квадратче по квадратче).
+    func eraseSomeDrawing(_ b: Buddy) {
+        let pr = petScreenRect()
+        let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
+        let onScreen = drawCells.keys.filter { k in
+            let (cx, cy) = cellFromKey(k)
+            let x = (CGFloat(cx) + 0.5) * drawCell, y = (CGFloat(cy) + 0.5) * drawCell
+            return vf.contains(NSPoint(x: x, y: y))
+        }
+        guard let seed = onScreen.randomElement() else { paintPlatform(b); return }
+        let (sx, sy) = cellFromKey(seed)
+        let near = onScreen.filter { k in let (cx, cy) = cellFromKey(k); return abs(cx - sx) <= 3 && abs(cy - sy) <= 3 }
+        for k in near { artistQueue.append((k, -1)) }
+        artistWhat = "гумичка"
+        artistTargetX = (CGFloat(sx) + 0.5) * drawCell
+        b.wanderX = artistTargetX
+        buddySay(b, ["Тази рисунка не ми харесва… изтривам!", "Малко гумичка тук…", "Ще направя място за нова рисунка!"].randomElement()!, 3)
+    }
+
+    /// Облякъл е нещо ново: приятелите коментират (комплименти или подигравки, ако са сърдити).
+    func friendsCommentOutfit(_ itemName: String) {
+        let watchers = buddies.filter { !$0.leaving && !buddyAsleep($0) && $0.service == nil }
+        guard !watchers.isEmpty, !pet.asleep else { return }
+        let thing = itemName.lowercased()
+        var lines: [(String, String)] = []
+        for b in watchers.shuffled().prefix(2) {
+            let fr = buddyFriendship(b.kind.id)
+            if fr >= 50 {
+                lines.append((b.kind.id, ["Ооо, \(thing)! Много ти отива!", "Изглеждаш страхотно!", "Супер стил, \(pet.name)!",
+                                          "Леле, колко си модерен!", "Искам и аз такова!"].randomElement()!))
+            } else {
+                lines.append((b.kind.id, ["Хаха, какво е това на теб?!", "\(thing.capitalizedFirst)? Сериозно ли?", "Приличаш на плашило! Хаха!",
+                                          "Кой те облече така?"].randomElement()!))
+            }
+        }
+        let mocked = lines.contains { $0.1.contains("Хаха") || $0.1.contains("Сериозно") || $0.1.contains("плашило") || $0.1.contains("Кой те") }
+        lines.append(("pet", mocked ? "Хмпф! На мен ми харесва!" : "Благодаря! Знам!"))
+        if dialog.isEmpty { startDialog(lines) }
+    }
+
+    /// Списък: с кого колко е приятел.
+    @objc func showFriendships() {
+        NSApp.activate(ignoringOtherApps: true)
+        let known = buddyKinds.filter { joinedBuddies.contains($0.id) || UserDefaults.standard.integer(forKey: "buddyVisits_\($0.id)") > 0 }
+        let lines = known.sorted { buddyFriendship($0.id) > buddyFriendship($1.id) }.map { k -> String in
+            let f = buddyFriendship(k.id)
+            let hearts = String(repeating: "♥", count: max(0, f / 20)) + String(repeating: "♡", count: 5 - max(0, f / 20))
+            let state = joinedBuddies.contains(k.id) ? (buddyIsAway(k.id) ? "живее с нас, сега е вкъщи" : "живее с нас")
+                : (buddyMovedAway(k.id) ? "премести се" : "идва на гости")
+            return "\(buddyName(k)) (\(k.job)): \(hearts) \(f)% · \(state)"
+        }
+        let alert = NSAlert()
+        alert.messageText = "Приятелства"
+        alert.informativeText = lines.isEmpty ? "Още никой не е идвал на гости." : lines.joined(separator: "\n")
+        alert.runModal()
     }
 
     // --- клик, меню, храна ---

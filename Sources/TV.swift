@@ -105,6 +105,7 @@ extension Game {
     }
 
     func endTV() {
+        tvAbandonedAt = 0
         tvPanel?.orderOut(nil)
         tvPanel = nil
         for b in buddies { b.nextWander = time }
@@ -124,7 +125,31 @@ extension Game {
         }
         guard let p = tvPanel else { return }
         p.contentView?.needsDisplay = true
-        if time > tvUntil || pet.dead || hidePhase != .off || minimalMode { endTV(); return }
+        if pet.dead || hidePhase != .off || minimalMode { endTV(); return }
+        // предаването свърши, всички се разотидоха, а телевизорът си свети: Пиксчо се ядосва и отива да го спре
+        if time > tvUntil {
+            if tvAbandonedAt == 0 {
+                tvAbandonedAt = time
+                for b in buddies { b.nextWander = time }
+            }
+            if time - tvAbandonedAt > 15 * 60 { endTV(); return }
+            guard time - tvAbandonedAt > 20, !pet.asleep, !pet.working, !playingGame, errands.isEmpty, hidePhase == .off else { return }
+            let pr = petScreenRect()
+            if abs(pr.midX - p.frame.midX) < 90 && !jumping {
+                walkTarget = nil
+                endTV()
+                start(.angry, length: 1.5)
+                say(["Ето! Изключих го. Ток харчим!", "Никой не гледа, а свети! Изключвам!", "Аз ли трябва всичко да изключвам?!"].randomElement()!, seconds: 3)
+                annoy(3, reason: "никой не изключи телевизора")
+            } else if walkTarget == nil && !busyMoving {
+                if time - bubbleSaidAt > 20 {
+                    say(["Кой остави телевизора включен?!", "Пак никой не го гледа, а свети!", "Грр! Отивам да го спра!"].randomElement()!, seconds: 2.5)
+                    start(.angry, length: 1.5)
+                }
+                walkTarget = p.frame.midX - 60 - bodyCenterOffset
+            }
+            return
+        }
         guard time > nextTVLine, dialog.isEmpty else { return }
         nextTVLine = time + Double.random(in: 8...15)
         let watchers = buddies.filter { !$0.leaving && !buddyAsleep($0) }

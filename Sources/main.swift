@@ -1464,7 +1464,7 @@ final class PetView: NSView {
 final class FoodPixel: NSObject {
     let color: Int
     var spoiled = false
-    let spoilAt: Double
+    var spoilAt: Double
     let panel: NSPanel
     let view: FoodView
     var flying = false
@@ -2562,6 +2562,16 @@ final class Game: NSObject, NSApplicationDelegate {
     var pendingBuddyReply: (id: String, text: String, at: Double)?
     var miniMenuPanel: NSPanel?
     var miniMenuOpened: Double = 0
+    var miniMenuBack: (() -> Void)?
+    var plantDanceUntil: Double = 0
+    var tvAbandonedAt: Double = 0
+    var ufoPhase = 0                  // 0 няма, 1 отнася всичко (преди обновяване), 2 връща всичко
+    var ufoStart: Double = 0
+    var ufoX: CGFloat = 0
+    var ufoPanel: NSPanel?
+    var beamPanel: NSPanel?
+    var ufoPending: (URL?, URL)?
+    var ufoPetBack = false
     var dialog: [(String, String)] = []
     var dialogAt: Double = 0
     var dialogCenter: CGFloat = 0
@@ -2763,11 +2773,13 @@ final class Game: NSObject, NSApplicationDelegate {
         let timer = Timer(timeInterval: 1.0 / 30, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
         RunLoop.main.add(timer, forMode: .common)
 
+        restoreFoods()
         // обновен ли е? тогава „възкръсва“: пикселите му се събират отвсякъде
         let lastBuild = UserDefaults.standard.integer(forKey: "lastRunBuild")
         UserDefaults.standard.set(currentBuild, forKey: "lastRunBuild")
         if lastBuild > 0 && lastBuild != currentBuild && !pet.dead {
-            reviveUntil = time + 3.5
+            // летящата чиния връща всички
+            startUfo(2)
             sfx("Hero")
             say("Обнових се! Нова версия \(currentBuild)!", seconds: 4)
         } else {
@@ -2871,6 +2883,7 @@ final class Game: NSObject, NSApplicationDelegate {
         updateDialogLooks()
         updateLifecycle()
         updateGhosts()
+        updateUfo()
         updateSmallPets(step)
         updateBuddyGame(step)
         updatePlant()
@@ -2935,8 +2948,8 @@ final class Game: NSObject, NSApplicationDelegate {
     /// В края на такта, ако е скрит: всичко става невидимо (напълно прозрачните прозорци пропускат кликовете).
     /// ignoresMouseEvents не се пипа: явно зададено false кара прозореца да хваща кликове и в празното.
     func applyHideAll() {
-        guard hideAll else { return }
-        for w in ownPanels {
+        guard hideAll || ufoPhase != 0 else { return }
+        for w in ownPanels where hideAll || ufoHides(w) {
             savedLook[ObjectIdentifier(w)] = w.alphaValue
             w.alphaValue = 0
         }
@@ -3542,10 +3555,10 @@ final class Game: NSObject, NSApplicationDelegate {
 
     @objc func openRetro() {
         closeRetro()
-        let height = (inventoryOpen ? RetroView.heightWithInventory : RetroView.height) + RetroView.timersHeight(timersParts().count)
+        let height = RetroView.height + RetroView.timersHeight(timersParts().count)
         let v = RetroView(frame: NSRect(x: 0, y: 0, width: RetroView.width, height: height))
         v.game = self
-        v.showInventory = inventoryOpen
+        v.showInventory = false
         let asleep = pet.asleep, dead = pet.dead
         v.stats = [
             RetroButton(icon: iconFood, label: "Ситост", value: pet.fullness, action: nil),
@@ -3565,7 +3578,7 @@ final class Game: NSObject, NSApplicationDelegate {
                 RetroButton(icon: asleep ? iconSun : iconMoon, label: asleep ? "Събуди" : "Приспи", value: nil, action: #selector(toggleSleep)),
                 RetroButton(icon: iconHug, label: "Приятели и любимци", value: nil, action: asleep ? nil : #selector(openFriendsMenu)),
                 RetroButton(icon: iconShop, label: "Магазин", value: nil, action: #selector(openShop)),
-                RetroButton(icon: iconBag, label: "Още: рисуване, инвентар", value: nil, action: #selector(openMoreMenu)),
+                RetroButton(icon: iconCake, label: "Още: рожден ден, телевизор", value: nil, action: #selector(openMoreMenu)),
             ]
         }
         v.timers = timersParts()
@@ -3603,22 +3616,26 @@ final class Game: NSObject, NSApplicationDelegate {
                                       action: { [weak self] in self?.startBuddyGame() }))
         }
         if eggState == "egg" {
-            buttons.append(MiniButton(icon: iconWarm, label: "Яйцето", enabled: true, action: { [weak self] in self?.openEggMenu() }))
+            buttons.append(MiniButton(icon: iconWarm, label: "Яйцето", enabled: true, action: { [weak self] in
+                self?.openEggMenu()
+                self?.miniMenuBack = { [weak self] in self?.openFriendsMenu() }
+            }))
         }
-        showMiniMenu(title: "Приятели и любимци", stats: [], buttons: buttons, above: NSPoint(x: pr.midX, y: pr.maxY))
+        // колко е приятел с всеки
+        let known = buddyKinds.filter { joinedBuddies.contains($0.id) || UserDefaults.standard.integer(forKey: "buddyVisits_\($0.id)") > 0 }
+        let stats = known.prefix(8).map { k in (buddyName(k), Double(buddyFriendship(k.id)) / 100, k.color) }
+        showMiniMenu(title: "Приятели и любимци", stats: Array(stats), buttons: buttons, above: NSPoint(x: pr.midX, y: pr.maxY),
+                     back: { [weak self] in self?.openRetro() })
     }
 
     @objc func openMoreMenu() {
         let pr = petScreenRect()
         let buttons = [
-            MiniButton(icon: iconPencil, label: "Рисувай платформи", enabled: true, action: { [weak self] in self?.startDrawing() }),
-            MiniButton(icon: iconBag, label: inventoryOpen ? "Скрий инвентара" : "Инвентар", enabled: true,
-                       action: { [weak self] in self?.toggleInventory() }),
             MiniButton(icon: iconCake, label: "Рожден ден", enabled: true, action: { [weak self] in self?.birthdayInfo() }),
             MiniButton(icon: iconTV, label: tvPanel == nil ? "ТВ вечер (гледат компилациите)" : "Изключи телевизора", enabled: true,
                        action: { [weak self] in self?.toggleTV() }),
         ]
-        showMiniMenu(title: "Още", stats: [], buttons: buttons, above: NSPoint(x: pr.midX, y: pr.maxY))
+        showMiniMenu(title: "Още", stats: [], buttons: buttons, above: NSPoint(x: pr.midX, y: pr.maxY), back: { [weak self] in self?.openRetro() })
     }
 
     /// Всички игри на едно място.
@@ -3640,7 +3657,7 @@ final class Game: NSObject, NSApplicationDelegate {
             buttons.append(MiniButton(icon: iconHug, label: "Приятелите да играят", enabled: true,
                                       action: { [weak self] in self?.startBuddyGame() }))
         }
-        showMiniMenu(title: "Игри", stats: [], buttons: buttons, above: NSPoint(x: pr.midX, y: pr.maxY))
+        showMiniMenu(title: "Игри", stats: [], buttons: buttons, above: NSPoint(x: pr.midX, y: pr.maxY), back: { [weak self] in self?.openRetro() })
     }
 
     @objc func toggleRatCage() {
@@ -3748,25 +3765,31 @@ final class Game: NSObject, NSApplicationDelegate {
 
     // --- иконката в горната лента ---
 
+    /// Иконката горе: и с левия, и с десния бутон отваря менюто на приложението (менюто на Пиксчо е с десен бутон върху него).
     @objc func statusClicked() {
-        if NSApp.currentEvent?.type == .rightMouseUp {
-            statusItem.menu = adminMenu()
-            statusItem.button?.performClick(nil)
-            statusItem.menu = nil
-        } else {
-            if hideAll { toggleWindow() }
-            if retroPanel == nil { openRetro() } else { closeRetro() }
-        }
+        statusItem.menu = adminMenu()
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil
     }
 
     func adminMenu() -> NSMenu {
         let menu = NSMenu()
         menu.autoenablesItems = false
-        func item(_ title: String, _ sel: Selector?, on: Bool = false, enabled: Bool = true) {
+        func item(_ title: String, _ sel: Selector?, on: Bool = false, enabled: Bool = true, in m: NSMenu? = nil, obj: Any? = nil) {
             let it = NSMenuItem(title: title, action: sel, keyEquivalent: "")
             it.target = self
             it.state = on ? .on : .off
             it.isEnabled = enabled && sel != nil
+            it.representedObject = obj
+            (m ?? menu).addItem(it)
+        }
+        func sub(_ title: String, _ build: (NSMenu) -> Void) {
+            let m = NSMenu()
+            m.autoenablesItems = false
+            build(m)
+            guard !m.items.isEmpty else { return }
+            let it = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            it.submenu = m
             menu.addItem(it)
         }
         if availableBuild > currentBuild {
@@ -3779,39 +3802,46 @@ final class Game: NSObject, NSApplicationDelegate {
         if !timersText().isEmpty { item(timersText().capitalized, nil) }
         if let w = want { item("Иска: \(wantText(w))", nil) }
         menu.addItem(.separator())
-        item("Магазин…", #selector(openShop))
-        item(drawing ? "Спри рисуването" : "Рисувай с пиксели (платформи)", drawing ? #selector(stopDrawingAction) : #selector(startDrawing))
-        item("Изтрий всичко нарисувано", #selector(clearDrawingAction), enabled: !drawCells.isEmpty)
-        menu.addItem(.separator())
         item(hideAll ? "Покажи" : "Скрий", #selector(toggleWindow))
         item("Повикай в ъгъла", #selector(callHome))
-        item("Разхожда се", #selector(toggleWander), on: wander)
-        item("Пиксели-храна по екрана", #selector(toggleFoodPixels), on: foodPixelsOn)
-        item("Звънче за тревога на екрана", #selector(toggleBell), on: bellOn)
-        if bellOn { item("Върни звънчето долу", #selector(resetBell)) }
-        item("Звуци", #selector(toggleSounds), on: soundsOn)
-        item("Истинското време навън", #selector(toggleWeather), on: weatherOn)
-        item("Минимален режим (по-малко неща на екрана)", #selector(toggleMinimal), on: minimalMode)
-        if let w = weatherText { item(w, nil) }
-        if foodPixelsOn { item("Пусни пиксел сега", #selector(spawnFoodNow), enabled: foods.count < 12) }
-        item("Смени името…", #selector(rename))
-        if hasRat { item("Кръсти плъхчето…", #selector(renameRat)) }
-        if babyAlive { item("Кръсти бебето…", #selector(renameBaby)) }
-        let callable = callableBuddies()
-        if !callable.isEmpty {
-            let sub = NSMenu()
-            for k in callable {
-                let it = NSMenuItem(title: "\(buddyName(k)) (\(k.job))", action: #selector(callBuddyMenu(_:)), keyEquivalent: "")
-                it.target = self
-                it.representedObject = k.id
-                sub.addItem(it)
+        item("Магазин…", #selector(openShop))
+        // инвентарът: облича/съблича и маха/връща купените неща
+        sub("Инвентар") { m in
+            for it in shopItems where (it.kind == .wear || it.kind == .upgrade) && pet.owned.contains(it.id) {
+                let on = it.kind == .wear ? pet.worn.contains(it.id) : !pet.disabled.contains(it.id)
+                item(it.name, #selector(inventoryMenuAction(_:)), on: on, in: m, obj: it.id)
             }
-            let call = NSMenuItem(title: "Обади се на приятел", action: nil, keyEquivalent: "")
-            call.submenu = sub
-            menu.addItem(call)
         }
-        if #available(macOS 13.0, *) {
-            item("Пускай при включване", #selector(toggleLogin), on: SMAppService.mainApp.status == .enabled)
+        sub("Рисуване") { m in
+            item(drawing ? "Спри рисуването" : "Рисувай с пиксели (платформи, стени)", drawing ? #selector(stopDrawingAction) : #selector(startDrawing), in: m)
+            item("Изтрий всичко нарисувано", #selector(clearDrawingAction), enabled: !drawCells.isEmpty, in: m)
+        }
+        sub("Приятели") { m in
+            item("Приятелства…", #selector(showFriendships), in: m)
+            let callable = callableBuddies()
+            if !callable.isEmpty { m.addItem(.separator()) }
+            for k in callable {
+                item("Звънни на \(buddyName(k)) (\(k.job)) · ♥ \(buddyFriendship(k.id))", #selector(callBuddyMenu(_:)), in: m, obj: k.id)
+            }
+        }
+        sub("Имена") { m in
+            item("Смени името на \(pet.name)…", #selector(rename), in: m)
+            if hasRat { item("Кръсти плъхчето…", #selector(renameRat), in: m) }
+            if babyAlive { item("Кръсти бебето…", #selector(renameBaby), in: m) }
+        }
+        sub("Настройки") { m in
+            item("Разхожда се", #selector(toggleWander), on: wander, in: m)
+            item("Пиксели-храна по екрана", #selector(toggleFoodPixels), on: foodPixelsOn, in: m)
+            if foodPixelsOn { item("Пусни пиксел сега", #selector(spawnFoodNow), enabled: foods.count < 12, in: m) }
+            item("Звънче за тревога на екрана", #selector(toggleBell), on: bellOn, in: m)
+            if bellOn { item("Върни звънчето долу", #selector(resetBell), in: m) }
+            item("Звуци", #selector(toggleSounds), on: soundsOn, in: m)
+            item("Истинското време навън", #selector(toggleWeather), on: weatherOn, in: m)
+            if let w = weatherText { item(w, nil, in: m) }
+            item("Минимален режим (по-малко неща на екрана)", #selector(toggleMinimal), on: minimalMode, in: m)
+            if #available(macOS 13.0, *) {
+                item("Пускай при включване", #selector(toggleLogin), on: SMAppService.mainApp.status == .enabled, in: m)
+            }
         }
         item("Спомени…", #selector(showMemorials))
         if !pet.dead { item("Ново животинче…", #selector(newPet)) }
@@ -3819,6 +3849,11 @@ final class Game: NSObject, NSApplicationDelegate {
         item("Версия \(currentBuild) · Провери за обновления", #selector(checkForUpdateManually))
         item("Изход", #selector(quit))
         return menu
+    }
+
+    @objc func inventoryMenuAction(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String, let it = shopItems.first(where: { $0.id == id }) else { return }
+        if it.kind == .wear { shopAction(it) } else { toggleItem(it) }
     }
 
     @objc func toggleWindow() {
@@ -3972,7 +4007,7 @@ final class Game: NSObject, NSApplicationDelegate {
             target = URL(fileURLWithPath: "/Applications/Tamagotchi.app")
         }
         updating = true
-        say("Обновявам се…", seconds: 60)
+        startUfo(1)
         URLSession.shared.downloadTask(with: url) { tmp, _, _ in
             // временният файл изчезва след края на тази функция, затова се разархивира веднага
             var newApp: URL?
@@ -3998,11 +4033,19 @@ final class Game: NSObject, NSApplicationDelegate {
     }
 
     func finishUpdate(_ newApp: URL?, replacing target: URL) {
-        guard let newApp else {
+        guard newApp != nil else {
             updating = false
+            ufoCancel()
             say("Не успях да се обновя", seconds: 4)
             return
         }
+        // чинията още прибира: обновява се, щом свърши
+        if ufoPhase == 1 { ufoPending = (newApp, target); return }
+        finishUpdateNow(newApp, replacing: target)
+    }
+
+    func finishUpdateNow(_ newAppURL: URL?, replacing target: URL) {
+        guard let newApp = newAppURL else { updating = false; ufoCancel(); return }
         save()
         saveWindowPosition()
         // скрипт, който чака това копие да спре, сменя приложението и го пуска отново
@@ -4022,6 +4065,7 @@ final class Game: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
         } catch {
             updating = false
+            ufoCancel()
             say("Не успях да се обновя", seconds: 4)
         }
     }
@@ -4033,11 +4077,36 @@ final class Game: NSObject, NSApplicationDelegate {
 
     func save() {
         saveMood()
+        saveFoods()
         pet.lastUpdate = Date()
         if let data = try? JSONEncoder().encode(pet) {
             UserDefaults.standard.set(data, forKey: "pet")
         }
         lastSave = time
+    }
+
+    /// Пикселите-храна по екрана се пазят (и след обновяване или изключване си стоят там).
+    func saveFoods() {
+        let arr: [[String: Any]] = foods.filter { !$0.flying }.prefix(20).map { f in
+            ["x": Double(f.panel.frame.minX), "y": Double(f.panel.frame.minY), "c": f.color, "s": f.spoiled,
+             "left": f.spoilAt - time, "g": f.golden, "fall": f.falls]
+        }
+        UserDefaults.standard.set(arr, forKey: "savedFoods")
+    }
+
+    func restoreFoods() {
+        guard foods.isEmpty, let arr = UserDefaults.standard.array(forKey: "savedFoods") as? [[String: Any]] else { return }
+        for d in arr {
+            let o = NSPoint(x: d["x"] as? Double ?? 200, y: d["y"] as? Double ?? 200)
+            // само ако мястото още е на някой екран
+            guard NSScreen.screens.contains(where: { $0.frame.insetBy(dx: -10, dy: -10).contains(o) }) else { continue }
+            let f = FoodPixel(color: d["c"] as? Int ?? foodColors[0], at: o, game: self)
+            f.spoiled = d["s"] as? Bool ?? false
+            f.spoilAt = time + (d["left"] as? Double ?? 20 * 60)
+            f.golden = d["g"] as? Bool ?? false
+            f.falls = d["fall"] as? Bool ?? false
+            foods.append(f)
+        }
     }
 
     func load() {
