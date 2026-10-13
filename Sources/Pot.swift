@@ -76,6 +76,8 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var nextGardener: Double = 20 * 60
     var nextAudioCheck: Double = 0
     var musicPlaying = false
+    var musicApps: [String] = []
+    var musicSeconds = 0
     var eyesUntil: Double = 0
     var wateringUntil: Double = 0
     var trimmingUntil: Double = 0
@@ -344,12 +346,50 @@ final class PotGame: NSObject, NSApplicationDelegate {
 
     // MARK: - звук от компютъра → танцува
 
+    /// Танцува само когато някоя програма наистина пуска звук поне 3 секунди
+    /// (без собствените звуци и без програмите, на които си казал „не танцувай“).
     func updateMusic() {
         guard time > nextAudioCheck else { return }
         nextAudioCheck = time + 1
-        let playing = audioIsPlaying()
+        let players = danceOn ? audioPlayers().filter { !danceIgnore.contains($0) } : []
+        musicApps = players
+        musicSeconds = players.isEmpty ? 0 : musicSeconds + 1
+        let playing = musicSeconds >= 3
         if playing && !musicPlaying && hidePhase == 0 { say(["Музика! Танцувам!", "Ооо, обичам тази песен!", "Ла-ла-лааа!"].randomElement()!, 2.5) }
         musicPlaying = playing
+    }
+
+    var danceOn: Bool { get { d.object(forKey: "pot_dance") as? Bool ?? true } set { d.set(newValue, forKey: "pot_dance") } }
+    var danceIgnore: [String] { get { d.stringArray(forKey: "pot_danceIgnore") ?? [] } set { d.set(newValue, forKey: "pot_danceIgnore") } }
+
+    /// Кои програми пускат звук в момента (на macOS 14+ по програми; на по-старите само „нещо свири“).
+    func audioPlayers() -> [String] {
+        if #available(macOS 14.0, *) {
+            let sys = AudioObjectID(kAudioObjectSystemObject)
+            var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyProcessObjectList,
+                                                  mScope: kAudioObjectPropertyScopeGlobal, mElement: 0)
+            var size: UInt32 = 0
+            guard AudioObjectGetPropertyDataSize(sys, &addr, 0, nil, &size) == noErr, size > 0 else { return [] }
+            var ids = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
+            guard AudioObjectGetPropertyData(sys, &addr, 0, nil, &size, &ids) == noErr else { return [] }
+            let me = ProcessInfo.processInfo.processIdentifier
+            var names: [String] = []
+            for id in ids {
+                var a = AudioObjectPropertyAddress(mSelector: kAudioProcessPropertyIsRunningOutput,
+                                                   mScope: kAudioObjectPropertyScopeGlobal, mElement: 0)
+                var running: UInt32 = 0
+                var s = UInt32(MemoryLayout<UInt32>.size)
+                guard AudioObjectGetPropertyData(id, &a, 0, nil, &s, &running) == noErr, running != 0 else { continue }
+                a.mSelector = kAudioProcessPropertyPID
+                var pid: pid_t = 0
+                s = UInt32(MemoryLayout<pid_t>.size)
+                guard AudioObjectGetPropertyData(id, &a, 0, nil, &s, &pid) == noErr, pid != me else { continue }
+                let name = NSRunningApplication(processIdentifier: pid)?.localizedName ?? "процес \(pid)"
+                if !names.contains(name) { names.append(name) }
+            }
+            return names
+        }
+        return audioIsPlaying() ? ["звук"] : []
     }
 
     func audioIsPlaying() -> Bool {
@@ -412,7 +452,6 @@ final class PotGame: NSObject, NSApplicationDelegate {
     func sfx(_ name: String) {
         guard soundsOn, !hidden else { return }
         NSSound(named: NSSound.Name(name))?.play()
-        nextAudioCheck = time + 2      // собствените звуци не са „музика“
     }
 
     // MARK: - дневник

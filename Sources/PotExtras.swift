@@ -197,6 +197,15 @@ extension PotGame {
         item("Звънче за тревога на екрана", #selector(toggleBell), on: bellOn)
         if bellOn { item("Звънни!", #selector(ringFromMenu)) }
         item("Звуци", #selector(toggleSounds), on: soundsOn)
+        item("Танцува на музика", #selector(toggleDance), on: danceOn)
+        // кой го кара да танцува: може да го изключиш само за тази програма
+        for app in musicApps {
+            let it = NSMenuItem(title: "Не танцувай на звука от „\(app)“", action: #selector(ignoreDanceApp(_:)), keyEquivalent: "")
+            it.target = self
+            it.representedObject = app
+            menu.addItem(it)
+        }
+        if !danceIgnore.isEmpty { item("Пак танцувай на всичко (\(danceIgnore.joined(separator: ", ")))", #selector(clearDanceIgnore)) }
         item("Дневник…", #selector(showJournal))
         menu.addItem(.separator())
         item("🐹 Към Пиксчо (стария живот)", #selector(switchToPixcho))
@@ -210,6 +219,15 @@ extension PotGame {
     @objc func waterAction() { waterIt() }
     @objc func ringFromMenu() { ringBell() }
     @objc func toggleSounds() { soundsOn.toggle() }
+    @objc func toggleDance() { danceOn.toggle(); if !danceOn { musicPlaying = false } }
+    @objc func ignoreDanceApp(_ sender: NSMenuItem) {
+        guard let app = sender.representedObject as? String else { return }
+        danceIgnore = danceIgnore + [app]
+        musicPlaying = false
+        musicSeconds = 0
+        say("Добре, на „\(app)“ няма да танцувам.", 2.5)
+    }
+    @objc func clearDanceIgnore() { danceIgnore = [] }
     @objc func quitApp() { savePosition(); NSApp.terminate(nil) }
     @objc func switchToPixcho() { savePosition(); AppMode.switchTo(pixcho: true) }
 
