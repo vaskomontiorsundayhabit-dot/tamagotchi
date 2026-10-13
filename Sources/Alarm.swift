@@ -278,6 +278,8 @@ extension Game {
     func startHiding() {
         guard window.isVisible else { return }
         if pet.asleep { pet.asleep = false }
+        // ако е монтирал, след тревогата се връща на работа
+        workBeforeAlarm = pet.working || goingToWork
         if pet.working { pet.working = false }
         if monitorDetached { reattachMonitor() }
         workBreak = false
@@ -404,6 +406,14 @@ extension Game {
                 hidePhase = .off
                 if abs(hideHome.y - y) > 4 { jump(toOrigin: hideHome) }
                 saveWindowPosition()
+                if workBeforeAlarm {
+                    workBeforeAlarm = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                        guard let self, !self.pet.working, !self.pet.asleep, !self.pet.dead, self.hidePhase == .off else { return }
+                        self.say("Мина ли? Обратно на работа!", seconds: 2.5)
+                        self.toggleWork()
+                    }
+                }
             }
         case .peeking:
             // наднича мълчаливо; излиза със звънчето или с клик върху него

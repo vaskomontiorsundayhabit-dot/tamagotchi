@@ -63,6 +63,7 @@ extension Game {
     func remember(_ id: String, topic: String, fight: Bool) {
         UserDefaults.standard.set(topic, forKey: "buddyTopic_\(id)")
         UserDefaults.standard.set(fight, forKey: "buddyFight_\(id)")
+        if fight { UserDefaults.standard.set(Date(), forKey: "buddyFightAt_\(id)") }
     }
 
     /// Пуска разговор: (кой: "pet" или id на приятел, реплика).
@@ -132,7 +133,13 @@ extension Game {
     func buddyConversation(_ b: Buddy) {
         let id = b.kind.id
         let lastTopic = UserDefaults.standard.string(forKey: "buddyTopic_\(id)")
-        let lastFight = UserDefaults.standard.bool(forKey: "buddyFight_\(id)")
+        var lastFight = UserDefaults.standard.bool(forKey: "buddyFight_\(id)")
+        // старите караници (над 6 часа) се забравят без „мир“
+        let fightAt = UserDefaults.standard.object(forKey: "buddyFightAt_\(id)") as? Date ?? .distantPast
+        if lastFight && Date().timeIntervalSince(fightAt) > 6 * 3600 {
+            lastFight = false
+            UserDefaults.standard.set(false, forKey: "buddyFight_\(id)")
+        }
         let friendly = buddyFriendship(id) >= 50
         if let t = lastTopic, lastFight {
             // помнят, че са се скарали за това
@@ -282,6 +289,12 @@ extension Game {
             options.append(("цветето", ["Видя ли как расте \(plantDefinite(plantStage))?",
                                         "Да! Хвърлям му развалените пиксели.", "И вече има \(plantBlossoms(plantStage)) цвята!",
                                         "Някой ден ще стане огромно дърво."]))
+        }
+        if let t = weatherTemp, weatherOn {
+            let n = Int(t.rounded())
+            options.append(("температурата", ["Колко градуса е навън?", "\(n) градуса.",
+                                               n < 5 ? "Брррр! Студено!" : (n > 28 ? "Уф, жега!" : "Хубаво време."),
+                                               n < 5 ? "Тук е топло, при монитора." : "Ще отворя прозореца."]))
         }
         switch weatherKind {
         case .rain, .storm: options.append(("дъжда", ["Чуваш ли дъжда навън?", "Да, добре че сме вътре.", "Ще направя чай.", "С пиксели!"]))

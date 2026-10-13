@@ -420,6 +420,13 @@ extension Game {
             if time > 5 {
                 buddySay(b, ["Върнах се!", "Ето ме пак!", "Здрасти, \(pet.name)! Вкъщи беше скучно."].randomElement()!, 3)
                 afterArrival(b, giftChance: 3)
+                // ако си е тръгнал сърдит, сам идва да се сдобрят (после разговорите са нормални)
+                if UserDefaults.standard.bool(forKey: "buddyFight_\(id)") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self, weak b] in
+                        guard let self, let b, !b.leaving, self.dialog.isEmpty, !self.pet.asleep else { return }
+                        self.buddyConversation(b)
+                    }
+                }
             }
         }
         // гости

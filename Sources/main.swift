@@ -2564,6 +2564,7 @@ final class Game: NSObject, NSApplicationDelegate {
     var miniMenuOpened: Double = 0
     var miniMenuBack: (() -> Void)?
     var plantDanceUntil: Double = 0
+    var workBeforeAlarm = false
     var tvAbandonedAt: Double = 0
     var ufoPhase = 0                  // 0 няма, 1 отнася всичко (преди обновяване), 2 връща всичко
     var ufoStart: Double = 0

@@ -26,7 +26,12 @@ final class RatView: NSView {
     let drag = Dragger()
     override func mouseDown(with event: NSEvent) { drag.down(window) }
     override func mouseDragged(with event: NSEvent) {
-        if drag.dragged(window), game?.ratHeld == false { game?.ratHeld = true; game?.ratSay("Цииик! Пусни ме!", 1.5) }
+        if drag.dragged(window) {
+            if game?.ratHeld == false { game?.ratHeld = true; game?.ratSay("Цииик! Пусни ме!", 1.5) }
+            // държиш го за опашката: върхът на опашката е под мишката
+            let m = NSEvent.mouseLocation
+            window?.setFrameOrigin(NSPoint(x: m.x - RatView.size.width / 2, y: m.y - RatView.tailTop))
+        }
     }
     override func mouseUp(with event: NSEvent) {
         if drag.up() { game?.ratHeld = false } else { game?.ratClicked() }
@@ -349,7 +354,7 @@ extension Game {
         let m = NSEvent.mouseLocation
         let ratHit = NSRect(x: p.frame.midX - 28, y: p.frame.minY, width: 56, height: 28).contains(m)
         setClickable(p, ratHit)
-        if ratHeld { v.running = true; return }
+        if ratHeld { v.hanging = true; v.running = false; return }
 
         updateWheel(step)
         // в колелото: тича вътре, колелото се търкаля
