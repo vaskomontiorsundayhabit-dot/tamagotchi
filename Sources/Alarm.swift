@@ -305,9 +305,30 @@ extension Game {
     private func beginHideRun() {
         let pr = petScreenRect()
         let sf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.frame ?? .zero
-        hideLeft = pr.midX - sf.minX < sf.maxX - pr.midX
+        let side = hideSide(x: pr.midX, screen: sf)
+        hideLeft = side.left
+        hideFade = side.fade
         hideScreen = sf
         hidePhase = .running
+    }
+
+    /// Няма ли друг екран точно до този ръб (за да не се вижда там, като се скрие).
+    func screenEdgeFree(_ f: NSRect, left: Bool) -> Bool {
+        !NSScreen.screens.contains { s in
+            let o = s.frame
+            return o != f && o.maxY > f.minY + 10 && o.minY < f.maxY - 10
+                && (left ? abs(o.maxX - f.minX) < 3 : abs(o.minX - f.maxX) < 3)
+        }
+    }
+
+    /// Накъде да бяга при тревога: към по-близкия ръб без съседен екран.
+    /// Ако и от двете страни има екрани, изчезва (fade), щом стигне ръба.
+    func hideSide(x: CGFloat, screen f: NSRect) -> (left: Bool, fade: Bool) {
+        let nearLeft = x - f.minX < f.maxX - x
+        let lf = screenEdgeFree(f, left: true), rf = screenEdgeFree(f, left: false)
+        if nearLeft ? lf : rf { return (nearLeft, false) }
+        if nearLeft ? rf : lf { return (!nearLeft, false) }
+        return (nearLeft, true)
     }
 
     func comeOutOfHiding() {
@@ -360,6 +381,7 @@ extension Game {
             if moveWindow(toward: NSPoint(x: hideX(peek: false), y: y), speed: CGFloat(700 * step)) {
                 walking = false
                 hidePhase = .hidden
+                if hideFade { window.alphaValue = 0 }
                 bubbleText = nil
                 // наднича след 2, после след 4, после след 6 минути…
                 peekCount = 1
@@ -368,12 +390,14 @@ extension Game {
         case .hidden:
             _ = moveWindow(toward: NSPoint(x: hideX(peek: false), y: y), speed: CGFloat(260 * step))
             if time > nextPeek {
+                if window.alphaValue < 1 { window.alphaValue = 1 }
                 hidePhase = .peeking
                 peekUntil = time + 4
                 nextHideAsk = time + 1.5
                 facingLeft = !hideLeft
             }
         case .returning:
+            if window.alphaValue < 1 { window.alphaValue = 1 }
             walking = true
             if moveWindow(toward: NSPoint(x: hideHome.x, y: y), speed: CGFloat(380 * step)) {
                 walking = false
@@ -385,6 +409,7 @@ extension Game {
             // наднича мълчаливо; излиза със звънчето или с клик върху него
             _ = moveWindow(toward: NSPoint(x: hideX(peek: true), y: y), speed: CGFloat(160 * step))
             if time > peekUntil {
+                if hideFade { window.alphaValue = 0 }
                 hidePhase = .hidden
                 peekCount += 1
                 nextPeek = time + 120 * Double(peekCount)

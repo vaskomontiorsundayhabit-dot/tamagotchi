@@ -171,6 +171,9 @@ final class Buddy: NSObject {
     var hugGo = false
     var leaveAt: Double = 0
     var held = false
+    var service: String?          // „mail“ или „garden“: идва само по работа
+    var serviceDone = false
+    var nextGamerThing: Double = 0
 
     init(kind: BuddyKind, guest: Bool, origin: NSPoint, game: Game) {
         self.kind = kind
@@ -199,7 +202,10 @@ final class BuddyView: NSView {
     weak var buddy: Buddy?
     var text: String?
     var textUntil: Double = 0
-    var face: Face = .normal
+    /// Изражение за няколко секунди (после пак според настроението).
+    var face: Face = .normal { didSet { faceUntil = (game?.time ?? 0) + 4 } }
+    var faceUntil: Double = 0
+    var lookX = 0                     // накъде гледа, докато си говорят
     var walking = false
     var facingLeft = false
     var flashAt: Double = -10
@@ -236,8 +242,18 @@ final class BuddyView: NSView {
         let working = buddy.working && !asleep
         let flashing = t - flashAt < 0.25
         let pose: Pose = asleep ? .sleep : (walking ? .walk : (flashing ? .wave : .idle))
-        let f: Face = asleep ? .sleep : (working && !flashing ? .focus : face)
-        let sp = buildSprite(level: game.buddyLevel(buddy.kind.id), face: f, pose: pose, frame: Int(t * (walking ? 7 : 2)), working: false)
+        // изражения: говори (устата мърда), съсредоточен, гладен, уплашен, мига…
+        let talking = text != nil && t < textUntil
+        var f: Face = .normal
+        if asleep { f = .sleep }
+        else if t < faceUntil && face != .normal { f = face }
+        else if talking { f = Int(t * 6) % 2 == 0 ? .eatOpen : .normal }
+        else if working && !flashing { f = .focus }
+        else if game.hidePhase != .off { f = .crazy }
+        else if buddy.full < 30 && !buddy.guest { f = .sad }
+        else if t.truncatingRemainder(dividingBy: 4.1 + Double(buddy.kind.color % 7) * 0.35) < 0.15 { f = .blink }
+        let sp = buildSprite(level: game.buddyLevel(buddy.kind.id), face: f, pose: pose, frame: Int(t * (walking ? 7 : 2)), working: false,
+                             lookX: walking ? 0 : lookX)
         let s = BuddyView.scale
         let ox = (bounds.width - CGFloat(canvasW) * s) / 2
         let oy: CGFloat = 40
@@ -351,6 +367,17 @@ extension Game {
     func buddySay(_ b: Buddy, _ text: String, _ seconds: Double) {
         b.view.text = text
         b.view.textUntil = time + readTime(text, seconds)
+        if let f = faceFor(text) { b.view.face = f }
+    }
+
+    /// Лицето според това, което казва.
+    func faceFor(_ text: String) -> Face? {
+        let t = text.lowercased()
+        if ["лъжеш", "сърдит", "стига", "грр", "махай", "не съм съгласн", "ядоса", "защо не вдигаш"].contains(where: { t.contains($0) }) { return .angry }
+        if ["хаха", "хи-хи", "ура", "обичам", "благодаря", "гуш", "браво", "супер", "страхотно", "ооо"].contains(where: { t.contains($0) }) { return .happy }
+        if ["ох", "уф", "тъжно", "жалко", "гладн", "уморен", "плача"].contains(where: { t.contains($0) }) { return .sad }
+        if ["сериозно?", "какво?!", "ааа", "леле", "уау", "еврика"].contains(where: { t.contains($0) }) { return .crazy }
+        return nil
     }
 
     func updateBuddies(_ step: Double) {
@@ -397,7 +424,7 @@ extension Game {
         let idle = !pet.asleep && hidePhase == .off && seekPhase == .off && racePhase == .off
         if time > nextVisit && idle && !buddies.contains(where: { $0.guest }) {
             nextVisit = time + Double.random(in: 25 * 60...45 * 60)
-            let free = buddyKinds.filter { !joinedBuddies.contains($0.id) }
+            let free = buddyKinds.filter { !joinedBuddies.contains($0.id) && !buddyMovedAway($0.id) }
             if let k = free.randomElement() {
                 // гостът първо звъни и пита дали може да дойде
                 if pendingVisitor == nil && questionPanel == nil && !pet.asleep { askVisit(k) }
@@ -415,6 +442,7 @@ extension Game {
                 changeFriendship(b.kind.id, -5)
             }
         }
+        updateServices()
         for (i, b) in buddies.enumerated() { updateBuddy(b, index: i, step, pr: pr, vf: vf) }
         let gone = buddies.filter { $0.leaving && !$0.panel.frame.intersects(vf.insetBy(dx: -5, dy: -5)) }
         gone.forEach { $0.remove() }
@@ -437,18 +465,24 @@ extension Game {
             return
         }
 
-        // тревога: всички бягат зад ръба
+        // тревога: всички бягат зад ръба (към ръба без друг екран до него; иначе изчезват зад него)
         if hidePhase != .off && hidePhase != .returning {
-            let goal = o.x + p.frame.width / 2 < vf.midX ? vf.minX - p.frame.width - 30 : vf.maxX + 30
+            let sf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.frame ?? vf
+            let side = hideSide(x: o.x + p.frame.width / 2, screen: sf)
+            let goal = side.left ? vf.minX - p.frame.width - 30 : vf.maxX + 30
             let dx = goal - o.x
             v.walking = abs(dx) > 3
             v.facingLeft = dx < 0
             o.x += (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(600 * step))
             o.y = y
             p.setFrameOrigin(o)
+            if abs(dx) <= 3 && p.alphaValue != 0 { p.alphaValue = 0 }
             if b.view.text == nil || time > b.view.textUntil, abs(dx) > 200 { buddySay(b, "АААА! Бягам!", 1.5) }
             return
         }
+        if p.alphaValue == 0 { p.alphaValue = 1 }
+        // докато говори, стои на едно място (за да се чете)
+        let talking = v.text != nil && time < v.textUntil
 
         // понякога си отиват до вкъщи (и после се връщат)
         if !b.guest && !b.leaving && time > b.nextHome {
@@ -465,7 +499,7 @@ extension Game {
         // гостът си тръгва (или пита дали може да остане)
         if b.guest && !b.leaving && (time > b.visitUntil || pet.asleep) {
             let visits = UserDefaults.standard.integer(forKey: "buddyVisits_\(b.kind.id)")
-            let canAsk = visits >= visitsNeeded(b.kind.id) && !b.asked && !pet.asleep
+            let canAsk = b.service == nil && visits >= visitsNeeded(b.kind.id) && !b.asked && !pet.asleep
             if canAsk {
                 if questionPanel == nil {
                 b.asked = true
@@ -482,6 +516,7 @@ extension Game {
             }
         }
         if b.leaving {
+            if talking { v.walking = false; o.y = y; p.setFrameOrigin(o); return }
             let goal = o.x + p.frame.width / 2 < vf.midX ? vf.minX - p.frame.width - 20 : vf.maxX + 20
             let dx = goal - o.x
             v.walking = true
@@ -504,7 +539,7 @@ extension Game {
         if racePhase != .off && raceBuddy === b { return }
         if inBuddyGame(b.kind.id) { return }
         // отива да прегърне Пиксчо: допират се и излизат сърца
-        if b.hugGo && !asleep {
+        if b.hugGo && !asleep && !talking {
             let side: CGFloat = buddyScreenBox(b).midX < pr.midX ? -1 : 1
             let goalMid = pr.midX + side * (pr.width / 2 + buddyScreenBox(b).width / 2 - 14)
             let dx = goalMid - buddyScreenBox(b).midX
@@ -569,7 +604,20 @@ extension Game {
             if pet.working || Bool.random() { startBuddyWork(b) }
         }
 
-        if asleep {
+        // идва по работа (поща, градина)
+        if b.service != nil && !asleep {
+            updateService(b, step, pr: pr, vf: vf)
+            return
+        }
+        // плъхът тича: следи го, докато го стигне
+        if b.playRat {
+            if let rp = ratPanel, ratIsOut { b.target = NSPoint(x: rp.frame.midX - BuddyView.size.width / 2, y: o.y) }
+            else { b.playRat = false; b.target = nil }
+        }
+        // художничката отива до мястото, където рисува
+        let painting = b.kind.id == "artist" && !artistQueue.isEmpty
+        if painting { b.wanderX = artistTargetX; b.nextWander = time + 20 }
+        if asleep || talking {
             v.walking = false
         } else if let target = b.target {
             // тича по пода към пиксела (не лети и не минава през нарисуваното)
@@ -583,7 +631,7 @@ extension Game {
                 b.target = nil
                 b.food = nil
                 buddySay(b, "Не мога да мина оттук…", 1.5)
-            } else if abs(dx) < sp {
+            } else if abs(dx) < sp + (b.playRat ? 20 : 0) {
                 b.target = nil
                 if let f = b.food, foods.contains(where: { $0 === f }) {
                     f.remove(); foods.removeAll { $0 === f }
@@ -633,7 +681,7 @@ extension Game {
                 if v.walking {
                     v.facingLeft = dx < 0
                     let nx = o.x + (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat((abs(dx) > 300 ? 160 : 60) * step))
-                    if buddyBlockedAt(nx + BuddyView.size.width / 2 + (dx > 0 ? 12 : -12), vf.minY) {
+                    if !painting && buddyBlockedAt(nx + BuddyView.size.width / 2 + (dx > 0 ? 12 : -12), vf.minY) {
                         v.walking = false
                         b.wanderX = nil
                     } else { o.x = nx }
@@ -649,20 +697,23 @@ extension Game {
         guard time > b.nextAct, !asleep, hidePhase == .off, dialog.isEmpty else { return }
         b.nextAct = time + Double.random(in: 50...130)
         let r = Int.random(in: 0..<14)
-        let others = buddies.filter { $0 !== b && !$0.leaving && !buddyAsleep($0) }
+        let others = buddies.filter { $0 !== b && !$0.leaving && !buddyAsleep($0) && $0.service == nil }
         let petFree = !pet.asleep && hidePhase == .off
-        if (r < 2 || b.full < 30), let food = foods.filter({ $0.onFloor && !$0.view.held }).randomElement() {
+        if (r < 2 || b.full < 30), let food = foods.filter({ $0.onFloor && !$0.view.held && !$0.golden }).randomElement() {
             b.food = food
             b.target = NSPoint(x: food.panel.frame.midX - BuddyView.size.width / 2, y: food.panel.frame.minY - v.feetY + 40)
             buddySay(b, "Пиксел!", 1.5)
         } else if r == 3, buddyGame == nil, !others.isEmpty || ratIsOut {
             startBuddyGame()
+        } else if r < 4, let o2 = others.randomElement(), Int.random(in: 0..<5) == 0 {
+            // понякога се карат помежду си
+            buddiesArgue(b, o2)
         } else if r < 4, let o2 = others.randomElement() {
             // говорят си помежду си (няколко реплики)
             var lines: [(String, String)]
             if Int.random(in: 0..<10) < 7 {
                 // нов разговор от шаблон
-                let g = generatedTalk(female: b.kind.female)
+                let g = generatedTalk(female: b.kind.female, exclude: [b.kind.id, o2.kind.id])
                 lines = g.lines.enumerated().map { ($0.offset % 2 == 0 ? b.kind.id : o2.kind.id, $0.element) }
             } else {
                 let (a, c) = buddyChats.randomElement()!
@@ -828,6 +879,126 @@ extension Game {
         }
     }
 
+    // --- идват по работа: пощальонът носи пощата, градинарката полива срещу монети ---
+
+    /// Отива пеша до x; връща true, щом стигне.
+    private func walkBuddy(_ b: Buddy, toX gx: CGFloat, _ step: Double, vf: NSRect) -> Bool {
+        var o = b.panel.frame.origin
+        o.y = vf.minY - (BuddyView.size.height - b.view.feetY)
+        let dx = gx - buddyScreenBox(b).midX
+        b.view.walking = abs(dx) > 4
+        if b.view.walking {
+            b.view.facingLeft = dx < 0
+            o.x += (dx > 0 ? 1 : -1) * min(abs(dx), CGFloat(150 * step))
+        }
+        b.panel.setFrameOrigin(o)
+        return !b.view.walking
+    }
+
+    func updateService(_ b: Buddy, _ step: Double, pr: NSRect, vf: NSRect) {
+        let talking = b.view.text != nil && time < b.view.textUntil
+        if b.serviceDone {
+            if talking { b.view.walking = false; return }
+            // свърши: гостът си тръгва, а живеещият тук продължава по своите неща
+            b.service = nil
+            b.serviceDone = false
+            if b.guest { b.leaving = true }
+            return
+        }
+        if talking { b.view.walking = false; return }
+        switch b.service {
+        case "mail":
+            let side: CGFloat = buddyScreenBox(b).midX < pr.midX ? -1 : 1
+            if walkBuddy(b, toX: pr.midX + side * (pr.width / 2 + buddyScreenBox(b).width / 2 + 10), step, vf: vf) {
+                b.serviceDone = true
+                b.view.facingLeft = side > 0
+                buddySay(b, ["Писмо за \(pet.name)! Подпиши тук.", "Поща! Имаш писмо от клиент!", "Препоръчано писмо!"].randomElement()!, 3)
+                deliverMail()
+            }
+        case "garden":
+            guard let pp = plantPanel else { b.serviceDone = true; return }
+            if walkBuddy(b, toX: pp.frame.midX + 40, step, vf: vf) {
+                b.serviceDone = true
+                waterPlantNow()
+                addCompost(1)
+                let price = 8
+                buddySay(b, "Полях \(plantStage >= 8 && plantStage < 15 ? "храста" : plantDefinite(plantStage)) и сложих тор! Струва \(price) монети.", 3.5)
+                if pet.coins >= price {
+                    pet.coins -= price
+                    pendingReply = ("Ето ти \(price) монети. Благодаря, \(buddyName(b.kind))!", time + 3.5, false)
+                } else {
+                    pendingReply = ("Ох, нямам монети… ще ти дължа!", time + 3.5, false)
+                    changeFriendship(b.kind.id, -3)
+                }
+            }
+        default:
+            b.service = nil
+        }
+    }
+
+    /// Вика някого по работа: ако е тук, отива; ако не е, идва от ръба (без да пита и без да се брои за гостуване).
+    func callService(_ id: String, _ what: String) {
+        if let b = buddy(id) {
+            guard !buddyAsleep(b), !b.leaving, b.service == nil else { return }
+            b.service = what
+            b.serviceDone = false
+            b.working = false
+            return
+        }
+        guard let k = buddyKind(id), window.isVisible else { return }
+        let pr = petScreenRect()
+        let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
+        let left = Bool.random()
+        let b = Buddy(kind: k, guest: true, origin: NSPoint(x: left ? vf.minX - BuddyView.size.width : vf.maxX, y: vf.minY), game: self)
+        b.service = what
+        b.visitUntil = time + 10 * 60
+        buddies.append(b)
+        sfx("Glass")
+    }
+
+    /// Пощата идва само с пощальона.
+    func requestMail() {
+        guard !mailPending else { return }
+        mailPending = true
+        mailRequestedAt = time
+        callService("post", "mail")
+    }
+
+    func deliverMail() {
+        guard mailPending else { return }
+        mailPending = false
+        sendLetter()
+    }
+
+    func updateServices() {
+        // пощальонът не дойде (скрит, заспал…): писмото все пак пристига
+        if mailPending && time - mailRequestedAt > 150 { deliverMail() }
+        // градинарката минава понякога, ако цветето е жадно (и не живее при вас)
+        if plantStage > 0 && plantWater < 45 && time > nextGardenerVisit && !pet.asleep && hidePhase == .off && !hideAll
+            && !(joinedBuddies.contains("garden") && buddy("garden") != nil) {
+            nextGardenerVisit = time + Double.random(in: 90 * 60...150 * 60)
+            callService("garden", "garden")
+            say("Идва градинарката да полее цветето!", seconds: 2.5)
+        }
+    }
+
+    /// Художничката рисува стена, зад която Пиксчо да отиде до тоалетна.
+    func artistBuildToiletWall() {
+        guard let a = buddy("artist"), !buddyAsleep(a), !a.leaving, a.service == nil, artistQueue.isEmpty else { return }
+        let pr = petScreenRect()
+        let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
+        var x = pr.midX + (pr.midX < vf.midX ? 1 : -1) * (pr.width / 2 + 70)
+        x = min(max(x, vf.minX + 60), vf.maxX - 60)
+        let x0 = Int(floor(x / drawCell)), row0 = Int(floor(vf.minY / drawCell))
+        for r in 0..<7 {
+            for c in 0..<2 { artistQueue.append((cellKey(x0 + c, row0 + r), a.kind.color)) }
+        }
+        artistWhat = "стена за тоалетната"
+        artistTargetX = x
+        a.wanderX = x
+        buddySay(a, "Чакай! Ще ти нарисувам стена за тоалетната!", 3)
+    }
+
     // --- подаръци ---
 
     func dropGiftFood(near b: Buddy, count: Int) {
@@ -844,11 +1015,19 @@ extension Game {
         let id = b.kind.id
         sfx("Hero", every: 5)
         if Int.random(in: 0..<12) == 0 {
-            buddySay(b, "Нося ти ЗЛАТЕН ПИКСЕЛ!", 3.5)
-            goldUntil = time + 10 * 60
-            confettiStart = time
-            addXP(40)
+            // истински златен пиксел: пада на пода и Пиксчо отива да го изяде
+            let box = buddyScreenBox(b)
+            let f = FoodPixel(color: 0xffc300, at: NSPoint(x: box.midX - 15, y: box.maxY + 10), game: self)
+            f.golden = true
+            f.falls = true
+            foods.append(f)
+            buddySay(b, "Нося ти ЗЛАТЕН ПИКСЕЛ! Изяж го!", 3.5)
             pendingReply = ("Злааато! Благодаря!", time + 3.5, false)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self, weak f] in
+                guard let self, let f, self.foods.contains(where: { $0 === f }), f.onFloor, self.snackFood == nil, !self.busyMoving,
+                      !self.pet.asleep, !self.pet.working else { return }
+                self.snackFood = f
+            }
             return
         }
         if Bool.random() {
@@ -973,6 +1152,8 @@ extension Game {
                                         "post": "Отварям чантата с писма!", "science": "Слагам очилата!", "dancer": "Загрявам!",
                                         "detective": "Вадя лупата!"]
         buddySay(b, starts[b.kind.id] ?? "Почвам работа!", 2.5)
+        // художничката почва да рисува веднага
+        if b.kind.id == "artist" { b.workSeconds = 5.5 * 60 }
     }
 
     private func updateBuddyJob(_ b: Buddy, _ step: Double) {
@@ -1021,6 +1202,29 @@ extension Game {
                 if !pet.asleep { say("Ммм, мирише страхотно!", seconds: 2.5) }
             }
         case "gamer":
+            // стриймва: кани някого да играят заедно, чатът пита Пиксчо, радва се на рекорди
+            if time > b.nextGamerThing && dialog.isEmpty && hidePhase == .off {
+                b.nextGamerThing = time + Double.random(in: 150...280)
+                let free = buddies.filter { $0 !== b && !$0.leaving && !buddyAsleep($0) && !$0.working && $0.service == nil }
+                let r = Int.random(in: 0..<4)
+                if r == 0, let o = free.randomElement() {
+                    startDialog([(b.kind.id, "\(buddyName(o.kind)), ела да играем заедно в стрийма!"),
+                                 (o.kind.id, "Идвам! Дай ми другия джойстик!"),
+                                 (b.kind.id, ["Чатът полудя! Всички ни гледат!", "Двама срещу шефа!", "Ти пази отляво!"].randomElement()!),
+                                 (o.kind.id, ["GG! Бяхме страхотни!", "Ох, пак ме убиха!", "Още една игра!"].randomElement()!)])
+                    o.view.face = .happy
+                } else if r == 1 && !pet.asleep && !pet.working {
+                    startDialog([(b.kind.id, "\(pet.name), чатът пита какво ядеш днес!"),
+                                 ("pet", ["Пиксели, какво друго!", "Жълти пиксели!", "Тайна!"].randomElement()!),
+                                 (b.kind.id, "Чатът пише: „ИСКАМЕ ОЩЕ \(pet.name.uppercased())!“"),
+                                 ("pet", "Хаха, здравейте, чат!")])
+                } else if r == 2 && ratIsOut {
+                    buddySay(b, "\(ratLabel.capitalized) влезе в кадър! Чатът го обожава!", 3)
+                    ratSay("Цик! (маха на чата)", 2)
+                } else {
+                    buddySay(b, ["Нов рекорд!", "Абонирайте се!", "Сто зрители!", "Шефът на нивото! Помощ!", "Кой ще ме победи?"].randomElement()!, 3)
+                }
+            }
             if b.workSeconds >= 15 * 60 {
                 b.workSeconds = 0
                 earnCoins(12)
@@ -1144,7 +1348,8 @@ extension Game {
             drawingChanged()
             if let b = buddy("artist") { buddySay(b, "Готово! \(artistWhat.capitalized)!", 3) }
             if !pet.asleep && hidePhase == .off {
-                say(artistWhat == "платформа" || artistWhat == "стълби" ? "Ооо, ново място за скачане! Благодаря!"
+                say(artistWhat == "стена за тоалетната" ? "Благодаря! Сега никой да не гледа!" :
+                    artistWhat == "платформа" || artistWhat == "стълби" ? "Ооо, ново място за скачане! Благодаря!"
                     : "Каква хубава рисунка!", seconds: 2.5)
             }
         }

@@ -297,14 +297,18 @@ extension Game {
 
         // при тревога и те бягат зад ръба
         if hidePhase != .off && hidePhase != .returning {
-            let goal = o.x + half < vf.midX ? vf.minX - panel.frame.width - 20 : vf.maxX + 20
+            let sf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.frame ?? vf
+            let side = hideSide(x: o.x + half, screen: sf)
+            let goal = side.left ? vf.minX - panel.frame.width - 20 : vf.maxX + 20
             o.x += (goal > o.x ? 1 : -1) * min(abs(goal - o.x), CGFloat(500 * step))
             if k.id != "parrot" { o.y = vf.minY }
-            v.moving = true
+            v.moving = abs(goal - o.x) > 2
             v.facingLeft = goal < o.x
             panel.setFrameOrigin(o)
+            if !v.moving && panel.alphaValue != 0 { panel.alphaValue = 0 }
             return
         }
+        if panel.alphaValue == 0 { panel.alphaValue = 1 }
 
         // дрямка
         if p.sleeping {
@@ -399,17 +403,19 @@ extension Game {
 
     /// Пиксчо отива до любимеца и го храни.
     func updateFeedPetErrand(_ id: String, _ step: Double) {
-        guard let p = smallPet(id) else { nextErrand(); return }
+        let p = smallPet(id)
+        guard let panel = id == "baby" ? babyPanel : p?.panel else { nextErrand(); return }
+        let label = p.map { smallPetLabel($0.kind) } ?? babyLabel
         switch errandStage {
         case 0:
-            say("Отивам да нахраня \(smallPetLabel(p.kind))!", seconds: 2)
+            say("Отивам да нахраня \(label)!", seconds: 2)
             errandStage = 1
         case 1:
-            let spot = NSPoint(x: p.panel.frame.midX, y: id == "parrot" ? p.panel.frame.minY : floorY)
+            let spot = NSPoint(x: panel.frame.midX, y: id == "parrot" ? panel.frame.minY : floorY)
             if walkTo(feet: spot, speed: 280, step) {
-                feedSmallPet(p)
+                if let p { feedSmallPet(p) } else { feedBaby(byPet: true) }
                 start(.love, length: 1.5)
-                say("Заповядай, \(smallPetLabel(p.kind))!", seconds: 2)
+                say("Заповядай, \(label)!", seconds: 2)
                 errandStage = 2
                 errandStart = time
             }

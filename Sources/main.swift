@@ -1471,6 +1471,7 @@ final class FoodPixel: NSObject {
     var flyFrom = NSPoint.zero
     var flyStart: Double = 0
     var falls = false               // някои падат на пода (и плъхът може да ги изяде)
+    var golden = false              // златен пиксел (подарък): не се разваля, дава двоен опит
     var fallV: CGFloat = 0
     var onFloor = false
 
@@ -1541,6 +1542,17 @@ final class FoodView: NSView {
         let bob = dragStart == nil && !food.onFloor ? CGFloat(sin(t * 3 + Double(food.color % 7))) * 2.5 : 0
         let r = NSRect(x: 7, y: 9 + bob, width: 16, height: 16)
         NSColor(hex: 0x2b2b3a).setFill(); r.fill()
+        if food.golden {
+            // златен: блести
+            NSColor(hex: 0xffc300).setFill(); r.insetBy(dx: 2.5, dy: 2.5).fill()
+            NSColor(hex: 0xfff3b0).setFill(); NSRect(x: r.minX + 3.5, y: r.minY + 3.5, width: 4, height: 4).fill()
+            NSColor(hex: 0xffd166).setFill()
+            for i in 0..<3 {
+                let a = t * 2 + Double(i) * 2.1
+                NSRect(x: r.midX + CGFloat(cos(a)) * 11 - 1, y: r.midY + CGFloat(sin(a)) * 11 - 1, width: 2.5, height: 2.5).fill()
+            }
+            return
+        }
         NSColor(hex: food.spoiled ? 0x1a1a1a : food.color).setFill(); r.insetBy(dx: 2.5, dy: 2.5).fill()
         if food.spoiled {
             // развален: черен и мирише
@@ -2451,6 +2463,7 @@ final class Game: NSObject, NSApplicationDelegate {
     var peekUntil: Double = 0
     var nextHideAsk: Double = 0
     var hiddenSince: Date?
+    var hideFade = false
     /// „Скрий“: всичко живее както обикновено, само че нищо не се вижда.
     var hideAll = false
     var savedLook: [ObjectIdentifier: CGFloat] = [:]
@@ -2551,6 +2564,17 @@ final class Game: NSObject, NSApplicationDelegate {
     var miniMenuOpened: Double = 0
     var dialog: [(String, String)] = []
     var dialogAt: Double = 0
+    var dialogCenter: CGFloat = 0
+    var mailPending = false
+    var ghosts: [NSPanel] = []
+    var nextLifeCheck: Double = 30
+    var nextLifeWarn: Double = 0
+    var lifeStarted = false
+    var bubbleSaidAt: Double = -10
+    var ratAwaySince: Double?
+    var plantHiding = false
+    var mailRequestedAt: Double = 0
+    var nextGardenerVisit: Double = 20 * 60
     var pendingMakeUp: Double = 0
     var cheesePanel: NSPanel?
     var cheeseLeft: Double = 0
@@ -2677,6 +2701,14 @@ final class Game: NSObject, NSApplicationDelegate {
     var babyPanel: NSPanel?
     var babyView: BabyView?
     var nextBabySound: Double = 60
+    var babyGrowTick: Double = 0
+    var nextBabyCry: Double = 0
+    var babyPlayUntil: Double = 0
+    var nextBabyPlay: Double = 5 * 60
+    var babyDanceUntil: Double = 0
+    var nextBabyWork: Double = 30 * 60
+    var babyStarving: Double = 0
+    var lastBabyPet: Double = -100
 
     var wander: Bool {
         get { UserDefaults.standard.object(forKey: "wander") as? Bool ?? true }
@@ -2836,6 +2868,9 @@ final class Game: NSObject, NSApplicationDelegate {
         updateEgg(step)
         updateMiniMenu()
         updateDialog()
+        updateDialogLooks()
+        updateLifecycle()
+        updateGhosts()
         updateSmallPets(step)
         updateBuddyGame(step)
         updatePlant()
@@ -3148,6 +3183,7 @@ final class Game: NSObject, NSApplicationDelegate {
         // скрит е: мълчи, за да не го издаде
         if hidePhase == .hidden || hidePhase == .peeking || seekPhase == .hiding { return }
         bubbleText = text
+        bubbleSaidAt = time
         // по-дългите съобщения стоят по-дълго, за да се прочетат
         bubbleUntil = time + readTime(text, seconds)
     }
@@ -3300,6 +3336,7 @@ final class Game: NSObject, NSApplicationDelegate {
             if pet.dead { say("…", seconds: 1.5); return }
             if pet.asleep { return }   // спи и не вижда
             if eatFood(color: food.color, spoiled: food.spoiled) {
+                if food.golden { goldenPixelEaten() }
                 food.remove()
                 foods.removeAll { $0 === food }
             } else {
@@ -3776,6 +3813,7 @@ final class Game: NSObject, NSApplicationDelegate {
         if #available(macOS 13.0, *) {
             item("Пускай при включване", #selector(toggleLogin), on: SMAppService.mainApp.status == .enabled)
         }
+        item("Спомени…", #selector(showMemorials))
         if !pet.dead { item("Ново животинче…", #selector(newPet)) }
         menu.addItem(.separator())
         item("Версия \(currentBuild) · Провери за обновления", #selector(checkForUpdateManually))

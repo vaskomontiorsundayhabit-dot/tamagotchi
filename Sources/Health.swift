@@ -193,7 +193,7 @@ extension Game {
         }
 
         // развалени пиксели
-        for f in foods where !f.spoiled && time > f.spoilAt {
+        for f in foods where !f.spoiled && !f.golden && time > f.spoilAt {
             f.spoiled = true
             f.view.needsDisplay = true
         }

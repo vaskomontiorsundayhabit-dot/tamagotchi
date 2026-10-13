@@ -146,6 +146,8 @@ extension Game {
     /// Отива така, че краката му да са до точката (отстрани, не върху нея). true, когато стигне.
     func walkTo(feet p: NSPoint, speed: Double, _ step: Double) -> Bool {
         if jumping { return false }
+        // току-що е казал нещо: изчаква малко, за да се прочете, и после тръгва
+        if hidePhase == .off && bubbleText != nil && time - bubbleSaidAt < 1.8 { walking = false; return false }
         let pr = petScreenRect()
         let side: CGFloat = pr.midX < p.x ? -1 : 1
         let lift = window.frame.height - view.feetY

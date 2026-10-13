@@ -89,8 +89,8 @@ extension Game {
             return
         }
         updateLetter()
-        guard pet.orderText == nil, letter == nil, idle, time > nextOrder else { return }
-        sendLetter()
+        guard pet.orderText == nil, letter == nil, !mailPending, idle, time > nextOrder else { return }
+        requestMail()
     }
 
     /// Готово видео: ако има поръчка в срок, клиентът плаща.

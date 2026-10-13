@@ -183,7 +183,7 @@ final class BabyView: NSView {
     var text: String?
     var textUntil: Double = 0
     var heartsUntil: Double = 0
-    static let size = NSSize(width: 120, height: 60)
+    static let size = NSSize(width: 130, height: 90)
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     let drag = Dragger()
@@ -194,14 +194,37 @@ final class BabyView: NSView {
     }
     override func rightMouseDown(with event: NSEvent) { game?.openBabyMenu() }
 
+    var crying = false
+    var imitateWork = false
+    var dancing = false
+
     override func draw(_ dirtyRect: NSRect) {
         guard let game, let k = game.babyInfo else { return }
         let t = game.time
-        let s: CGFloat = 3
+        // расте: бебе 3, малко 4, голямо 5 точки на квадратче
+        let st = k.alive ? game.babyStage : 0
+        let s = CGFloat(3 + st)
         let w = CGFloat(k.grid[0].count) * s, h = CGFloat(k.grid.count) * s
-        let hop = walking && k.alive ? abs(CGFloat(sin(t * 10))) * 4 : 0
+        var hop: CGFloat = 0
+        if walking && k.alive { hop = abs(CGFloat(sin(t * (st == 0 ? 5 : 10)))) * (st == 0 ? 1.5 : 4) }
+        if dancing && k.alive { hop = abs(CGFloat(sin(t * 8))) * 10 }
+        if st == 2 && walking && Int(t / 3) % 4 == 0 { hop = abs(CGFloat(sin(t * 3.14))) * 14 }   // голямото подскача
         let x = (bounds.width - w) / 2, y = bounds.height - h - 2 - hop
         drawGrid(k.grid, x: x, y: y, s: s, flip: !facingLeft, palette: game.color)
+        if imitateWork && k.alive {
+            // мъничък монитор: „монтира“ като Пиксчо
+            let mx = facingLeft ? x - 22 : x + w + 4
+            NSColor(hex: 0x2b2b3a).setFill(); NSRect(x: mx, y: bounds.height - 22, width: 18, height: 14).fill()
+            NSColor(hex: Int(t * 3) % 2 == 0 ? 0x5dade2 : 0x48cae4).setFill(); NSRect(x: mx + 2, y: bounds.height - 20, width: 14, height: 9).fill()
+            NSColor(hex: 0x2b2b3a).setFill(); NSRect(x: mx + 7, y: bounds.height - 8, width: 4, height: 6).fill()
+        }
+        if crying && k.alive && !game.pet.asleep {
+            // сълзички
+            NSColor(hex: 0x48cae4).setFill()
+            let ph = CGFloat((t * 2).truncatingRemainder(dividingBy: 1))
+            NSRect(x: x + w * 0.3, y: y + h * 0.4 + ph * 10, width: 2, height: 3).fill()
+            NSRect(x: x + w * 0.7, y: y + h * 0.4 + ph * 10, width: 2, height: 3).fill()
+        }
         if game.pet.asleep && k.alive {
             let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 9, weight: .heavy),
                                                     .foregroundColor: NSColor(hex: 0x5dade2)]
@@ -265,6 +288,14 @@ extension Game {
 
     func updateEgg(_ step: Double) {
         let visible = window.isVisible && !pet.dead
+        // бебето е пораснало (или го няма): след няколко дни идва ново яйце
+        if eggState == "gone" {
+            if Date() > (UserDefaults.standard.object(forKey: "nextEggDate") as? Date ?? .distantPast) {
+                eggState = "none"
+                UserDefaults.standard.set(true, forKey: "eggAgain")
+            }
+            return
+        }
         if eggState == "none" {
             // появява се веднъж, след малко време буден
             if visible && time > 8 * 60 && !pet.asleep && hidePhase == .off {
@@ -277,7 +308,10 @@ extension Game {
                 UserDefaults.standard.set(Double(min(max(pr.midX + 140, vf.minX + 40), vf.maxX - 100)), forKey: "eggX")
                 eggFallFrom = vf.maxY
                 start(.love, length: 2)
-                say("Какво е това?! ЯЙЦЕ! Ще се грижа за него!", seconds: 4)
+                say(UserDefaults.standard.bool(forKey: "eggAgain") ? "Ооо! Още едно яйце! Ще се грижа и за него!"
+                    : "Какво е това?! ЯЙЦЕ! Ще се грижа за него!", seconds: 4)
+                eggBlanket = false
+                eggDirty = false
                 sfx("Glass")
             }
             return
@@ -493,6 +527,10 @@ extension Game {
         let k = babyKinds.randomElement()!
         UserDefaults.standard.set(k.id, forKey: "babyKind")
         eggState = "hatched"
+        babyBorn = Date()
+        babyGrowth = 0
+        babyFull = 80
+        UserDefaults.standard.removeObject(forKey: "babyName")
         if let p = eggPanel { UserDefaults.standard.set(Double(p.frame.midX), forKey: "babyX") }
         eggPanel?.orderOut(nil)
         eggPanel = nil
@@ -511,6 +549,52 @@ extension Game {
     }
 
     // --- бебето ---
+
+    var babyGrowth: Double {
+        get { UserDefaults.standard.double(forKey: "babyGrowth") }
+        set { UserDefaults.standard.set(newValue, forKey: "babyGrowth") }
+    }
+    var babyFull: Double {
+        get { UserDefaults.standard.object(forKey: "babyFull") as? Double ?? 80 }
+        set { UserDefaults.standard.set(min(100, max(0, newValue)), forKey: "babyFull") }
+    }
+    var babyBorn: Date {
+        get { UserDefaults.standard.object(forKey: "babyBorn") as? Date ?? Date() }
+        set { UserDefaults.standard.set(newValue, forKey: "babyBorn") }
+    }
+    var babyJob: String? { UserDefaults.standard.string(forKey: "babyJob") }
+    /// 0 бебе (пълзи), 1 малко (ходи), 2 голямо (тича, скача, говори).
+    var babyStage: Int { babyGrowth < 30 ? 0 : (babyGrowth < 80 ? 1 : 2) }
+    var babyAgeDays: Double { Date().timeIntervalSince(babyBorn) / 86400 }
+
+    func growBaby(_ n: Double) {
+        guard babyAlive else { return }
+        let before = babyStage
+        babyGrowth += n
+        if babyStage > before { babyGrewUp() }
+    }
+
+    private func babyGrewUp() {
+        confettiStart = time
+        sfx("Hero")
+        if babyStage == 1 {
+            babySay("Ма-ма? Та-та?", 3)
+            if !pet.asleep { say("\(babyLabel.capitalizedFirst) порасна! Вече не пълзи, а ходи!", seconds: 3.5) }
+        } else {
+            // първата дума: името на Пиксчо
+            babySay("\(pet.name)!", 3)
+            if !pet.asleep { say("Първата дума! Каза името ми! \(babyLabel.capitalizedFirst) вече е голямо!", seconds: 4) }
+            photoMoment("hatch")
+        }
+    }
+
+    func feedBaby(byPet: Bool) {
+        babyFull += 40
+        growBaby(6)
+        babyView?.heartsUntil = time + 2
+        babySay(babyStage == 2 ? "Ням! Благодаря!" : "Ням! Ги-ги!", 2)
+        sfx("Pop")
+    }
 
     func updateBaby(_ step: Double) {
         guard let k = babyInfo else { return }
@@ -531,8 +615,9 @@ extension Game {
         }
         guard let p = babyPanel, let v = babyView else { return }
         v.needsDisplay = true
+        let sc = CGFloat(3 + babyStage)
         let m = NSEvent.mouseLocation
-        let hit = NSRect(x: p.frame.midX - 18, y: p.frame.minY, width: 36, height: 28).contains(m)
+        let hit = NSRect(x: p.frame.midX - 6 * sc, y: p.frame.minY, width: 12 * sc, height: 10 * sc).contains(m)
         setClickable(p, hit)
         if babyHeld { return }
         var o = p.frame.origin
@@ -543,39 +628,162 @@ extension Game {
         }
         o.y = vf.minY
         p.alphaValue = hidePhase == .hidden || hidePhase == .peeking ? 0 : 1
-        guard k.alive, !pet.asleep else { v.walking = false; p.setFrameOrigin(o); return }
-        // при тревога бяга при Пиксчо; иначе ходи след него
+        if !k.alive { v.walking = false; p.setFrameOrigin(o); return }
+        updateBabyLife(step)
+        if pet.asleep { v.walking = false; p.setFrameOrigin(o); return }
+        // при тревога бяга при Пиксчо; иначе ходи след него (или отива при плъха да си играят)
         let behind: CGFloat = facingLeft ? 1 : -1
-        let goal = hidePhase != .off ? pr.midX : pr.midX + behind * (pr.width / 2 + 40)
+        var goal = hidePhase != .off ? pr.midX : pr.midX + behind * (pr.width / 2 + 40)
+        if time < babyPlayUntil, let rp = ratPanel, ratIsOut { goal = rp.frame.midX + 40 }
         let dx = goal - p.frame.midX
         v.walking = abs(dx) > 6
         if v.walking {
             v.facingLeft = dx < 0
-            let sp = min(abs(dx), CGFloat((hidePhase != .off ? 500 : (abs(dx) > 250 ? 160 : 70)) * step))
+            let slow: Double = [35, 70, 90][babyStage], fast: Double = [110, 160, 220][babyStage]
+            let sp = min(abs(dx), CGFloat((hidePhase != .off ? 500 : (abs(dx) > 250 ? fast : slow)) * step))
             let nx = o.x + (dx > 0 ? sp : -sp)
             if hidePhase != .off || !buddyBlockedAt(nx + p.frame.width / 2 + (dx > 0 ? 10 : -10), vf.minY) { o.x = nx } else { v.walking = false }
         }
         p.setFrameOrigin(o)
         if time > nextBabySound {
             nextBabySound = time + Double.random(in: 2 * 60...5 * 60)
-            babySay(k.sound, 2)
+            let words = babyStage == 0 ? [k.sound, "Агу!", "Ги-ги!"]
+                : babyStage == 1 ? [k.sound, "Ма-ма?", "Та-та!", "Ам-ам!", "Пиксе!"]
+                : ["\(pet.name)!", "Искам пиксел!", "Да играем!", "Гледай как скачам!", "Аз съм голям!", "Ти си най-добрият!"]
+            babySay(words.randomElement()!, 2.5)
         }
+    }
+
+    /// Нуждите, ученето и игрите на бебето.
+    private func updateBabyLife(_ step: Double) {
+        guard let p = babyPanel, let v = babyView else { return }
+        if UserDefaults.standard.object(forKey: "babyBorn") == nil { babyBorn = Date() }
+        // огладнява (за около 8 часа); нахранено расте само по малко
+        babyFull -= step * 100 / (8 * 3600)
+        if babyFull > 40 { babyGrowTick += step; if babyGrowTick > 20 * 60 { babyGrowTick = 0; growBaby(1) } }
+        if babyFull < 30 && time > nextBabyCry && !pet.asleep {
+            nextBabyCry = time + 3 * 60
+            babySay(babyStage == 2 ? "Гладен съм!" : "Уаа! Уаа!", 2.5)
+            v.crying = true
+            if errands.isEmpty && !busyMoving && hidePhase == .off && !playingGame && !monitorDetached && Int.random(in: 0..<4) > 0 {
+                runBreakErrands([.feedPet("baby")])
+            }
+        }
+        if babyFull >= 30 { v.crying = false }
+        guard !pet.asleep, hidePhase == .off else { return }
+        // подражава: като Пиксчо монтира, и то „монтира“ на мъничък монитор; като танцува, подскача
+        v.imitateWork = pet.working && babyStage >= 1
+        v.dancing = action == .wave || action == .love || time < babyDanceUntil
+        // играе с плъха
+        if babyStage >= 1 && time > nextBabyPlay {
+            nextBabyPlay = time + Double.random(in: 4 * 60...8 * 60)
+            if ratIsOut && !pet.working {
+                babyPlayUntil = time + 15
+                babySay("Хи-хи! \(ratLabel.capitalizedFirst)!", 2)
+                ratSay("Цик! Малкото!", 1.5)
+            } else if let o = buddies.filter({ !$0.leaving && !buddyAsleep($0) && !$0.working && $0.service == nil }).randomElement() {
+                // приятелите го гледат (особено докато Пиксчо монтира)
+                o.wanderX = p.frame.midX + 70
+                o.nextWander = time + 40
+                let lines: [String: String] = ["dancer": "Малкото, да потанцуваме!", "science": "Виж, мехурчета от колбата!",
+                                               "music": "Ще ти изсвиря приспивна песен!", "chef": "Сготвих ти пюре от пиксели!",
+                                               "photo": "Усмивка за снимка, малкото!", "gamer": "Искаш ли да натиснеш копчето?",
+                                               "artist": "Ще ти нарисувам слънце!", "garden": "Да посадим семенце!",
+                                               "post": "Нося ти картичка!", "detective": "Да търсим скрити пиксели!"]
+                buddySay(o, pet.working ? "Аз ще гледам малкото, докато монтираш!" : (lines[o.kind.id] ?? "Здрасти, малкото!"), 3)
+                babyDanceUntil = o.kind.id == "dancer" || o.kind.id == "music" ? time + 8 : 0
+                v.heartsUntil = time + 3
+                babySay("Хи-хи!", 2)
+                growBaby(1)
+            }
+        }
+        // голямото си избира професия и понякога изкарва монети
+        if babyStage == 2 {
+            if babyJob == nil && babyAgeDays >= 2 {
+                let jobs = ["готвач", "музикант", "художник", "геймър", "фотограф", "градинар", "учен", "танцьор", "пощальон", "детектив", "монтажист"]
+                let j = jobs.randomElement()!
+                UserDefaults.standard.set(j, forKey: "babyJob")
+                babySay("Като порасна, ще бъда \(j)!", 3.5)
+                if !pet.asleep { say(j == "монтажист" ? "Монтажист като мен! Гордея се!" : "\(j.capitalizedFirst)! Браво, малкото!", seconds: 3) }
+            }
+            if let j = babyJob, time > nextBabyWork {
+                nextBabyWork = time + 30 * 60
+                earnCoins(5)
+                babySay("Аз, малкият \(j), изкарах 5 монети!", 3)
+            }
+            // порасна съвсем: отива да живее самостоятелно (и после може да дойде ново яйце)
+            if babyJob != nil && babyAgeDays >= 6 { babyMovesOut(); return }
+        }
+        // рожден ден всяка седмица
+        let weeks = Int(babyAgeDays / 7)
+        if weeks >= 1 && UserDefaults.standard.integer(forKey: "babyBirthdayWeeks") < weeks {
+            UserDefaults.standard.set(weeks, forKey: "babyBirthdayWeeks")
+            confettiStart = time
+            sfx("Hero")
+            say("Днес \(babyLabel) става на \(weeks) седмиц\(weeks == 1 ? "а" : "и")! Честит рожден ден!", seconds: 4)
+            babySay("Торта!", 2.5)
+            for b in buddies.prefix(3) { buddySay(b, "Честит рожден ден, \(babyLabel)!", 3) }
+            photoMoment("hatch")
+        }
+        // умира от глад, ако дълго никой не го храни
+        if babyFull <= 0 {
+            if babyStarving == 0 { babyStarving = time }
+            if time - babyStarving > 6 * 3600 { babyDies(); return }
+        } else { babyStarving = 0 }
+    }
+
+    func babyMovesOut() {
+        let name = babyLabel
+        babySay("Пораснах! Отивам да живея сам. Ще ви идвам на гости!", 4)
+        say("\(name.capitalizedFirst) порасна и тръгва по света… Ще ми липсваш!", seconds: 4)
+        addMemorial("\(name.capitalizedFirst) порасна и отиде да живее самостоятелно (\(babyJob ?? "без професия"))")
+        if let p = babyPanel { spawnGhost(at: NSPoint(x: p.frame.midX, y: p.frame.minY + 10), happy: true) }
+        clearBaby(nextEggInDays: Double.random(in: 1...3))
+    }
+
+    func babyDies() {
+        let name = babyLabel
+        if let p = babyPanel { spawnGhost(at: NSPoint(x: p.frame.midX, y: p.frame.minY + 10), happy: false) }
+        addMemorial("\(name.capitalizedFirst) почина от глад…")
+        say("Не! \(name.capitalizedFirst)… Не го нахранихме навреме…", seconds: 4.5)
+        pet.fun = (pet.fun - 30).clamped()
+        clearBaby(nextEggInDays: Double.random(in: 2...4))
+    }
+
+    /// Махат се бебето и всичко за него; след няколко дни идва ново яйце.
+    func clearBaby(nextEggInDays d: Double) {
+        babyPanel?.orderOut(nil); babyPanel = nil; babyView = nil
+        for k in ["babyKind", "babyName", "babyGrowth", "babyFull", "babyBorn", "babyJob", "babyBirthdayWeeks", "babyX",
+                  "eggCare", "eggWarmth", "eggDirty", "eggBlanket"] {
+            UserDefaults.standard.removeObject(forKey: k)
+        }
+        eggState = "gone"
+        UserDefaults.standard.set(Date().addingTimeInterval(d * 86400), forKey: "nextEggDate")
     }
 
     func openBabyMenu() {
         guard let p = babyPanel else { return }
         var buttons = [
             MiniButton(icon: iconHug, label: "Погали", enabled: true, action: { [weak self] in self?.babyClicked() }),
-            MiniButton(icon: iconSing, label: "Приспивна песен", enabled: babyAlive, action: { [weak self] in
-                guard let self else { return }
-                self.babySay("Ги… zzz", 3)
-                if !self.pet.asleep { self.say("♪ Нани-на, малкото… ♪", seconds: 3) }
-            }),
         ]
         if babyAlive {
+            buttons.append(MiniButton(icon: iconFood, label: "Нахрани", enabled: babyFull < 90, action: { [weak self] in
+                guard let self else { return }
+                if self.errands.isEmpty && !self.busyMoving && !self.pet.asleep && !self.monitorDetached {
+                    self.runBreakErrands([.feedPet("baby")])
+                } else { self.feedBaby(byPet: false) }
+            }))
+            buttons.append(MiniButton(icon: iconSing, label: "Приспивна песен", enabled: true, action: { [weak self] in
+                guard let self else { return }
+                self.babySay("Ги… zzz", 3)
+                if !self.pet.asleep { self.say("♪ Нани-на, \(self.babyLabel)… ♪", seconds: 3) }
+            }))
             buttons.append(MiniButton(icon: iconTalk, label: "Смени името", enabled: true, action: { [weak self] in self?.askName("baby") }))
         }
-        showMiniMenu(title: babyLabel.capitalized, stats: [], buttons: buttons, above: NSPoint(x: p.frame.midX, y: p.frame.minY + 30))
+        let stageName = ["бебе", "малко", "голямо"][babyStage] + (babyJob.map { " · бъдещ \($0)" } ?? "")
+        showMiniMenu(title: babyLabel.capitalized + " · " + stageName,
+                     stats: babyAlive ? [("Ситост", babyFull / 100, 0xf4a261), ("Растеж", min(1, babyGrowth / 80), 0x52b788)] : [],
+                     buttons: buttons, above: NSPoint(x: p.frame.midX, y: p.frame.minY + 30))
     }
 
     func babyClicked() {
@@ -583,8 +791,21 @@ extension Game {
         sfx("Purr")
         guard let k = babyInfo else { return }
         babyView?.heartsUntil = time + 1.5
-        if k.alive { babySay(k.sound, 2) }
-        else if !pet.asleep { say("Обичам те, \(babyLabel)… дори да си камък.", seconds: 2.5) }
+        if k.alive {
+            babySay(babyStage == 2 ? ["Обичам те!", "Хи-хи, гъдел!", "Още!"].randomElement()! : k.sound, 2)
+            if time - lastBabyPet > 60 { lastBabyPet = time; growBaby(2) }
+        } else {
+            // камъчето: понякога от обичта оживява
+            if Int.random(in: 0..<25) == 0, let alive = babyKinds.filter({ $0.alive }).randomElement() {
+                UserDefaults.standard.set(alive.id, forKey: "babyKind")
+                UserDefaults.standard.set(Date(), forKey: "babyBorn")
+                confettiStart = time
+                sfx("Hero")
+                say("КАМЪЧЕТО ОЖИВЯ! От толкова обич!", seconds: 4)
+                babySay(alive.sound, 2.5)
+                nextNameAsk = time + 6
+            } else if !pet.asleep { say("Обичам те, \(babyLabel)… дори да си камък.", seconds: 2.5) }
+        }
     }
 
     /// Пусна пиксел върху бебето.
@@ -594,9 +815,7 @@ extension Game {
         guard p.frame.insetBy(dx: 30, dy: -10).contains(NSPoint(x: f.midX, y: f.midY)) else { return false }
         food.remove()
         foods.removeAll { $0 === food }
-        babyView?.heartsUntil = time + 2
-        babySay("Ням! Ги-ги!", 2)
-        sfx("Pop")
+        feedBaby(byPet: false)
         return true
     }
 }

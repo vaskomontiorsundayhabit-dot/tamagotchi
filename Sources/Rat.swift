@@ -400,7 +400,21 @@ extension Game {
         v.loot = ratHasBall ? 2 : (ratHasPixel ? 1 : 0)
         let vf = screenAt(NSPoint(x: o.x + half, y: o.y + 10))?.visibleFrame ?? .zero
         let lo = vf.minX - half + 30, hi = vf.maxX - half - 30
-        let petOnFloor = abs(feetScreenY - vf.minY) < 10
+        // на друг екран от Пиксчо: след малко се връща при него (не тича вечно сам там)
+        let petVF = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? vf
+        let sameScreen = petVF == vf
+        let petOnFloor = sameScreen && abs(feetScreenY - vf.minY) < 10
+        if sameScreen { ratAwaySince = nil } else if ratAwaySince == nil { ratAwaySince = time }
+        if let since = ratAwaySince, time - since > 15, ratGoal == nil, !ratEatingCheese {
+            ratAwaySince = nil
+            chasing = false
+            ratTarget = nil
+            let fromLeft = pr.midX - petVF.minX < petVF.maxX - pr.midX
+            o = NSPoint(x: fromLeft ? petVF.minX - half + 30 : petVF.maxX - half - 30, y: petVF.minY)
+            p.setFrameOrigin(o)
+            ratSay("Цик! Изгубих се! Ето ме!", 2)
+            return
+        }
 
         // пада, ако е във въздуха
         if o.y > vf.minY + 0.5 { o.y = max(vf.minY, o.y - CGFloat(520 * step)) } else { o.y = vf.minY }
@@ -474,6 +488,7 @@ extension Game {
             return
         }
 
+        if chasing && !sameScreen { chasing = false; walking = false }
         if chasing {
             // бяга от Пиксчо; при стената се обръща и минава покрай него (без да трепери)
             v.running = true
@@ -566,7 +581,7 @@ extension Game {
         }
         // яде паднали на пода пиксели
         if time > nextRatSnack {
-            let onFloorFoods = foods.filter { $0.onFloor && !$0.view.held }
+            let onFloorFoods = foods.filter { $0.onFloor && !$0.view.held && !$0.golden }
             if let food = onFloorFoods.min(by: { abs($0.panel.frame.midX - (o.x + half)) < abs($1.panel.frame.midX - (o.x + half)) }) {
                 nextRatSnack = time + (ratHungryMinutes > 40 ? Double.random(in: 40...90) : Double.random(in: 2 * 60...5 * 60))
                 ratGoal = .food(food)
@@ -639,6 +654,7 @@ extension Game {
                 snackFood = nil
                 walking = false
                 if eatFood(color: f.color, spoiled: f.spoiled) {
+                    if f.golden { goldenPixelEaten() }
                     f.remove()
                     foods.removeAll { $0 === f }
                 }
@@ -652,12 +668,12 @@ extension Game {
             return
         }
         guard time > nextFloorSnack, !pet.asleep, !pet.dead, !pet.working, !busyMoving, !isDragging, errands.isEmpty,
-              pet.fullness < 85, window.isVisible, hidePhase == .off, action == .none else { return }
+              pet.fullness < 85 || foods.contains(where: { $0.golden && $0.onFloor }), window.isVisible, hidePhase == .off, action == .none else { return }
         nextFloorSnack = time + 3
         let pr = petScreenRect()
         let feet = feetScreenY
         let near = foods.filter {
-            $0.onFloor && !$0.view.held && abs($0.panel.frame.midX - pr.midX) < 170 && abs($0.panel.frame.minY + 8 - feet) < 24
+            $0.onFloor && !$0.view.held && ($0.golden || abs($0.panel.frame.midX - pr.midX) < 170) && abs($0.panel.frame.minY + 8 - feet) < 24
         }
         guard let f = near.min(by: { abs($0.panel.frame.midX - pr.midX) < abs($1.panel.frame.midX - pr.midX) }) else { return }
         snackFood = f

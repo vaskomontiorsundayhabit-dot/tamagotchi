@@ -46,7 +46,17 @@ final class PlantView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let st = game.plantStage
-        let bottom = bounds.height - 2
+        // при тревога му порастват крачета и бяга
+        let legs = game.plantHiding
+        let bottom = bounds.height - 2 - (legs ? 9 : 0)
+        if legs {
+            NSColor(hex: 0x5c3a1e).setFill()
+            let ph = CGFloat(sin(game.time * 14)) * 3
+            NSRect(x: bounds.midX - 9 + ph, y: bottom, width: 4, height: 9).fill()
+            NSRect(x: bounds.midX + 5 - ph, y: bottom, width: 4, height: 9).fill()
+            NSRect(x: bounds.midX - 11 + ph, y: bottom + 7, width: 7, height: 2).fill()
+            NSRect(x: bounds.midX + 4 - ph, y: bottom + 7, width: 7, height: 2).fill()
+        }
         let thirsty = game.plantWater < 20
         let leaf = NSColor(hex: 0x52b788).blended(withFraction: thirsty ? 0.45 : 0, of: NSColor(hex: 0x9c6644)) ?? NSColor(hex: 0x52b788)
         let leaf2 = NSColor(hex: 0x2d6a4f).blended(withFraction: thirsty ? 0.45 : 0, of: NSColor(hex: 0x9c6644)) ?? NSColor(hex: 0x2d6a4f)
@@ -246,8 +256,28 @@ extension Game {
             p.setFrame(NSRect(x: x, y: p.frame.minY, width: ns.width, height: ns.height), display: true)
             UserDefaults.standard.set(Double(x), forKey: "plantX")
         }
-        // пуснато във въздуха: пада обратно на пода
-        if let p = plantPanel, let v = p.contentView as? PlantView, !v.drag.active {
+        // тревога: порастват му крачета и бяга зад ръба; после се връща на мястото си
+        if let p = plantPanel, let v = p.contentView as? PlantView, !v.drag.active,
+           hidePhase != .off && hidePhase != .returning || plantHiding {
+            let c = NSPoint(x: p.frame.midX, y: p.frame.minY + 10)
+            let sc = screenAt(c) ?? NSScreen.main
+            let svf = sc?.visibleFrame ?? vf
+            var x = p.frame.minX
+            if hidePhase != .off && hidePhase != .returning {
+                if !plantHiding { plantHiding = true; p.contentView?.needsDisplay = true }
+                let side = hideSide(x: p.frame.midX, screen: sc?.frame ?? svf)
+                let goal = side.left ? svf.minX - p.frame.width - 10 : svf.maxX + 10
+                x += (goal > x ? 1 : -1) * min(abs(goal - x), CGFloat(240 * (1.0 / 30)))
+                if abs(goal - x) < 1 && p.alphaValue != 0 { p.alphaValue = 0 }
+            } else {
+                if p.alphaValue == 0 { p.alphaValue = 1 }
+                let home = CGFloat(UserDefaults.standard.double(forKey: "plantX"))
+                x += (home > x ? 1 : -1) * min(abs(home - x), CGFloat(120 * (1.0 / 30)))
+                if abs(home - x) < 1 { plantHiding = false }
+            }
+            p.setFrameOrigin(NSPoint(x: x, y: svf.minY))
+        } else if let p = plantPanel, let v = p.contentView as? PlantView, !v.drag.active {
+            // пуснато във въздуха: пада обратно на пода
             let c = NSPoint(x: p.frame.midX, y: p.frame.minY + 10)
             let floorY = (screenAt(c) ?? NSScreen.main)?.visibleFrame.minY ?? p.frame.minY
             if p.frame.minY > floorY + 0.5 {

@@ -42,12 +42,12 @@ let annoyances: [String: (topic: String, lines: [String])] = [
     "music": ("шума", ["Може ли по-тихо? Монтирам!", "Но това е новата ми песен!", "Слушам я за десети път!", "Добре де… ще свиря по-тихо."]),
     "photo": ("снимките", ["Спри да ме снимаш в лицето!", "Но светлината е перфектна!", "Виждам само звезди!", "Добре, последна снимка."]),
     "chef": ("кухнята", ["Пак си разхвърляла навсякъде!", "Готвя изкуство!", "Изкуство с трохи навсякъде!", "Ще почистя… утре."]),
-    "gamer": ("крясъците", ["Стига вика на играта!", "Но бях на последното ниво!", "Аз съм на последния кадър!", "Добре, слагам слушалки."]),
+    "gamer": ("крясъците", ["Стига вика на играта! Монтирам!", "Но бях на последното ниво!", "Аз съм на последния кадър!", "Добре, слагам слушалки."]),
     "artist": ("платформите", ["Пак си рисувала върху платформата ми!", "Стана по-красива!", "Беше си хубава и преди!", "Добре, ще рисувам до нея."]),
     "garden": ("пръстта", ["Пак има пръст по пода!", "Това е хубава пръст!", "По пода ли?!", "Добре, ще измета."]),
     "post": ("звънеца", ["Стига звъни на вратата!", "Но имам писмо!", "Пети път днес!", "Добре, ще го пускам в кутията."]),
     "science": ("експлозиите", ["Пак ли гърмя нещо?!", "Беше научно!", "Изгори ми монитора!", "Ще ти купя нов… някой ден."]),
-    "dancer": ("тропането", ["Може ли да не тропаш?", "Но това е танц!", "Подът се клати!", "Добре, ще танцувам на пръсти."]),
+    "dancer": ("тропането", ["Може ли да не тропаш? Монтирам!", "Но това е танц!", "Подът се клати!", "Добре, ще танцувам на пръсти."]),
     "detective": ("разпитите", ["Стига ме разпитва!", "Само още един въпрос…", "Каза го преди час!", "Добре, случаят е затворен."]),
 ]
 
@@ -66,24 +66,45 @@ extension Game {
     }
 
     /// Пуска разговор: (кой: "pet" или id на приятел, реплика).
+    /// Застават в редица един до друг (не един зад друг) и се гледат.
     func startDialog(_ lines: [(String, String)]) {
         dialog = lines
-        // събират се близо: първо се приближават, после говорят
-        let ids = Set(lines.map { $0.0 })
+        var ids: [String] = []
+        for (who, _) in lines where who != "rat" && !ids.contains(who) { ids.append(who) }
         let pr = petScreenRect()
-        let anchor: CGFloat = ids.contains("pet") ? pr.midX : (buddy(lines.first?.0 ?? "").map { buddyScreenBox($0).midX } ?? pr.midX)
-        var n = 0
-        for b in buddies where ids.contains(b.kind.id) {
-            let side: CGFloat = n % 2 == 0 ? -1 : 1
-            let dist: CGFloat = ids.contains("pet") ? pr.width / 2 + 60 + CGFloat(n / 2) * 90 : 70 + CGFloat(n / 2) * 90
-            if !(lines.first?.0 == b.kind.id && !ids.contains("pet")) {
-                b.wanderX = anchor + side * dist
-            }
+        let withPet = ids.contains("pet")
+        let talkers = ids.compactMap { buddy($0) }
+        // центърът: Пиксчо, ако участва; иначе първият, който заговори
+        let anchor: CGFloat = withPet ? pr.midX : (talkers.first.map { buddyScreenBox($0).midX } ?? pr.midX)
+        var leftEdge = anchor - (withPet ? pr.width / 2 : (talkers.first.map { buddyScreenBox($0).width / 2 } ?? 40))
+        var rightEdge = anchor + (withPet ? pr.width / 2 : (talkers.first.map { buddyScreenBox($0).width / 2 } ?? 40))
+        let vf = screenAt(NSPoint(x: pr.midX, y: pr.midY))?.visibleFrame ?? .zero
+        for (n, b) in talkers.enumerated() {
+            let w = buddyScreenBox(b).width
+            if !withPet && n == 0 { b.wanderX = buddyScreenBox(b).midX; b.nextWander = time + 40; continue }
+            // редуват се отляво и отдясно; ако няма място, отиват от другата страна
+            var right = n % 2 == 1
+            if right && rightEdge + 20 + w > vf.maxX { right = false }
+            if !right && leftEdge - 20 - w < vf.minX { right = true }
+            if right { b.wanderX = rightEdge + 20 + w / 2; rightEdge += 20 + w }
+            else { b.wanderX = leftEdge - 20 - w / 2; leftEdge -= 20 + w }
             b.nextWander = time + 40
-            n += 1
         }
         dialogAt = time + 2.5
+        dialogCenter = (leftEdge + rightEdge) / 2
         for b in buddies { b.chatting = lines.contains { $0.0 == b.kind.id } }
+    }
+
+    /// Докато си говорят: всеки гледа към средата на групата.
+    func updateDialogLooks() {
+        for b in buddies {
+            if b.chatting && !dialog.isEmpty {
+                let dx = dialogCenter - buddyScreenBox(b).midX
+                b.view.lookX = abs(dx) < 15 ? 0 : (dx > 0 ? 2 : -2)
+            } else if b.view.lookX != 0 {
+                b.view.lookX = 0
+            }
+        }
     }
 
     func updateDialog() {
@@ -104,7 +125,7 @@ extension Game {
             say(text, seconds: 2.8)
         }
         dialogAt = time + readTime(text, 3) + 0.4
-        if dialog.isEmpty { buddies.forEach { $0.chatting = false } }
+        if dialog.isEmpty { buddies.forEach { $0.chatting = false; $0.view.lookX = 0 } }
     }
 
     /// Разговор с Пиксчо: понякога си спомнят за последния, ако са се карали, се сдобряват.
@@ -124,7 +145,9 @@ extension Game {
             pendingMakeUp = time + 12
             return
         }
-        if let t = lastTopic, Int.random(in: 0..<10) < 4 {
+        // спомнят си за последния разговор рядко и само веднъж за тема
+        if let t = lastTopic, UserDefaults.standard.string(forKey: "buddyRecalled_\(id)") != t, Int.random(in: 0..<10) < 2 {
+            UserDefaults.standard.set(t, forKey: "buddyRecalled_\(id)")
             startDialog([(id, "Помниш ли, като си говорихме за \(t)?"),
                          ("pet", friendly ? "Да! Беше забавно." : "Помня… не ми беше много забавно."),
                          (id, friendly ? "Да си говорим пак!" : "Е, днес ще е по-добре!")])
@@ -136,7 +159,7 @@ extension Game {
         let fresh = talkTopics.filter { !recentTopics.contains($0.topic) }
         var topic = (fresh.isEmpty ? talkTopics : fresh).randomElement()!
         let r = Int.random(in: 0..<10)
-        if r < 5 { topic = generatedTalk(female: b.kind.female) }
+        if r < 5 { topic = generatedTalk(female: b.kind.female, exclude: [id]) }
         else if r < 7, let st = situationTalk(), !recentTopics.contains(st.topic) { topic = st }
         recentTopics.append(topic.topic)
         if recentTopics.count > 8 { recentTopics.removeFirst() }
@@ -160,6 +183,19 @@ extension Game {
         guard let a = annoyances[id] else { buddyConversation(b); return }
         var lines: [(String, String)] = []
         for (n, l) in a.lines.enumerated() { lines.append((n % 2 == 0 ? "pet" : id, l)) }
+        // казва, че монтира, а не монтира: веднага го хващат в лъжа
+        if !pet.working && a.lines[0].contains("онтира") {
+            let other = buddies.first { $0 !== b && !$0.leaving && !buddyAsleep($0) }
+            lines = [("pet", a.lines[0]),
+                     (other?.kind.id ?? id, "Ама ти не монтираш! Лъжеш!"),
+                     ("pet", "…Ами… мислех си за монтажа."),
+                     (id, "Хаха! Хванахме те!"),
+                     ("pet", "Добре де, просто ми е шумно.")]
+            startDialog(lines)
+            changeFriendship(id, -2)
+            remember(id, topic: a.topic, fight: false)
+            return
+        }
         startDialog(lines)
         // след караницата си отива сърдит(а) до вкъщи
         b.leaveAt = time + 2.5 + Double(lines.count) * 4
@@ -213,11 +249,12 @@ private let genTemplates: [(String, [String])] = [
 
 extension Game {
     /// Нов разговор от шаблон: никога не е съвсем същият.
-    func generatedTalk(female: Bool) -> (topic: String, lines: [String]) {
+    func generatedTalk(female: Bool, exclude: [String] = []) -> (topic: String, lines: [String]) {
         let t = genTemplates.randomElement()!
         let foods = genFoods.shuffled()
         let acts = genActsWe.shuffled()
-        let others = buddies.map { buddyName($0.kind) } + [hasRat ? (ratName ?? "плъхът") : "плъхът"]
+        // „кой ти каза?“ — някой друг, не тези, които си говорят
+        let others = buddies.filter { !exclude.contains($0.kind.id) }.map { buddyName($0.kind) } + [hasRat ? (ratName ?? "плъхът") : "плъхът"]
         let actI = genActsI.randomElement()!
         let fill: [String: String] = [
             "{нещо}": genThings.randomElement()!, "{място}": genPlaces.randomElement()!,
@@ -263,4 +300,42 @@ extension Game {
 
 extension String {
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
+}
+
+// --- караници между самите приятели ---
+
+private let buddyFightTemplates: [(String, [String])] = [
+    ("изядения пиксел", ["Ти ли изяде моя пиксел?!", "Не съм аз!", "Видях те с жълто по устата!", "Добре де… беше много вкусен."]),
+    ("мястото", ["Махни се, това е моето място!", "Не е написано твое!", "Аз стоя тук от сутринта!", "Добре, ама утре е мое."]),
+    ("музиката", ["Пак ли пускаш тая песен?!", "Тя е най-хубавата!", "Чух я сто пъти днес!", "Сто и един!"]),
+    ("играта", ["Ти излъга в гоненицата!", "Не съм! Ти просто не можеш да тичаш!", "Пипнах те три пъти!", "Не се брои!"]),
+    ("рисунката", ["Някой стъпка по рисунката ми!", "Не съм аз!", "Има ти следи по краката!", "Ох… извинявай."]),
+    ("{нещо}", ["Върни ми {нещо}!", "Какво {нещо}? Нямам такова!", "Сигурно си го скрил{а} {място}!", "Нищо не съм крил{а}!"]),
+]
+
+extension Game {
+    /// Двама приятели се карат; понякога единият си тръгва сърдит.
+    func buddiesArgue(_ a: Buddy, _ b: Buddy) {
+        let t = buddyFightTemplates.randomElement()!
+        let thing = genThings.randomElement()!, place = genPlaces.randomElement()!
+        var lines: [(String, String)] = []
+        for (n, l) in t.1.enumerated() {
+            let speaker = n % 2 == 0 ? a : b
+            let other = n % 2 == 0 ? b : a
+            var text = l.replacingOccurrences(of: "{нещо}", with: thing).replacingOccurrences(of: "{място}", with: place)
+            text = text.replacingOccurrences(of: "{а}", with: (n % 2 == 0 ? other : speaker).kind.female ? "а" : "")
+            lines.append((speaker.kind.id, text.capitalizedFirst))
+        }
+        // Пиксчо понякога се намесва
+        if !pet.asleep && hidePhase == .off && Bool.random() {
+            lines.append(("pet", ["Стига сте се карали!", "Хайде, сдобрете се!", "Мир, моля ви!"].randomElement()!))
+            lines.append((a.kind.id, ["Добре… мир.", "Само заради теб, \(pet.name)."].randomElement()!))
+        } else if Int.random(in: 0..<3) == 0 {
+            // единият се сърди и си отива
+            b.leaveAt = time + 2.5 + Double(lines.count) * 4
+        }
+        startDialog(lines)
+        a.view.face = .angry
+        b.view.face = .angry
+    }
 }

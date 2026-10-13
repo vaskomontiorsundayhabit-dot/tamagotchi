@@ -275,6 +275,7 @@ extension Game {
                 }
                 if time > nextHoldLine {
                     nextHoldLine = time + 35
+                    artistBuildToiletWall()
                     say(["Стискам! Нарисувай ми стена да се скрия!", "Тоалетна! Трябва ми стена, не гледай!",
                          "Оххх… бързо, нарисувай стена!", "Не мога повече! СТЕНА!"].randomElement()!, seconds: 3)
                 }

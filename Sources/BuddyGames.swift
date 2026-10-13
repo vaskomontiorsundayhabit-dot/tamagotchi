@@ -14,6 +14,7 @@ struct BuddyGameState {
     var ballFromA = true
     var ballT0: Double = 0
     var centerX: CGFloat = 0
+    var runDir: CGFloat = 1
 }
 
 final class BallDotView: NSView {
@@ -36,7 +37,7 @@ extension Game {
     /// Пуска игра между двама (приятел с приятел или приятел с плъха).
     func startBuddyGame() {
         guard buddyGame == nil, hidePhase == .off else { return }
-        let free = buddies.filter { !$0.leaving && !buddyAsleep($0) && !$0.working && !(racePhase != .off && raceBuddy === $0) }
+        let free = buddies.filter { !$0.leaving && !buddyAsleep($0) && !$0.working && $0.service == nil && !(racePhase != .off && raceBuddy === $0) }
         guard let first = free.randomElement() else { say("Няма кой да играе…", seconds: 2); return }
         var pool = free.filter { $0 !== first }.map { $0.kind.id }
         if ratIsOut && !carryingRat && !ratEatingCheese { pool.append("rat") }
@@ -97,17 +98,23 @@ extension Game {
         let floor = vf.minY
         switch g.kind {
         case .tag:
+            // който бяга, тича в една посока и се обръща чак при стената (без да трепери наляво-надясно)
             let chaser = g.chaserIsA ? g.a : g.b, runner = g.chaserIsA ? g.b : g.a
             let cx = gameX(chaser), rx = gameX(runner)
-            var away: CGFloat = rx >= cx ? 1 : -1
-            if rx + away * 80 > vf.maxX - 30 || rx + away * 80 < vf.minX + 30 { away = -away }
-            moveGameX(runner, toward: rx + away * 200, speed: CGFloat(150 * step), floor: floor, running: true)
-            moveGameX(chaser, toward: rx, speed: CGFloat(170 * step), floor: floor, running: true)
-            if abs(cx - rx) < 30 && time > g.swapAt {
-                g.chaserIsA.toggle()
-                g.swapAt = time + 1.5
-                gameSay(chaser, ["Хванах те!", "Гониш ти!", "Пипнах те!"].randomElement()!)
-                gameSay(runner, ["Ей!", "Не важи!", "Сега ще видиш!"].randomElement()!)
+            if rx + g.runDir * 60 > vf.maxX - 30 || rx + g.runDir * 60 < vf.minX + 30 { g.runDir = -g.runDir }
+            moveGameX(runner, toward: rx + g.runDir * 200, speed: CGFloat(150 * step), floor: floor, running: true)
+            if time < g.swapAt {
+                // току-що хванат: брои до три, преди да гони
+                moveGameX(chaser, toward: cx, speed: 0, floor: floor, running: false)
+            } else {
+                moveGameX(chaser, toward: rx, speed: CGFloat(170 * step), floor: floor, running: true)
+                if abs(cx - rx) < 30 {
+                    g.chaserIsA.toggle()
+                    g.swapAt = time + 1.2
+                    g.runDir = cx >= rx ? 1 : -1      // новият бягащ тича в посоката, в която е гледал
+                    gameSay(chaser, ["Хванах те!", "Гониш ти!", "Пипнах те!"].randomElement()!)
+                    gameSay(runner, ["Ей!", "Не важи!", "Сега ще видиш!"].randomElement()!)
+                }
             }
         case .pass:
             moveGameX(g.a, toward: g.centerX - 110, speed: CGFloat(120 * step), floor: floor, running: true)
