@@ -6,11 +6,11 @@ import AppKit
 struct PotCreature {
     let id: String
     let name: String
-    let grid: Grid
+    let pic: Grid
     let sound: String
 
     static let all: [PotCreature] = [
-        PotCreature(id: "dragon", name: "мъничко драконче", grid: grid([
+        PotCreature(id: "dragon", name: "мъничко драконче", pic: grid([
             "K.......K.",
             "GK.KKK.KG.",
             ".KGGGGGK..",
@@ -20,7 +20,7 @@ struct PotCreature {
             "..KGGGK..G",
             "..K...K...",
         ]), sound: "Рррр! (пуф, искричка)"),
-        PotCreature(id: "phoenix", name: "огнена птичка феникс", grid: grid([
+        PotCreature(id: "phoenix", name: "огнена птичка феникс", pic: grid([
             "...R.Y....",
             "..ROYR....",
             ".KOOOOK...",
@@ -30,7 +30,7 @@ struct PotCreature {
             "..KOOOK.Y.",
             "...Y.Y....",
         ]), sound: "Пиу! (свети)"),
-        PotCreature(id: "ghost", name: "малко духче", grid: grid([
+        PotCreature(id: "ghost", name: "малко духче", pic: grid([
             "..WWWW....",
             ".WWWWWW...",
             "WWKWWKWW..",
@@ -40,7 +40,7 @@ struct PotCreature {
             "WWWWWWWW..",
             "W.WW.WW...",
         ]), sound: "Бууу… хи-хи"),
-        PotCreature(id: "robot", name: "робот-пиленце", grid: grid([
+        PotCreature(id: "robot", name: "робот-пиленце", pic: grid([
             "....Y.....",
             ".KKKKKK...",
             ".KEEEEK...",
@@ -50,7 +50,7 @@ struct PotCreature {
             ".KEKKEK...",
             ".KK..KK...",
         ]), sound: "Бип-буп!"),
-        PotCreature(id: "fairy", name: "горска фея", grid: grid([
+        PotCreature(id: "fairy", name: "горска фея", pic: grid([
             "T...K...T.",
             "TT.KPK.TT.",
             ".TTKPKTT..",
@@ -277,7 +277,7 @@ final class PotView: NSView {
             if let c = g.creature.flatMap({ PotCreature.find($0) }) {
                 let hop: CGFloat = dancing ? abs(CGFloat(sin(t * 8))) * 6 : (Int(t / 3) % 5 == 0 ? abs(CGFloat(sin(t * 6))) * 4 : 0)
                 let wander = CGFloat(sin(t * 0.3)) * crownR * 0.3
-                drawGrid(c.grid, x: n.x - 15 + wander, y: n.y - 24 - hop, s: 3, flip: sin(t * 0.3 + 1.57) < 0, palette: potColor)
+                drawGrid(c.pic, x: n.x - 15 + wander, y: n.y - 24 - hop, s: 3, flip: sin(t * 0.3 + 1.57) < 0, palette: potColor)
             }
         }
 
