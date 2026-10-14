@@ -2,7 +2,7 @@
 
 import AppKit
 
-let potSecretCount = 10
+let potSecretCount = 17
 
 /// Съперничката: друга саксия в другия край на екрана.
 final class PotRivalView: NSView {
@@ -362,7 +362,7 @@ extension PotGame {
         if d.bool(forKey: "pot_rainbow") && i % 9 == 0 {
             return NSColor(hue: CGFloat(i % 7) / 7, saturation: 0.6, brightness: 0.95, alpha: 1)
         }
-        if fullMoon && isNight { return base.blended(withFraction: 0.45, of: NSColor(hex: 0xe0e1dd)) ?? base }
+        if lunar || fullMoon && isNight { return base.blended(withFraction: 0.45, of: NSColor(hex: 0xe0e1dd)) ?? base }
         return base
     }
 }

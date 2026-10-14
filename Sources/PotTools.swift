@@ -80,7 +80,9 @@ final class PotBucketView: NSView {
         if let f = handFruit {
             handFruit = nil
             f.orderOut(nil)
-            if g.overPlant(NSPoint(x: f.frame.midX, y: f.frame.midY)) { g.feedFruit() } else { g.fruitsCollected += 1 }
+            let fp = NSPoint(x: f.frame.midX, y: f.frame.midY)
+            if g.overCreature(fp) { g.feedCreature() }
+            else if g.overPlant(fp) { g.feedFruit() } else { g.fruitsCollected += 1 }
             return
         }
         if !moved {
@@ -199,6 +201,13 @@ extension PotGame {
         if cv.held || frameCount % 10 == 0 { can.contentView?.needsDisplay = true }
         let a: CGFloat = hidePhase == 2 ? 0 : 1
         if can.alphaValue != a { can.alphaValue = a; bucket.alphaValue = a }
+    }
+
+    func overCreature(_ p: NSPoint) -> Bool {
+        let r = view.creatureRect
+        guard creature != nil, r != .zero else { return false }
+        let sr = NSRect(x: panel.frame.minX + r.minX, y: panel.frame.maxY - r.maxY, width: r.width, height: r.height)
+        return sr.insetBy(dx: -10, dy: -10).contains(p)
     }
 
     func overPlant(_ p: NSPoint) -> Bool {

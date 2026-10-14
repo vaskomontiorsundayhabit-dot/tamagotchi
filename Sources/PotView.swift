@@ -94,6 +94,7 @@ final class PotView: NSView {
     var eggRect = NSRect.zero
     var potRect = NSRect.zero
     var mushroomRect = NSRect.zero
+    var creatureRect = NSRect.zero
     var plantTop: CGFloat = 0       // най-горната точка на растението (отгоре на прозорчето)
 
     override var isFlipped: Bool { true }
@@ -131,6 +132,7 @@ final class PotView: NSView {
         if let i = weedRects.firstIndex(where: { $0.insetBy(dx: -3, dy: -3).contains(p) }) { game.pullWeed(i); return }
         if eggRect.insetBy(dx: -4, dy: -4).contains(p) { game.warmEgg(); return }
         if mushroomRect.insetBy(dx: -3, dy: -3).contains(p) { game.eatMushroom(); return }
+        if creatureRect.insetBy(dx: -4, dy: -4).contains(p) { game.petCreature(); return }
         if potRect.contains(p) { game.openCard(); return }
         game.clickedPlant()
     }
@@ -181,6 +183,7 @@ final class PotView: NSView {
         NSRect(x: mx - pw / 2 + 2, y: potTop + 1, width: pw - 4, height: 3).fill()
         potRect = NSRect(x: mx - pw / 2 - 3, y: potTop, width: pw + 6, height: ph)
         mushroomRect = .zero
+        creatureRect = .zero
         // пълнолуние: сребърно сияние
         if g.fullMoon && g.isNight && st >= 2 {
             NSColor(hex: 0xe0e1dd, alpha: 0.12 + 0.05 * CGFloat(sin(t * 2))).setFill()
@@ -293,6 +296,25 @@ final class PotView: NSView {
             }
         }
 
+        // месоядно: зъбати устички по листата; кактус: бодли
+        if g.carnivore && !spots.isEmpty {
+            for k in 0..<4 {
+                let s = spots[hash(k * 41 + 7) % spots.count]
+                let open = Int(t * 2 + Double(k)) % 3 == 0
+                NSColor(hex: 0x9d0208).setFill(); NSRect(x: s.x - 5, y: s.y - (open ? 4 : 2), width: 10, height: open ? 8 : 4).fill()
+                NSColor.white.setFill()
+                for z in 0..<3 { NSRect(x: s.x - 4 + CGFloat(z) * 3, y: s.y - (open ? 4 : 2), width: 2, height: 2).fill() }
+            }
+        }
+        if g.cactus {
+            NSColor(hex: 0xfefae0).setFill()
+            for k in 0..<10 {
+                let y = soil - (soil - stemTopY) * CGFloat(k + 1) / 11
+                let side: CGFloat = k % 2 == 0 ? -1 : 1
+                let x = (crownR > 0 ? crownCenter.x + side * crownR * 0.9 * CGFloat(k % 3 + 1) / 3 : baseX + side * 3)
+                NSRect(x: x + side * 2, y: y, width: 4, height: 1.5).fill()
+            }
+        }
         // гнездо, яйце, създанието
         if (g.hasNest || g.creature != nil) && st >= 4 {
             let n = NSPoint(x: crownCenter.x + crownR * 0.25, y: crownCenter.y - crownR * 0.55)
@@ -317,7 +339,27 @@ final class PotView: NSView {
                 let ph = Double(ci) * 2.1
                 let hop: CGFloat = dancing ? abs(CGFloat(sin(t * 8 + ph))) * 6 : (Int(t / 3 + ph) % 5 == 0 ? abs(CGFloat(sin(t * 6))) * 4 : 0)
                 let wander = CGFloat(sin(t * 0.3 + ph)) * crownR * 0.3 - CGFloat(ci) * 26
-                drawGrid(c.pic, x: n.x - 15 + wander, y: n.y - 24 - hop, s: 3, flip: sin(t * 0.3 + ph + 1.57) < 0, palette: potColor)
+                // расте: 3 → 4 → 5 → 6 точки на квадратче
+                let cs: CGFloat = ci == 0 ? CGFloat(3 + g.creatureStage) : 3
+                let cw = CGFloat(c.pic[0].count) * cs, chh = CGFloat(c.pic.count) * cs
+                let cx = n.x - cw / 2 + wander, cy = n.y - chh - hop
+                if ci == 0 && g.creatureStage >= 3 {
+                    NSColor(hex: 0xffd166, alpha: 0.25 + 0.1 * CGFloat(sin(t * 3))).setFill()
+                    NSBezierPath(ovalIn: NSRect(x: cx - 8, y: cy - 8, width: cw + 16, height: chh + 16)).fill()
+                }
+                drawGrid(c.pic, x: cx, y: cy, s: cs, flip: sin(t * 0.3 + ph + 1.57) < 0, palette: { col in
+                    if ci == 0 && g.creatureSulking, let base = potColor(col) { return base.blended(withFraction: 0.4, of: NSColor(hex: 0x6c757d)) }
+                    return potColor(col)
+                })
+                if ci == 0 {
+                    creatureRect = NSRect(x: cx, y: cy, width: cw, height: chh)
+                    if t < g.creatureHeartsUntil {
+                        NSColor(hex: 0xff4d6d).setFill()
+                        let hy = cy - 8 - CGFloat((g.creatureHeartsUntil - t).truncatingRemainder(dividingBy: 1)) * 6
+                        NSRect(x: cx + cw / 2 - 4, y: hy, width: 3, height: 3).fill(); NSRect(x: cx + cw / 2, y: hy, width: 3, height: 3).fill()
+                        NSRect(x: cx + cw / 2 - 3, y: hy + 2, width: 5, height: 3).fill()
+                    }
+                }
                 if ci == 0, let say = g.creatureSay, t < g.creatureSayUntil {
                     let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 9, weight: .heavy), .foregroundColor: NSColor.white]
                     let str = say.uppercased() as NSString

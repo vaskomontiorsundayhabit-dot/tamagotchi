@@ -76,7 +76,11 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var nextGardener: Double = 20 * 60
     var nextAudioCheck: Double = 0
     var musicPlaying = false
+    var antsArrived: Double = 0
     var frameCount = 0
+    var nextFateCheck: Double = 30
+    var creatureHeartsUntil: Double = 0
+    var lastCreaturePet: Double = -100
     // тайните
     var nextSecretCheck: Double = 20
     var creatureSay: String?
@@ -177,7 +181,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         water = max(8, water - drain)
     }
 
-    var drainPerMinute: Double { 100 / 240 * (1 + Double(stage) * 0.15) }
+    var drainPerMinute: Double { 100 / 240 * (1 + Double(stage) * 0.15) * (d.bool(forKey: "pot_cactus") ? 0.5 : 1) }
 
     // MARK: - всеки кадър
 
@@ -214,6 +218,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         updateTools(dt)
         updateWeedSpread()
         updateSecrets()
+        updateFate(m)
         updatePanel()
         updateCard()
         if time > nextUpdateCheck { nextUpdateCheck = time + 30 * 60; checkForUpdate(manual: false) }
@@ -245,6 +250,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         if stage >= 2 && time > nextAnts && !antsAllies && !queenPresent {
             nextAnts = time + Double.random(in: 35 * 60...70 * 60)
             if ants.isEmpty {
+                antsArrived = time
                 for _ in 0..<Int.random(in: 1...3) {
                     ants.append(PotAnt(t: 0, side: Bool.random() ? -1 : 1, speed: CGFloat.random(in: 0.008...0.02)))
                 }
@@ -255,6 +261,11 @@ final class PotGame: NSObject, NSApplicationDelegate {
         for i in ants.indices {
             ants[i].t += ants[i].speed / 30
             if ants[i].t > 1 || ants[i].t < 0 { ants[i].speed = -ants[i].speed; ants[i].t = min(1, max(0, ants[i].t)) }
+        }
+        // мравките си тръгват сами след ~25 минути (царицата не)
+        if !ants.isEmpty && !queenPresent && time - antsArrived > 25 * 60 {
+            ants = []
+            antsLeftAlone()
         }
         // пчели: опрашват цветовете → плодове
         if stage >= 3 && time > nextBees {
@@ -330,6 +341,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         fertUntil = Date().addingTimeInterval(30 * 60)
         sfx("Pop")
         say("Тор! Половин час раста двойно по-бързо!", 3)
+        fertilizedNow()
     }
 
     func pullWeed(_ i: Int) {
@@ -355,7 +367,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
     func pickFruit() {
         guard fruitsOnPlant > 0 else { return }
         fruitsOnPlant -= 1
-        fruitsCollected += 1
+        fruitsCollected += lunar ? 2 : 1
         sfx("Pop")
         say(["Плодът е в кофата!", "Заповядай! В кофата е.", "Още ще родя!"].randomElement()!, 2)
     }
