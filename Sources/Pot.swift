@@ -284,8 +284,9 @@ final class PotGame: NSObject, NSApplicationDelegate {
         }
         // яйцето: ако не го гледаш, изстива; ако го гледаш, се излюпва нещо тайнствено
         if hasEgg {
+            // излюпва се, щом е добре стоплено (над 95%) и е минал поне 45 минути
+            if eggCare >= 95 && Date().timeIntervalSince(eggLaid) > 45 * 60 { hatchEgg() }
             eggCare -= 8.0 / 60 * m   // изстива с ~8 на час
-            if eggCare >= 100 && Date().timeIntervalSince(eggLaid) > 45 * 60 { hatchEgg() }
             if eggCare <= 0 && Date().timeIntervalSince(eggLaid) > 3 * 3600 {
                 hasEgg = false
                 say("Птичката си взе яйцето… не го гледахме.", 3.5)
@@ -365,7 +366,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         lastEggPet = time
         eggCare += 15
         sfx("Purr")
-        say(eggCare >= 100 ? "Яйцето мърда! Скоро ще се излюпи!" : "Стоплих яйцето. Пази го!", 2.5)
+        say(eggCare >= 95 ? (Date().timeIntervalSince(eggLaid) > 45 * 60 ? "Яйцето пука! Излюпва се!" : "Яйцето мърда! Скоро ще се излюпи!") : "Стоплих яйцето. Пази го!", 2.5)
     }
 
     func clickedPlant() {
