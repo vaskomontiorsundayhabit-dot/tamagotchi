@@ -60,6 +60,26 @@ struct PotCreature {
             "..KMMMK...",
             "...K.K....",
         ]), sound: "Тин-тин! (блести)"),
+        PotCreature(id: "unicorn", name: "мъничък еднорог", pic: grid([
+            "......Y...",
+            ".....KY...",
+            "....KWWK..",
+            "MMMKWKWWK.",
+            ".MKWWWWPK.",
+            "..KWWWWK..",
+            "..KWKKWK..",
+            "..KK..KK..",
+        ]), sound: "Иии-хи-хи! (дъга)"),
+        PotCreature(id: "octopus", name: "горско октоподче", pic: grid([
+            "...KKKK...",
+            "..KMMMMK..",
+            ".KMWKMWKK.",
+            ".KMMMMMMK.",
+            ".KMMPPMMK.",
+            "KMKMKMKMK.",
+            "M.M.M.M.M.",
+            "..........",
+        ]), sound: "Блуп-блуп!"),
     ]
     static func find(_ id: String) -> PotCreature? { all.first { $0.id == id } }
 }
@@ -73,6 +93,7 @@ final class PotView: NSView {
     var antRects: [NSRect] = []
     var eggRect = NSRect.zero
     var potRect = NSRect.zero
+    var plantTop: CGFloat = 0       // най-горната точка на растението (отгоре на прозорчето)
 
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -355,6 +376,7 @@ final class PotView: NSView {
             NSColor(hex: 0x48cae4).setFill()
             NSBezierPath(ovalIn: NSRect(x: mx + pw / 2 + 4, y: potTop - 12, width: 8, height: 10)).fill()
         }
+        plantTop = max(0, min(stemTopY, crownCenter.y - crownR) - 10)
         // балонче
         if let text = g.bubble, t < g.bubbleUntil { bubbleText(text, above: max(PotView.top - 6, min(stemTopY, crownCenter.y - crownR) - 8)) }
     }

@@ -91,6 +91,12 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var hideHome: CGFloat = 0
     var hideUntil: Double = 0
     var bellPanel: NSPanel?
+    var canPanel: NSPanel?
+    var bucketPanel: NSPanel?
+    var pouring = false
+    var weedPanels: [NSPanel] = []
+    var nextWeedSpread: Double = 30
+    var weedFullMinutes = 0
     var cardPanel: NSPanel?
     var cardOpened: Double = 0
     var visitor: PotVisitor?
@@ -127,6 +133,8 @@ final class PotGame: NSObject, NSApplicationDelegate {
         if !hidden { panel.orderFrontRegardless() }
         keepOnScreen()
         if bellOn { setUpBell() }
+        setUpTools()
+        syncWeedPanels()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let b = statusItem.button {
@@ -171,6 +179,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         var rate = 1.0
         if water < 15 { rate = 0 } else if water < 35 { rate = 0.5 }
         rate *= max(0, 1 - 0.25 * Double(weedsCount))
+        rate *= max(0.5, 1 - 0.02 * Double(weedPanels.count))
         rate *= health / 100
         if Date() < fertUntil { rate *= 2 }
         if stage >= 4 && overgrowth > 60 { rate *= 0.6 }
@@ -184,6 +193,8 @@ final class PotGame: NSObject, NSApplicationDelegate {
         updateNature(m)
         updateVisitor(dt)
         updateHiding(dt)
+        updateTools(dt)
+        updateWeedSpread()
         updateMusic()
         updatePanel()
         updateCard()
@@ -322,7 +333,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         fruitsOnPlant -= 1
         fruitsCollected += 1
         sfx("Pop")
-        say(["Ням! Плод!", "Заповядай!", "Още ще родя!"].randomElement()!, 2)
+        say(["Плодът е в кофата!", "Заповядай! В кофата е.", "Още ще родя!"].randomElement()!, 2)
     }
 
     func warmEgg() {
@@ -346,8 +357,8 @@ final class PotGame: NSObject, NSApplicationDelegate {
 
     // MARK: - звук от компютъра → танцува
 
-    /// Танцува само когато някоя програма наистина пуска звук поне 3 секунди
-    /// (без собствените звуци и без програмите, на които си казал „не танцувай“).
+    /// Танцува само когато браузър наистина пуска звук поне 3 секунди
+    /// (без собствените звуци и без браузърите, на които си казал „не танцувай“).
     func updateMusic() {
         guard time > nextAudioCheck else { return }
         nextAudioCheck = time + 1
@@ -384,12 +395,27 @@ final class PotGame: NSObject, NSApplicationDelegate {
                 var pid: pid_t = 0
                 s = UInt32(MemoryLayout<pid_t>.size)
                 guard AudioObjectGetPropertyData(id, &a, 0, nil, &s, &pid) == noErr, pid != me else { continue }
-                let name = NSRunningApplication(processIdentifier: pid)?.localizedName ?? "процес \(pid)"
+                // само браузърите (звукът им идва от помощни процеси, затова се гледа идентификаторът)
+                a.mSelector = kAudioProcessPropertyBundleID
+                var cf: Unmanaged<CFString>?
+                s = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+                guard AudioObjectGetPropertyData(id, &a, 0, nil, &s, &cf) == noErr, let bidCF = cf else { continue }
+                let bid = (bidCF.takeRetainedValue() as String).lowercased()
+                guard let name = PotGame.browserName(bid) else { continue }
                 if !names.contains(name) { names.append(name) }
             }
             return names
         }
         return audioIsPlaying() ? ["звук"] : []
+    }
+
+    /// Браузър ли е (по идентификатора на процеса, който пуска звука)?
+    static func browserName(_ bid: String) -> String? {
+        let known: [(String, String)] = [("com.google.chrome", "Chrome"), ("com.apple.safari", "Safari"), ("com.apple.webkit", "Safari"),
+                                         ("org.mozilla", "Firefox"), ("com.microsoft.edgemac", "Edge"), ("com.brave", "Brave"),
+                                         ("com.operasoftware", "Opera"), ("company.thebrowser", "Arc"), ("com.vivaldi", "Vivaldi"),
+                                         ("org.chromium", "Chromium"), ("ru.yandex", "Yandex")]
+        return known.first { bid.hasPrefix($0.0) }?.1
     }
 
     func audioIsPlaying() -> Bool {

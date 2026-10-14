@@ -76,6 +76,7 @@ final class PotCardView: NSView {
         if g.weedsCount > 0 { info += " · БУРЕНИ: \(g.weedsCount)" }
         if !g.ants.isEmpty { info += " · МРАВКИ: \(g.ants.count)" }
         if g.hasEgg { info += " · ЯЙЦЕ: \(Int(g.eggCare))%" }
+        if !g.weedPanels.isEmpty { info += " · БУРЕНИ ПО ПОДА: \(g.weedPanels.count)" }
         (info as NSString).draw(at: NSPoint(x: 12, y: 32 + CGFloat(bars.count) * 15 + 2), withAttributes: small)
         for (i, btn) in buttons.enumerated() {
             let r = rect(i)
@@ -197,7 +198,7 @@ extension PotGame {
         item("Звънче за тревога на екрана", #selector(toggleBell), on: bellOn)
         if bellOn { item("Звънни!", #selector(ringFromMenu)) }
         item("Звуци", #selector(toggleSounds), on: soundsOn)
-        item("Танцува на музика", #selector(toggleDance), on: danceOn)
+        item("Танцува на музика от браузъра", #selector(toggleDance), on: danceOn)
         // кой го кара да танцува: може да го изключиш само за тази програма
         for app in musicApps {
             let it = NSMenuItem(title: "Не танцувай на звука от „\(app)“", action: #selector(ignoreDanceApp(_:)), keyEquivalent: "")
@@ -207,6 +208,7 @@ extension PotGame {
         }
         if !danceIgnore.isEmpty { item("Пак танцувай на всичко (\(danceIgnore.joined(separator: ", ")))", #selector(clearDanceIgnore)) }
         item("Дневник…", #selector(showJournal))
+        if !weedPanels.isEmpty { item("Изскубни всички бурени по пода (\(weedPanels.count))", #selector(pullAllFloorWeeds)) }
         menu.addItem(.separator())
         item("🐹 Към Пиксчо (стария живот)", #selector(switchToPixcho))
         menu.addItem(.separator())
@@ -233,8 +235,9 @@ extension PotGame {
 
     @objc func toggleHidden() {
         hidden.toggle()
-        if hidden { panel.orderOut(nil); bellPanel?.orderOut(nil); closeCard() }
-        else { panel.orderFrontRegardless(); bellPanel?.orderFrontRegardless() }
+        let extra = [bellPanel, canPanel, bucketPanel].compactMap { $0 } + weedPanels
+        if hidden { panel.orderOut(nil); extra.forEach { $0.orderOut(nil) }; closeCard() }
+        else { panel.orderFrontRegardless(); extra.forEach { $0.orderFrontRegardless() } }
     }
 
     // MARK: - картата с грижите
@@ -245,7 +248,13 @@ extension PotGame {
         let v = PotCardView(frame: NSRect(origin: .zero, size: size))
         v.game = self
         let vf = screenFloor()
-        var o = NSPoint(x: panel.frame.midX - size.width / 2, y: panel.frame.minY + 60)
+        // над растението; ако горе няма място, отстрани
+        let plantTop = panel.frame.maxY - view.plantTop
+        var o = NSPoint(x: panel.frame.midX - size.width / 2, y: plantTop + 8)
+        if o.y + size.height > vf.maxY - 4 {
+            o.y = max(vf.minY + 4, plantTop - size.height)
+            o.x = panel.frame.midX < vf.midX ? panel.frame.maxX + 6 : panel.frame.minX - size.width - 6
+        }
         o.x = min(max(o.x, vf.minX + 4), vf.maxX - size.width - 4)
         o.y = min(max(o.y, vf.minY + 4), vf.maxY - size.height - 4)
         let p = overlayPanel(NSRect(origin: o, size: size), key: false)
@@ -260,13 +269,19 @@ extension PotGame {
     func refreshCard() {
         guard let v = cardPanel?.contentView as? PotCardView else { return }
         var b = [
-            PotButton(icon: iconWater, label: water > 90 ? "Полей (пълна е)" : "Полей", enabled: true, action: { [weak self] in self?.waterIt() }),
+            PotButton(icon: iconWater, label: water > 90 ? "Полей (пълно е)" : "Полей (или вдигни лейката над него)", enabled: true,
+                      action: { [weak self] in self?.waterIt() }),
             PotButton(icon: potIconFert, label: "Тор (двоен растеж 30 мин)", enabled: Date().timeIntervalSince(lastFert) > 2 * 3600,
                       action: { [weak self] in self?.fertilize() }),
             PotButton(icon: potIconWeed, label: "Плеви бурените", enabled: weedsCount > 0, action: { [weak self] in self?.pullAllWeeds() }),
             PotButton(icon: potIconAnt, label: "Изгони мравките", enabled: !ants.isEmpty, action: { [weak self] in self?.shooAllAnts() }),
         ]
-        if stage >= 3 { b.append(PotButton(icon: potIconFruit, label: "Откъсни плод", enabled: fruitsOnPlant > 0, action: { [weak self] in self?.pickFruit() })) }
+        if stage >= 3 { b.append(PotButton(icon: potIconFruit, label: "Откъсни плод (отива в кофата)", enabled: fruitsOnPlant > 0, action: { [weak self] in self?.pickFruit() })) }
+        b.append(PotButton(icon: potIconFruit, label: "Нахрани с плод от кофата (\(fruitsCollected))", enabled: fruitsCollected > 0, action: { [weak self] in
+            guard let self, self.fruitsCollected > 0 else { return }
+            self.fruitsCollected -= 1
+            self.feedFruit()
+        }))
         if hasEgg { b.append(PotButton(icon: potIconEgg, label: "Стопли яйцето", enabled: true, action: { [weak self] in self?.warmEgg() })) }
         b.append(PotButton(icon: potIconBook, label: "Дневник", enabled: true, action: { [weak self] in self?.closeCard(); self?.showJournal() }))
         v.buttons = b
