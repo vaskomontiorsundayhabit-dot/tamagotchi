@@ -306,7 +306,7 @@ final class PotView: NSView {
 
         // шапка, корона, сняг: преди създанието, за да е то отпред
         let topY = min(stemTopY, crownCenter.y - (crownR > 0 ? crownR * 0.85 : 0))
-        let topX = crownR > 0 ? crownCenter.x - crownR * 0.35 : baseX + sway
+        let topX = crownR > 0 ? crownCenter.x : baseX + sway
         // сняг в зимна нощ
         let month = Calendar.current.component(.month, from: Date())
         if [12, 1, 2].contains(month) && g.isNight && st >= 2 {
@@ -349,7 +349,7 @@ final class PotView: NSView {
         }
         // гнездо, яйце, създанието
         if (g.hasNest || g.creature != nil) && st >= 4 {
-            let n = NSPoint(x: crownCenter.x + crownR * 0.35, y: crownCenter.y - crownR * 0.55)
+            let n = NSPoint(x: crownCenter.x + max(30, crownR * 0.5), y: crownCenter.y - crownR * 0.45)
             NSColor(hex: 0x7f5539).setFill()
             NSRect(x: n.x - 13, y: n.y, width: 26, height: 7).fill()
             NSColor(hex: 0x9c6644).setFill()
@@ -370,7 +370,7 @@ final class PotView: NSView {
                 guard let c = cid.flatMap({ PotCreature.find($0) }) else { continue }
                 let ph = Double(ci) * 2.1
                 let hop: CGFloat = dancing ? abs(CGFloat(sin(t * 8 + ph))) * 6 : (Int(t / 3 + ph) % 5 == 0 ? abs(CGFloat(sin(t * 6))) * 4 : 0)
-                let wander = CGFloat(sin(t * 0.3 + ph)) * crownR * 0.3 - CGFloat(ci) * 26
+                let wander = CGFloat(sin(t * 0.3 + ph)) * crownR * 0.1 + CGFloat(ci) * 26
                 // расте: 3 → 4 → 5 → 6 точки на квадратче
                 let cs: CGFloat = ci == 0 ? CGFloat(3 + g.creatureStage) : 3
                 let cw = CGFloat(c.pic[0].count) * cs, chh = CGFloat(c.pic.count) * cs
