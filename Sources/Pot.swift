@@ -78,6 +78,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var musicPlaying = false
     var antsArrived: Double = 0
     var frameCount = 0
+    var danceUntil: Double = 0
     var pendingAnnounce: [(String, Double)] = []
     var nextAnnounce: Double = 0
     var nextMoreCheck: Double = 40
@@ -150,12 +151,13 @@ final class PotGame: NSObject, NSApplicationDelegate {
         let s = PotView.size(for: self)
         let vf = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let x = CGFloat(potX ?? Double(vf.midX + 200))
-        panel = overlayPanel(NSRect(x: x - s.width / 2, y: vf.minY, width: s.width, height: s.height), key: false)
+        panel = overlayPanel(NSRect(x: x - s.width * scale / 2, y: vf.minY, width: s.width, height: s.height), key: false)
         panel.level = .floating
         view = PotView(frame: NSRect(origin: .zero, size: s))
         view.autoresizingMask = [.width, .height]
         view.game = self
         panel.contentView = view
+        fitScaled(panel, s)
         if !hidden { panel.orderFrontRegardless() }
         keepOnScreen()
         if bellOn { setUpBell() }
@@ -479,9 +481,10 @@ final class PotGame: NSObject, NSApplicationDelegate {
     func updatePanel() {
         guard let panel, let view else { return }
         let s = PotView.size(for: self)
-        if abs(panel.frame.width - s.width) > 0.5 || abs(panel.frame.height - s.height) > 0.5 {
-            let x = panel.frame.midX - s.width / 2
-            panel.setFrame(NSRect(x: x, y: panel.frame.minY, width: s.width, height: s.height), display: true)
+        if abs(panel.frame.width - s.width * scale) > 0.5 || abs(panel.frame.height - s.height * scale) > 0.5 {
+            let x = panel.frame.midX - s.width * scale / 2
+            panel.setFrame(NSRect(x: x, y: panel.frame.minY, width: s.width * scale, height: s.height * scale), display: true)
+            view.setBoundsSize(s)
         }
         if view.drag.active || hidePhase != 0 { return }
         let vf = screenFloor()

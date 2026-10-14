@@ -159,6 +159,7 @@ extension PotGame {
             let v = PotCanView(frame: NSRect(x: 0, y: 0, width: 60, height: 80))
             v.game = self
             p.contentView = v
+            fitScaled(p, NSSize(width: 60, height: 80))
             canPanel = p
         }
         if bucketPanel == nil {
@@ -167,6 +168,7 @@ extension PotGame {
             let v = PotBucketView(frame: NSRect(x: 0, y: 0, width: 46, height: 44))
             v.game = self
             p.contentView = v
+            fitScaled(p, NSSize(width: 46, height: 44))
             bucketPanel = p
         }
         if !hidden { canPanel?.orderFrontRegardless(); bucketPanel?.orderFrontRegardless() }
@@ -176,14 +178,14 @@ extension PotGame {
     func updateTools(_ dt: Double) {
         guard let can = canPanel, let bucket = bucketPanel, let cv = can.contentView as? PotCanView else { return }
         let floorY = panel.frame.minY
-        let bucketO = NSPoint(x: panel.frame.midX + potWidth / 2 + 8, y: floorY)
+        let bucketO = NSPoint(x: panel.frame.midX + (potWidth / 2 + 8) * scale, y: floorY)
         if bucket.frame.origin != bucketO { bucket.setFrameOrigin(bucketO) }
         if frameCount % 10 == 0 { bucket.contentView?.needsDisplay = true }
-        let home = NSPoint(x: panel.frame.midX - potWidth / 2 - 8 - can.frame.width, y: floorY)
+        let home = NSPoint(x: panel.frame.midX - (potWidth / 2 + 8) * scale - can.frame.width, y: floorY)
         if cv.held {
             // поливане: лейката е над растението
             let c = NSPoint(x: can.frame.minX + 6, y: can.frame.minY)
-            let over = panel.frame.insetBy(dx: 10, dy: 0).contains(NSPoint(x: c.x, y: panel.frame.minY + 20)) && c.y > panel.frame.minY + 30
+            let over = panel.frame.insetBy(dx: 10 * scale, dy: 0).contains(NSPoint(x: c.x, y: panel.frame.minY + 20 * scale)) && c.y > panel.frame.minY + 30 * scale
             if over && !pouring { say(["Ааах, вода!", "Лей, лей!", "Мммм!"].randomElement()!, 1.5); sfx("Bottle") }
             pouring = over
             if over {
@@ -211,12 +213,12 @@ extension PotGame {
     func overCreature(_ p: NSPoint) -> Bool {
         let r = view.creatureRect
         guard creature != nil, r != .zero else { return false }
-        let sr = NSRect(x: panel.frame.minX + r.minX, y: panel.frame.maxY - r.maxY, width: r.width, height: r.height)
+        let sr = NSRect(x: panel.frame.minX + r.minX * scale, y: panel.frame.maxY - r.maxY * scale, width: r.width * scale, height: r.height * scale)
         return sr.insetBy(dx: -10, dy: -10).contains(p)
     }
 
     func overPlant(_ p: NSPoint) -> Bool {
-        panel.frame.insetBy(dx: 6, dy: 0).contains(p) && p.y > panel.frame.minY + 20 && p.y < panel.frame.maxY - PotView.top + 20
+        panel.frame.insetBy(dx: 6 * scale, dy: 0).contains(p) && p.y > panel.frame.minY + 20 * scale && p.y < panel.frame.maxY - (PotView.top - 20) * scale
     }
 
     /// Дадеш му плод от кофата: подхранва го.
@@ -224,9 +226,10 @@ extension PotGame {
         if reviveIfDormant() { return }
         health += 15
         growth += 3
-        eyesUntil = time + 3
+        eyesUntil = time + 6
+        danceUntil = time + 6
         sfx("Pop")
-        say(["Ням! Вкусно!", "Мммм, витамини!", "Благодаря! Раста!"].randomElement()!, 2)
+        say(["Ням! Вкусно! (танцува)", "Мммм, витамини!", "Благодаря! Раста!"].randomElement()!, 2)
     }
 
     // MARK: - бурени по пода
@@ -271,6 +274,7 @@ extension PotGame {
                 let v = PotWeedView(frame: NSRect(x: 0, y: 0, width: 24, height: 22))
                 v.game = self
                 p.contentView = v
+                fitScaled(p, NSSize(width: 24, height: 22))
                 if !hidden { p.orderFrontRegardless() }
                 weedPanels.append(p)
             } else if abs(weedPanels[i].frame.minX - CGFloat(x)) > 0.5 {

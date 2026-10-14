@@ -187,6 +187,7 @@ extension PotGame {
         let v = PotRivalView(frame: NSRect(x: 0, y: 0, width: 120, height: 170))
         v.game = self
         p.contentView = v
+        fitScaled(p, NSSize(width: 120, height: 170))
         p.orderFrontRegardless()
         rivalPanel = p
         rivalStep = 0
@@ -236,6 +237,7 @@ extension PotGame {
         let v = PotWeedKingView(frame: NSRect(x: 0, y: 0, width: 80, height: 90))
         v.game = self
         p.contentView = v
+        fitScaled(p, NSSize(width: 80, height: 90))
         p.orderFrontRegardless()
         weedKingPanel = p
         weedKingHP = 12

@@ -246,6 +246,18 @@ extension PotGame {
         item("Звънче за тревога на екрана", #selector(toggleBell), on: bellOn)
         if bellOn { item("Звънни!", #selector(ringFromMenu)) }
         item("Звуци", #selector(toggleSounds), on: soundsOn)
+        // размер на всичко
+        let sizeMenu = NSMenu()
+        for v in [1.0, 0.75, 0.5, 0.35] {
+            let it = NSMenuItem(title: "\(Int(v * 100))%", action: #selector(setScaleAction(_:)), keyEquivalent: "")
+            it.target = self
+            it.representedObject = v
+            it.state = abs(Double(scale) - v) < 0.01 ? .on : .off
+            sizeMenu.addItem(it)
+        }
+        let sizeItem = NSMenuItem(title: "Размер (по-малко място на екрана)", action: nil, keyEquivalent: "")
+        sizeItem.submenu = sizeMenu
+        menu.addItem(sizeItem)
 
         item(unseen > 0 ? "Дневник… (\(unseen) нови, докато те нямаше)" : "Дневник…", #selector(showJournal))
         item("★ Открити тайни: \(secrets.count)", nil)
@@ -290,7 +302,7 @@ extension PotGame {
         v.game = self
         let vf = screenFloor()
         // над растението; ако горе няма място, отстрани
-        let plantTop = panel.frame.maxY - view.plantTop
+        let plantTop = panel.frame.maxY - view.plantTop * scale
         var o = NSPoint(x: panel.frame.midX - size.width / 2, y: plantTop + 8)
         if o.y + size.height > vf.maxY - 4 {
             o.y = max(vf.minY + 4, plantTop - size.height)
@@ -354,6 +366,7 @@ extension PotGame {
         let v = PotBellView(frame: NSRect(x: 0, y: 0, width: 40, height: 34))
         v.game = self
         p.contentView = v
+        fitScaled(p, NSSize(width: 40, height: 34))
         if !hidden { p.orderFrontRegardless() }
         bellPanel = p
     }
@@ -428,6 +441,7 @@ extension PotGame {
         v.kind = kind
         v.facingLeft = !fromLeft
         p.contentView = v
+        fitScaled(p, size)
         p.orderFrontRegardless()
         visitor = PotVisitor(kind: kind, panel: p, view: v, fromLeft: fromLeft)
         switch kind {
@@ -452,7 +466,7 @@ extension PotGame {
             } else if v.kind == .gardener || v.kind == .pixcho {
                 target = NSPoint(x: panel.frame.midX + (v.fromLeft ? -1 : 1) * (panel.frame.width / 2 + 10) - v.panel.frame.width / 2, y: vf.minY)
             } else {
-                target = NSPoint(x: panel.frame.midX - 20, y: panel.frame.maxY - PotView.top - 10)
+                target = NSPoint(x: panel.frame.midX - 20 * scale, y: panel.frame.maxY - (PotView.top + 10) * scale)
             }
         case 1:
             target = o

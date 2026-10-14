@@ -153,7 +153,7 @@ final class PotView: NSView {
             return sick ? (c.blended(withFraction: 0.45, of: NSColor(hex: 0x9c6644)) ?? c) : c
         }
         let leaf = tint(0x52b788), leaf2 = tint(0x2d6a4f), stemC = tint(0x40916c)
-        let dancing = t < g.trippyUntil && g.hidePhase == 0
+        let dancing = (t < g.trippyUntil || t < g.danceUntil) && g.hidePhase == 0
         let sway: CGFloat = dancing ? CGFloat(sin(t * 7)) * 6 : CGFloat(sin(t * 1.3)) * 1.5 + (g.water < 15 ? 5 : 0)
         let bounce: CGFloat = dancing ? abs(CGFloat(sin(t * 7))) * 4 : 0
 
@@ -304,6 +304,30 @@ final class PotView: NSView {
             }
         }
 
+        // шапка, корона, сняг: преди създанието, за да е то отпред
+        let topY = min(stemTopY, crownCenter.y - (crownR > 0 ? crownR * 0.85 : 0))
+        let topX = crownR > 0 ? crownCenter.x - crownR * 0.35 : baseX + sway
+        // сняг в зимна нощ
+        let month = Calendar.current.component(.month, from: Date())
+        if [12, 1, 2].contains(month) && g.isNight && st >= 2 {
+            NSColor.white.setFill()
+            let w = crownR > 0 ? crownR * 1.4 : 24
+            NSRect(x: topX - w / 2, y: topY - 2, width: w, height: 5).fill()
+            NSRect(x: mx - pw / 2 - 2, y: potTop - 3, width: pw + 4, height: 3).fill()
+        }
+        // рожден ден: шапка; говорещият плод: корона
+        let ageDays = Int(Date().timeIntervalSince(g.born) / 86400)
+        if g.d.bool(forKey: "pot_crown") {
+            NSColor(hex: 0xffc300).setFill()
+            NSRect(x: topX - 12, y: topY - 10, width: 24, height: 7).fill()
+            for k in 0..<3 { NSRect(x: topX - 12 + CGFloat(k) * 9, y: topY - 16, width: 6, height: 6).fill() }
+            NSColor(hex: 0xe63946).setFill(); NSRect(x: topX - 2, y: topY - 8, width: 4, height: 3).fill()
+        } else if ageDays >= 7 && ageDays % 7 == 0 {
+            let hat = NSBezierPath()
+            hat.move(to: NSPoint(x: topX - 10, y: topY - 2)); hat.line(to: NSPoint(x: topX + 10, y: topY - 2)); hat.line(to: NSPoint(x: topX, y: topY - 22)); hat.close()
+            NSColor(hex: 0xc77dff).setFill(); hat.fill()
+            NSColor(hex: 0xffd166).setFill(); NSRect(x: topX - 3, y: topY - 26, width: 6, height: 6).fill()
+        }
         // месоядно: зъбати устички по листата; кактус: бодли
         if g.carnivore && !spots.isEmpty {
             for k in 0..<4 {
@@ -325,7 +349,7 @@ final class PotView: NSView {
         }
         // гнездо, яйце, създанието
         if (g.hasNest || g.creature != nil) && st >= 4 {
-            let n = NSPoint(x: crownCenter.x + crownR * 0.25, y: crownCenter.y - crownR * 0.55)
+            let n = NSPoint(x: crownCenter.x + crownR * 0.35, y: crownCenter.y - crownR * 0.55)
             NSColor(hex: 0x7f5539).setFill()
             NSRect(x: n.x - 13, y: n.y, width: 26, height: 7).fill()
             NSColor(hex: 0x9c6644).setFill()
@@ -478,33 +502,12 @@ final class PotView: NSView {
             NSBezierPath(ovalIn: NSRect(x: mx + pw / 2 + 4, y: potTop - 12, width: 8, height: 10)).fill()
         }
         plantTop = max(0, min(stemTopY, crownCenter.y - crownR) - 10)
-        let topY = min(stemTopY, crownCenter.y - (crownR > 0 ? crownR * 0.85 : 0))
-        let topX = crownR > 0 ? crownCenter.x : baseX + sway
-        // сняг в зимна нощ
-        let month = Calendar.current.component(.month, from: Date())
-        if [12, 1, 2].contains(month) && g.isNight && st >= 2 {
-            NSColor.white.setFill()
-            let w = crownR > 0 ? crownR * 1.4 : 24
-            NSRect(x: topX - w / 2, y: topY - 2, width: w, height: 5).fill()
-            NSRect(x: mx - pw / 2 - 2, y: potTop - 3, width: pw + 4, height: 3).fill()
-        }
-        // рожден ден: шапка; говорещият плод: корона
-        let ageDays = Int(Date().timeIntervalSince(g.born) / 86400)
-        if g.d.bool(forKey: "pot_crown") {
-            NSColor(hex: 0xffc300).setFill()
-            NSRect(x: topX - 12, y: topY - 10, width: 24, height: 7).fill()
-            for k in 0..<3 { NSRect(x: topX - 12 + CGFloat(k) * 9, y: topY - 16, width: 6, height: 6).fill() }
-            NSColor(hex: 0xe63946).setFill(); NSRect(x: topX - 2, y: topY - 8, width: 4, height: 3).fill()
-        } else if ageDays >= 7 && ageDays % 7 == 0 {
-            let hat = NSBezierPath()
-            hat.move(to: NSPoint(x: topX - 10, y: topY - 2)); hat.line(to: NSPoint(x: topX + 10, y: topY - 2)); hat.line(to: NSPoint(x: topX, y: topY - 22)); hat.close()
-            NSColor(hex: 0xc77dff).setFill(); hat.fill()
-            NSColor(hex: 0xffd166).setFill(); NSRect(x: topX - 3, y: topY - 26, width: 6, height: 6).fill()
-        }
+        let topY2 = min(stemTopY, crownCenter.y - (crownR > 0 ? crownR * 0.85 : 0))
+        let topX2 = crownR > 0 ? crownCenter.x : baseX + sway
         // дълбок сън
         if g.dormant {
             let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 12, weight: .heavy), .foregroundColor: NSColor(hex: 0x8d99ae)]
-            ("z z z" as NSString).draw(at: NSPoint(x: topX + 8, y: topY - 14 - CGFloat(Int(t) % 2) * 3), withAttributes: a)
+            ("z z z" as NSString).draw(at: NSPoint(x: topX2 + 8, y: topY2 - 14 - CGFloat(Int(t) % 2) * 3), withAttributes: a)
         }
         // балонче
         if let text = g.bubble, t < g.bubbleUntil { bubbleText(text, above: max(PotView.top - 6, min(stemTopY, crownCenter.y - crownR) - 8)) }

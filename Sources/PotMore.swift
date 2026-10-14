@@ -4,6 +4,38 @@
 import AppKit
 
 extension PotGame {
+    /// Размер на всичко (от Настройки): 1, 0.75, 0.5, 0.35.
+    var scale: CGFloat {
+        get { CGFloat(d.object(forKey: "pot_scale") as? Double ?? 1) }
+        set { d.set(Double(newValue), forKey: "pot_scale") }
+    }
+
+    /// Прозорчето става по-малко, а рисунката вътре се смалява заедно с него.
+    func fitScaled(_ p: NSPanel, _ size: NSSize) {
+        let f = NSRect(x: p.frame.minX, y: p.frame.minY, width: size.width * scale, height: size.height * scale)
+        p.setFrame(f, display: false)
+        p.contentView?.frame = NSRect(origin: .zero, size: f.size)
+        p.contentView?.setBoundsSize(size)
+    }
+
+    @objc func setScaleAction(_ sender: NSMenuItem) {
+        guard let v = sender.representedObject as? Double else { return }
+        scale = CGFloat(v)
+        // всичко се прави наново в новия размер
+        let mid = panel.frame.midX
+        let s = PotView.size(for: self)
+        panel.setFrame(NSRect(x: mid - s.width * scale / 2, y: panel.frame.minY, width: s.width * scale, height: s.height * scale), display: true)
+        view.setBoundsSize(s)
+        canPanel?.orderOut(nil); canPanel = nil
+        bucketPanel?.orderOut(nil); bucketPanel = nil
+        bellPanel?.orderOut(nil); bellPanel = nil
+        weedPanels.forEach { $0.orderOut(nil) }; weedPanels = []
+        setUpTools()
+        if bellOn { setUpBell() }
+        syncWeedPanels()
+        say("Вече съм \(Int(v * 100))%!", 2)
+    }
+
     /// Дали човекът е на компютъра (мърдал е мишката или е писал скоро).
     var userActive: Bool {
         let types: [CGEventType] = [.mouseMoved, .keyDown, .leftMouseDown, .scrollWheel, .leftMouseDragged]
