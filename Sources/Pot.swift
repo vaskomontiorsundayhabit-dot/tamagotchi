@@ -76,6 +76,23 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var nextGardener: Double = 20 * 60
     var nextAudioCheck: Double = 0
     var musicPlaying = false
+    // тайните
+    var nextSecretCheck: Double = 20
+    var creatureSay: String?
+    var creatureSayUntil: Double = 0
+    var rivalPanel: NSPanel?
+    var rivalStep = 0
+    var rivalNext: Double = 0
+    var weedKingPanel: NSPanel?
+    var weedKingHP = 0
+    var queenPresent = false
+    var loveBeeUntil: Double = 0
+    var trippyUntil: Double = 0
+    var birdReturning = false
+    var antsAllies: Bool { get { d.bool(forKey: "pot_antAllies") } set { d.set(newValue, forKey: "pot_antAllies") } }
+    var loveBee: Bool { get { d.bool(forKey: "pot_loveBee") } set { d.set(newValue, forKey: "pot_loveBee") } }
+    var hasMushroom: Bool { get { d.bool(forKey: "pot_mushroom") } set { d.set(newValue, forKey: "pot_mushroom") } }
+    var creature2: String? { get { d.string(forKey: "pot_creature2") } set { d.set(newValue, forKey: "pot_creature2") } }
     var musicApps: [String] = []
     var musicSeconds = 0
     var eyesUntil: Double = 0
@@ -195,7 +212,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         updateHiding(dt)
         updateTools(dt)
         updateWeedSpread()
-        updateMusic()
+        updateSecrets()
         updatePanel()
         updateCard()
         if time > nextUpdateCheck { nextUpdateCheck = time + 30 * 60; checkForUpdate(manual: false) }
@@ -222,7 +239,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
                 say(["Бурен ми поникна! Махни го!", "Ох, бурени!", "Някой ми краде водата… бурен!"].randomElement()!, 3)
             }
         }
-        if stage >= 2 && time > nextAnts {
+        if stage >= 2 && time > nextAnts && !antsAllies && !queenPresent {
             nextAnts = time + Double.random(in: 35 * 60...70 * 60)
             if ants.isEmpty {
                 for _ in 0..<Int.random(in: 1...3) {
@@ -239,7 +256,9 @@ final class PotGame: NSObject, NSApplicationDelegate {
         // пчели: опрашват цветовете → плодове
         if stage >= 3 && time > nextBees {
             nextBees = time + Double.random(in: 8 * 60...18 * 60)
-            for _ in 0..<Int.random(in: 1...2) { bees.append(PotBee(phase: Double.random(in: 0...6), radius: CGFloat.random(in: 25...45), until: time + 60)) }
+            let nb = Int.random(in: 1...2)
+            for _ in 0..<nb { bees.append(PotBee(phase: Double.random(in: 0...6), radius: CGFloat.random(in: 25...45), until: time + 60)) }
+            beeCame(nb)
             if Bool.random() { say("Бззз! Пчелички!", 2) }
         }
         let leaving = bees.filter { time > $0.until }.count
@@ -281,7 +300,8 @@ final class PotGame: NSObject, NSApplicationDelegate {
         hasEgg = false
         let kinds = PotCreature.all.map { $0.id }
         let k = kinds.randomElement()!
-        creature = k
+        if creature == nil { creature = k } else { creature2 = k }
+        d.set(Date(), forKey: "pot_hatchedAt")
         sfx("Hero")
         let name = PotCreature.find(k)?.name ?? "нещо"
         say("Яйцето се излюпи! Това е… \(name)?!", 4.5)
@@ -291,7 +311,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
     // MARK: - грижи
 
     func waterIt() {
-        if water > 90 { say("Пих достатъчно, благодаря!", 2); return }
+        if water > 90 { say("Пих достатъчно, благодаря!", 2); overwatered(); return }
         water = 100
         wateringUntil = time + 2.5
         health += 3
@@ -323,10 +343,10 @@ final class PotGame: NSObject, NSApplicationDelegate {
         guard ants.indices.contains(i) else { return }
         ants.remove(at: i)
         sfx("Tink")
-        if ants.isEmpty { say("Мравките избягаха!", 2) }
+        if ants.isEmpty { say("Мравките избягаха!", 2); antsShooed(all: false) }
     }
 
-    func shooAllAnts() { if ants.isEmpty { return }; ants = []; sfx("Tink"); say("Мравките избягаха!", 2) }
+    func shooAllAnts() { if ants.isEmpty { return }; ants = []; sfx("Tink"); say("Мравките избягаха!", 2); antsShooed(all: true) }
 
     func pickFruit() {
         guard fruitsOnPlant > 0 else { return }

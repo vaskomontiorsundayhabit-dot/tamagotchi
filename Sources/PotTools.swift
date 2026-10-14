@@ -38,7 +38,8 @@ final class PotCanView: NSView {
             "......KCCCCCCCCK",
             ".......KKKKKKKK.",
         ])
-        drawGrid(can, x: 4, y: 4, s: 3, palette: potColor)
+        // на земята стои долу в прозорчето; вдигната е горе и водата тече под нея
+        drawGrid(can, x: 4, y: held ? 4 : bounds.height - 29, s: 3, palette: potColor)
         NSGraphicsContext.current?.restoreGraphicsState()
         if pouring {
             NSColor(hex: 0x48cae4).setFill()

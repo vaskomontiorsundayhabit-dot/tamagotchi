@@ -93,6 +93,7 @@ final class PotView: NSView {
     var antRects: [NSRect] = []
     var eggRect = NSRect.zero
     var potRect = NSRect.zero
+    var mushroomRect = NSRect.zero
     var plantTop: CGFloat = 0       // най-горната точка на растението (отгоре на прозорчето)
 
     override var isFlipped: Bool { true }
@@ -128,6 +129,7 @@ final class PotView: NSView {
         if let i = antRects.firstIndex(where: { $0.insetBy(dx: -6, dy: -6).contains(p) }) { game.shooAnt(i); return }
         if let i = weedRects.firstIndex(where: { $0.insetBy(dx: -3, dy: -3).contains(p) }) { game.pullWeed(i); return }
         if eggRect.insetBy(dx: -4, dy: -4).contains(p) { game.warmEgg(); return }
+        if mushroomRect.insetBy(dx: -3, dy: -3).contains(p) { game.eatMushroom(); return }
         if potRect.contains(p) { game.openCard(); return }
         game.clickedPlant()
     }
@@ -148,7 +150,7 @@ final class PotView: NSView {
             return sick ? (c.blended(withFraction: 0.45, of: NSColor(hex: 0x9c6644)) ?? c) : c
         }
         let leaf = tint(0x52b788), leaf2 = tint(0x2d6a4f), stemC = tint(0x40916c)
-        let dancing = g.musicPlaying && g.hidePhase == 0
+        let dancing = t < g.trippyUntil && g.hidePhase == 0
         let sway: CGFloat = dancing ? CGFloat(sin(t * 7)) * 6 : CGFloat(sin(t * 1.3)) * 1.5 + (g.water < 15 ? 5 : 0)
         let bounce: CGFloat = dancing ? abs(CGFloat(sin(t * 7))) * 4 : 0
 
@@ -177,6 +179,20 @@ final class PotView: NSView {
         NSColor(hex: 0x5c3a1e).setFill()
         NSRect(x: mx - pw / 2 + 2, y: potTop + 1, width: pw - 4, height: 3).fill()
         potRect = NSRect(x: mx - pw / 2 - 3, y: potTop, width: pw + 6, height: ph)
+        mushroomRect = .zero
+        // пълнолуние: сребърно сияние
+        if g.fullMoon && g.isNight && st >= 2 {
+            NSColor(hex: 0xe0e1dd, alpha: 0.12 + 0.05 * CGFloat(sin(t * 2))).setFill()
+            NSBezierPath(ovalIn: NSRect(x: 4, y: PotView.top - 10, width: bounds.width - 8, height: potTop - PotView.top + 20)).fill()
+        }
+        // гъбата (от много вода)
+        if g.hasMushroom {
+            let gx = mx + pw / 2 - 14, gy = potTop - 12
+            NSColor(hex: 0xfefae0).setFill(); NSRect(x: gx + 3, y: gy + 5, width: 4, height: 8).fill()
+            NSColor(hex: Int(t * 3) % 2 == 0 ? 0xe63946 : 0xc77dff).setFill(); NSRect(x: gx - 2, y: gy, width: 14, height: 6).fill()
+            NSColor.white.setFill(); NSRect(x: gx + 1, y: gy + 1, width: 2, height: 2).fill(); NSRect(x: gx + 7, y: gy + 2, width: 2, height: 2).fill()
+            mushroomRect = NSRect(x: gx - 3, y: gy - 1, width: 16, height: 15)
+        }
         let soil = potTop + 1
 
         // бурени в саксията
@@ -222,7 +238,7 @@ final class PotView: NSView {
                 let k = 0.3 + 0.6 * CGFloat(i) / CGFloat(max(1, leafPairs))
                 let y = soil - h * k
                 let x = baseX + sway * k
-                (i % 2 == 0 ? leaf : leaf2).setFill()
+                g.secretLeafColor(i % 2 == 0 ? leaf : leaf2, i * 5).setFill()
                 NSRect(x: x - 15, y: y - 3, width: 13, height: 6).fill()
                 NSRect(x: x + 2, y: y - 6, width: 13, height: 6).fill()
                 spots.append(NSPoint(x: x - 10, y: y - 2)); spots.append(NSPoint(x: x + 10, y: y - 5))
@@ -295,10 +311,20 @@ final class PotView: NSView {
                 NSColor(hex: 0x3a3a50).setFill(); NSRect(x: n.x - 12, y: n.y + 12, width: 24, height: 3).fill()
                 NSColor(hex: 0xff8fab).setFill(); NSRect(x: n.x - 12, y: n.y + 12, width: 24 * CGFloat(g.eggCare / 100), height: 3).fill()
             }
-            if let c = g.creature.flatMap({ PotCreature.find($0) }) {
-                let hop: CGFloat = dancing ? abs(CGFloat(sin(t * 8))) * 6 : (Int(t / 3) % 5 == 0 ? abs(CGFloat(sin(t * 6))) * 4 : 0)
-                let wander = CGFloat(sin(t * 0.3)) * crownR * 0.3
-                drawGrid(c.pic, x: n.x - 15 + wander, y: n.y - 24 - hop, s: 3, flip: sin(t * 0.3 + 1.57) < 0, palette: potColor)
+            for (ci, cid) in [g.creature, g.creature2].enumerated() {
+                guard let c = cid.flatMap({ PotCreature.find($0) }) else { continue }
+                let ph = Double(ci) * 2.1
+                let hop: CGFloat = dancing ? abs(CGFloat(sin(t * 8 + ph))) * 6 : (Int(t / 3 + ph) % 5 == 0 ? abs(CGFloat(sin(t * 6))) * 4 : 0)
+                let wander = CGFloat(sin(t * 0.3 + ph)) * crownR * 0.3 - CGFloat(ci) * 26
+                drawGrid(c.pic, x: n.x - 15 + wander, y: n.y - 24 - hop, s: 3, flip: sin(t * 0.3 + ph + 1.57) < 0, palette: potColor)
+                if ci == 0, let say = g.creatureSay, t < g.creatureSayUntil {
+                    let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 9, weight: .heavy), .foregroundColor: NSColor.white]
+                    let str = say.uppercased() as NSString
+                    let sz = str.size(withAttributes: a)
+                    let r = NSRect(x: n.x - 15 + wander, y: n.y - 42 - hop, width: sz.width + 8, height: sz.height + 4)
+                    NSColor(hex: 0x2b2b3a, alpha: 0.9).setFill(); r.fill()
+                    str.draw(at: NSPoint(x: r.minX + 4, y: r.minY + 2), withAttributes: a)
+                }
             }
         }
 
@@ -333,6 +359,30 @@ final class PotView: NSView {
             NSRect(x: x, y: y - 1, width: 3, height: 3).fill()
             NSRect(x: x + 3, y: y - 2, width: 3, height: 3).fill()
             antRects.append(NSRect(x: x - 4, y: y - 4, width: 11, height: 8))
+            // царицата: голяма, с корона
+            if g.queenPresent && i == 0 {
+                NSColor(hex: 0x9d0208).setFill(); NSRect(x: x - 6, y: y - 5, width: 14, height: 7).fill()
+                NSColor(hex: 0xffd166).setFill(); NSRect(x: x - 4, y: y - 9, width: 8, height: 3).fill()
+            }
+        }
+        // влюбената пчела: със сърчица
+        if t < g.loveBeeUntil {
+            let a = t * 1.7
+            let c = crownR > 0 ? crownCenter : NSPoint(x: baseX, y: stemTopY)
+            let x = c.x + CGFloat(cos(a)) * (40 + crownR * 0.5), y = c.y + CGFloat(sin(a * 1.4)) * 20 - 20
+            NSColor(hex: 0xffd166).setFill(); NSRect(x: x - 3, y: y - 1, width: 7, height: 4).fill()
+            NSColor(hex: 0x1b1b24).setFill(); NSRect(x: x, y: y - 1, width: 2, height: 4).fill()
+            NSColor(hex: 0xff4d6d).setFill()
+            let hy = y - 10 - CGFloat((t * 1.5).truncatingRemainder(dividingBy: 1)) * 8
+            NSRect(x: x - 2, y: hy, width: 3, height: 3).fill(); NSRect(x: x + 2, y: hy, width: 3, height: 3).fill(); NSRect(x: x - 1, y: hy + 2, width: 5, height: 3).fill()
+        }
+        // опърлено от мълнията
+        if g.d.bool(forKey: "pot_scorched") && st >= 5 && !g.d.bool(forKey: "pot_rainbow") {
+            NSColor(hex: 0x1b1b24).setFill()
+            for k in 0..<10 {
+                NSRect(x: crownCenter.x - crownR * 0.6 + CGFloat(hash(k * 7) % 100) / 100 * crownR * 0.5,
+                       y: crownCenter.y - crownR * 0.5 + CGFloat(hash(k * 11) % 100) / 100 * crownR * 0.5, width: 6, height: 6).fill()
+            }
         }
 
         // пчели около цветовете
@@ -408,7 +458,8 @@ final class PotView: NSView {
             while x < center.x + rx {
                 let dx = (x + cell / 2 - center.x) / rx, dy = (y + cell / 2 - center.y) / ry
                 if dx * dx + dy * dy <= 1 {
-                    (hash(i) % 3 == 0 ? leaf2 : leaf).setFill()
+                    let base = hash(i) % 3 == 0 ? leaf2 : leaf
+                    (game?.secretLeafColor(base, i) ?? base).setFill()
                     NSRect(x: x, y: y, width: cell, height: cell).fill()
                     if dx * dx + dy * dy < 0.8 { spots.append(NSPoint(x: x + cell / 2, y: y + cell / 2)) }
                 }
