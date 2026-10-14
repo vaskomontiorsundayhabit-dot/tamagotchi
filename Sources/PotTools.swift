@@ -170,8 +170,8 @@ extension PotGame {
         guard let can = canPanel, let bucket = bucketPanel, let cv = can.contentView as? PotCanView else { return }
         let floorY = panel.frame.minY
         let bucketO = NSPoint(x: panel.frame.midX + potWidth / 2 + 8, y: floorY)
-        if (bucket.contentView as? PotBucketView)?.handFruit == nil || bucket.frame.origin != bucketO { bucket.setFrameOrigin(bucketO) }
-        bucket.contentView?.needsDisplay = true
+        if bucket.frame.origin != bucketO { bucket.setFrameOrigin(bucketO) }
+        if frameCount % 10 == 0 { bucket.contentView?.needsDisplay = true }
         let home = NSPoint(x: panel.frame.midX - potWidth / 2 - 8 - can.frame.width, y: floorY)
         if cv.held {
             // поливане: лейката е над растението
@@ -196,7 +196,7 @@ extension PotGame {
                 can.setFrameOrigin(o)
             }
         }
-        can.contentView?.needsDisplay = true
+        if cv.held || frameCount % 10 == 0 { can.contentView?.needsDisplay = true }
         let a: CGFloat = hidePhase == 2 ? 0 : 1
         if can.alphaValue != a { can.alphaValue = a; bucket.alphaValue = a }
     }
@@ -236,7 +236,7 @@ extension PotGame {
             weedFullMinutes = 0
         }
         // по пода плъзват все по-нататък
-        if !fw.isEmpty && fw.count < 300 && Int.random(in: 0..<14) == 0 {
+        if !fw.isEmpty && fw.count < 120 && Int.random(in: 0..<14) == 0 {
             let src = fw.randomElement()!
             let nx = src + (Bool.random() ? 26 : -26)
             if nx > Double(vf.minX) && nx < Double(vf.maxX - 26) && !fw.contains(where: { abs($0 - nx) < 12 }) { fw.append(nx) }

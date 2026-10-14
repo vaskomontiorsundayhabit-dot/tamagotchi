@@ -116,7 +116,8 @@ final class PotView: NSView {
             w = max(170, crown * 2 + 40)
             h = 70 + 380 * p + crown * 2
         }
-        return NSSize(width: w, height: h + top + 34)
+        // закръглено на 10 точки: прозорчето не сменя размера си с всеки кадър (иначе натоварва компютъра)
+        return NSSize(width: (w / 10).rounded(.up) * 10, height: ((h + top + 34) / 10).rounded(.up) * 10)
     }
 
     override func mouseDown(with event: NSEvent) { drag.down(window) }

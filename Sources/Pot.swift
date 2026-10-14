@@ -76,6 +76,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var nextGardener: Double = 20 * 60
     var nextAudioCheck: Double = 0
     var musicPlaying = false
+    var frameCount = 0
     // тайните
     var nextSecretCheck: Double = 20
     var creatureSay: String?
@@ -216,8 +217,10 @@ final class PotGame: NSObject, NSApplicationDelegate {
         updatePanel()
         updateCard()
         if time > nextUpdateCheck { nextUpdateCheck = time + 30 * 60; checkForUpdate(manual: false) }
-        view.needsDisplay = true
-        bellPanel?.contentView?.needsDisplay = true
+        // по-рядко прерисуване: саксията 15 пъти в секунда, звънчето 5 (по-малко натоварване)
+        frameCount += 1
+        if frameCount % 2 == 0 { view.needsDisplay = true }
+        if frameCount % 6 == 0 { bellPanel?.contentView?.needsDisplay = true }
     }
 
     func stageReached(_ s: Int) {
@@ -456,7 +459,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
     func updatePanel() {
         guard let panel, let view else { return }
         let s = PotView.size(for: self)
-        if panel.frame.size != s {
+        if abs(panel.frame.width - s.width) > 0.5 || abs(panel.frame.height - s.height) > 0.5 {
             let x = panel.frame.midX - s.width / 2
             panel.setFrame(NSRect(x: x, y: panel.frame.minY, width: s.width, height: s.height), display: true)
         }
