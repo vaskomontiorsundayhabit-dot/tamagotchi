@@ -30,6 +30,8 @@ extension PotGame {
         bucketPanel?.orderOut(nil); bucketPanel = nil
         bellPanel?.orderOut(nil); bellPanel = nil
         weedPanels.forEach { $0.orderOut(nil) }; weedPanels = []
+        extraPanels.forEach { $0.panel.orderOut(nil) }; extraPanels = []
+        syncExtraPanels()
         setUpTools()
         if bellOn { setUpBell() }
         syncWeedPanels()
@@ -114,16 +116,22 @@ extension PotGame {
 
     func announceCreatureStage(_ s: Int) {
         sfx("Hero")
-        creatureSay = ["", "Пораснах!", "Вече съм голям и имам СИЛА!", "АЗ СЪМ ЛЕГЕНДА!"][min(3, s)]
+        creatureSay = ["", "Пораснах!", "Вече съм голям и имам СИЛА!", "АЗ СЪМ ЛЕГЕНДА!", "ОГРОМЕН СЪМ! Мога да летя навсякъде!", "Аз съм… ДРЕВЕН."][min(5, s)]
         creatureSayUntil = time + 4
         switch s {
         case 1: discover("c_young", "\(creatureName.capitalizedFirst) порасна")
         case 2:
             discover("c_adult", "\(creatureName.capitalizedFirst) стана голямо и получи сила")
             say("\(creatureName.capitalizedFirst) отключи своята сила! Ще ми помага!", 4)
-        default:
+        case 3:
             discover("c_legend", "\(creatureName.capitalizedFirst) стана легендарно")
             say("ЛЕГЕНДАРНО! Около него свети златно!", 4)
+        case 4:
+            discover("c_huge", "\(creatureName.capitalizedFirst) стана огромно и лети из екрана")
+            say("\(creatureName.capitalizedFirst) стана ОГРОМНО! Вече лети из целия екран!", 4)
+        default:
+            discover("c_ancient", "\(creatureName.capitalizedFirst) стана древно")
+            say("\(creatureName.capitalizedFirst) стана ДРЕВНО… в очите му има мъдрост. Нещо ще се случи…", 5)
         }
     }
 

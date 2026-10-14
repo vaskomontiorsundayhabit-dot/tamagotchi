@@ -187,7 +187,14 @@ extension PotGame {
             let c = NSPoint(x: can.frame.minX + 6, y: can.frame.minY)
             let over = panel.frame.insetBy(dx: 10 * scale, dy: 0).contains(NSPoint(x: c.x, y: panel.frame.minY + 20 * scale)) && c.y > panel.frame.minY + 30 * scale
             if over && !pouring { say(["Ааах, вода!", "Лей, лей!", "Мммм!"].randomElement()!, 1.5); sfx("Bottle") }
-            pouring = over
+            // и малките саксийки
+            var overExtra = false
+            for e in extraPanels where e.panel.frame.insetBy(dx: -4, dy: 0).contains(NSPoint(x: c.x, y: e.panel.frame.minY + 10)) && c.y > e.panel.frame.minY + 20 {
+                overExtra = true
+                if frameCount % 30 == 0 { setExtra(e.id) { $0["w"] = 100.0 } }
+                if !pouring { say("Поливам и малката саксийка!", 1.5) }
+            }
+            pouring = over || overExtra
             if over {
                 water += 30 * dt
                 wateringUntil = time + 0.3

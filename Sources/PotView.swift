@@ -372,7 +372,8 @@ final class PotView: NSView {
                 let hop: CGFloat = dancing ? abs(CGFloat(sin(t * 8 + ph))) * 6 : (Int(t / 3 + ph) % 5 == 0 ? abs(CGFloat(sin(t * 6))) * 4 : 0)
                 let wander = CGFloat(sin(t * 0.3 + ph)) * crownR * 0.1 + CGFloat(ci) * 26
                 // расте: 3 → 4 → 5 → 6 точки на квадратче
-                let cs: CGFloat = ci == 0 ? CGFloat(3 + g.creatureStage) : 3
+                if ci == 0 && (g.creatureHidden || g.creatureAway) { continue }
+                let cs: CGFloat = ci == 0 ? CGFloat(3 + min(5, g.creatureStage)) : 3
                 let cw = CGFloat(c.pic[0].count) * cs, chh = CGFloat(c.pic.count) * cs
                 let cx = n.x - cw / 2 + wander, cy = n.y - chh - hop
                 if ci == 0 && g.creatureStage >= 3 {
@@ -426,9 +427,20 @@ final class PotView: NSView {
 
         // мравки: пълзят по саксията и нагоре по растението
         for (i, a) in g.ants.enumerated() {
-            let y0 = potTop + ph * 0.6, y1 = stemTopY + 10
-            let y = y0 + (y1 - y0) * a.t
-            let x = mx + a.side * (a.t < 0.3 ? pw / 2 - 6 - a.t * 20 : 6 + CGFloat(sin(Double(a.t) * 9 + Double(i))) * 5) + sway * a.t
+            // по стената на саксията нагоре, по пръстта към стъблото, после по стъблото (не по въздуха)
+            var x: CGFloat, y: CGFloat
+            if a.t < 0.25 {
+                let k = a.t / 0.25
+                x = mx + a.side * (pw / 2 - 3 + 3 * (1 - k)); y = bottom - 4 - (bottom - 4 - soil) * k
+            } else if a.t < 0.4 {
+                let k = (a.t - 0.25) / 0.15
+                x = mx + a.side * (pw / 2 - 3) * (1 - k) + a.side * 3 * k; y = soil - 1
+            } else {
+                let k = (a.t - 0.4) / 0.6
+                let top = crownR > 0 ? crownCenter.y : stemTopY + 6
+                y = soil - 1 - (soil - 1 - top) * k
+                x = (crownR > 0 ? mx : baseX + sway * k) + a.side * 3 + CGFloat(sin(Double(a.t) * 20 + Double(i))) * 1
+            }
             NSColor(hex: 0x1b1b24).setFill()
             NSRect(x: x - 3, y: y - 2, width: 3, height: 3).fill()
             NSRect(x: x, y: y - 1, width: 3, height: 3).fill()
@@ -439,6 +451,17 @@ final class PotView: NSView {
                 NSColor(hex: 0x9d0208).setFill(); NSRect(x: x - 6, y: y - 5, width: 14, height: 7).fill()
                 NSColor(hex: 0xffd166).setFill(); NSRect(x: x - 4, y: y - 9, width: 8, height: 3).fill()
             }
+        }
+        // пеперуди
+        for (k, phb) in g.butterflies.enumerated() {
+            let a = t * 1.3 + phb
+            let c = crownR > 0 ? crownCenter : NSPoint(x: baseX, y: stemTopY)
+            let x = c.x + CGFloat(cos(a)) * (30 + crownR * 0.7), y = c.y + CGFloat(sin(a * 0.8)) * 25 - 15
+            let open = Int(t * 10 + Double(k)) % 2 == 0
+            NSColor(hex: [0xff8fab, 0x48cae4, 0xffd166, 0xc77dff][k % 4]).setFill()
+            NSRect(x: x - (open ? 6 : 3), y: y - 3, width: open ? 5 : 3, height: 6).fill()
+            NSRect(x: x + 1, y: y - 3, width: open ? 5 : 3, height: 6).fill()
+            NSColor(hex: 0x2b2b3a).setFill(); NSRect(x: x - 1, y: y - 3, width: 2, height: 7).fill()
         }
         // влюбената пчела: със сърчица
         if t < g.loveBeeUntil {

@@ -288,7 +288,7 @@ extension PotGame {
 
     @objc func toggleHidden() {
         hidden.toggle()
-        let extra = [bellPanel, canPanel, bucketPanel].compactMap { $0 } + weedPanels
+        let extra = [bellPanel, canPanel, bucketPanel, seedPanel, critter?.panel].compactMap { $0 } + weedPanels + extraPanels.map { $0.panel }
         if hidden { panel.orderOut(nil); extra.forEach { $0.orderOut(nil) }; closeCard() }
         else { panel.orderFrontRegardless(); extra.forEach { $0.orderFrontRegardless() } }
     }

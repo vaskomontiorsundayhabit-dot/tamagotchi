@@ -78,6 +78,25 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var musicPlaying = false
     var antsArrived: Double = 0
     var frameCount = 0
+    // градината
+    var extraPanels: [ExtraPot] = []
+    var seedPanel: NSPanel?
+    var seedAt: Double = 0
+    var nextSeed: Double = 30 * 60
+    var critter: PotCritter?
+    var nextCritter: Double = 25 * 60
+    var butterflies: [Double] = []
+    var butterfliesUntil: Double = 0
+    var creatureWish: String?
+    var wishUntil: Double = 0
+    var nextWish: Double = 10 * 60
+    var creatureHidden = false
+    var nextKingdomVisit: Double = 0
+    var nextFlight: Double = 0
+    var flightUntil: Double = 0
+    var flightPanel: NSPanel?
+    var flightFacingLeft = false
+    var nextGardenTick: Double = 30
     var danceUntil: Double = 0
     var pendingAnnounce: [(String, Double)] = []
     var nextAnnounce: Double = 0
@@ -163,6 +182,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         if bellOn { setUpBell() }
         setUpTools()
         syncWeedPanels()
+        syncExtraPanels()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let b = statusItem.button {
@@ -227,6 +247,21 @@ final class PotGame: NSObject, NSApplicationDelegate {
         updateSecrets()
         updateFate(m)
         updateMore()
+        updateCritters(dt)
+        updateSeedLying()
+        updateFlight()
+        if !butterflies.isEmpty && time > butterfliesUntil {
+            butterflies = []
+            if stage >= 3 { fruitsOnPlant += 1 }
+        }
+        if time > nextGardenTick {
+            nextGardenTick = time + 60
+            updateExtras()
+            updateSeeds()
+            updateNuts()
+            updateCreatureJourney()
+        }
+        if frameCount % 30 == 0 { updateWishes() }
         updatePanel()
         updateCard()
         if time > nextUpdateCheck { nextUpdateCheck = time + 30 * 60; checkForUpdate(manual: false) }
@@ -391,6 +426,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
     }
 
     func clickedPlant() {
+        if creatureWish == "hide" { wishFulfilled("hide"); return }
         if stage >= 4 {
             eyesUntil = time + 5
             say(["Хи! Видя ме!", "Здрасти!", "Гъдел!", "Аз съм храст с очи!"].randomElement()!, 2)

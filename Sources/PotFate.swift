@@ -6,7 +6,7 @@ import AppKit
 extension PotGame {
     var creatureXP: Double { get { d.double(forKey: "pot_cxp") } set { d.set(newValue, forKey: "pot_cxp") } }
     /// 0 бебе, 1 малко, 2 голямо (със сила), 3 легендарно
-    var creatureStage: Int { creatureXP < 60 ? 0 : (creatureXP < 200 ? 1 : (creatureXP < 600 ? 2 : 3)) }
+    var creatureStage: Int { [60.0, 200, 600, 1500, 4000].filter { creatureXP >= $0 }.count }
     var lastCreatureLove: Date {
         get { d.object(forKey: "pot_cLove") as? Date ?? Date() }
         set { d.set(newValue, forKey: "pot_cLove") }
@@ -30,6 +30,7 @@ extension PotGame {
         lastCreatureLove = Date()
         creatureHeartsUntil = time + 2
         if time - lastCreaturePet > 30 { lastCreaturePet = time; creatureGrow(3) }
+        wishFulfilled("pet")
         sfx("Purr")
         creatureSay = PotCreature.find(creature!)?.sound ?? "♥"
         creatureSayUntil = time + 2
@@ -39,6 +40,7 @@ extension PotGame {
         lastCreatureLove = Date()
         creatureHeartsUntil = time + 3
         creatureGrow(15)
+        wishFulfilled("fruit")
         sfx("Pop")
         creatureSay = ["Ням!", "Още!", "Вкусно!"].randomElement()!
         creatureSayUntil = time + 2
