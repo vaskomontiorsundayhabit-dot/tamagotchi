@@ -114,7 +114,7 @@ final class PotBellView: NSView {
 }
 
 /// Гост: градинар (подрязва храста) или птичка (прави гнездо и снася яйце).
-enum PotVisitorKind { case gardener, bird, raccoon }
+enum PotVisitorKind { case gardener, bird, raccoon, pixcho, hen }
 
 final class PotVisitor {
     let kind: PotVisitorKind
@@ -139,6 +139,36 @@ final class PotVisitorView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let game else { return }
         let t = game.time
+        if kind == .pixcho {
+            let step = moving ? Int(t * 8) % 2 : 0
+            let g = grid([
+                ".KKKKKKKK.",
+                ".KYYYYYYK.",
+                ".KYKYYKYK.",
+                ".KYYYYYYK.",
+                ".KYYKKYYK.",
+                ".KYYYYYYK.",
+                ".KKKKKKKK.",
+                step == 0 ? "..K....K.." : ".K......K.",
+            ])
+            drawGrid(g, x: bounds.midX - 15, y: bounds.height - 26, s: 3, flip: facingLeft, palette: potColor)
+            return
+        }
+        if kind == .hen {
+            let step = moving ? Int(t * 8) % 2 : 0
+            let g = grid([
+                "..RR......",
+                ".KWWK.....",
+                "KWKWWK....",
+                "YWWWWWKK..",
+                ".KWWWWWWK.",
+                "..KWWWWWK.",
+                "...KKKKK..",
+                step == 0 ? "....Y.Y..." : "...Y...Y..",
+            ])
+            drawGrid(g, x: bounds.midX - 15, y: bounds.height - 26, s: 3, flip: facingLeft, palette: potColor)
+            return
+        }
         if kind == .raccoon {
             let step = moving ? Int(t * 10) % 2 : 0
             let g = grid([
@@ -217,8 +247,8 @@ extension PotGame {
         if bellOn { item("Звънни!", #selector(ringFromMenu)) }
         item("Звуци", #selector(toggleSounds), on: soundsOn)
 
-        item("Дневник…", #selector(showJournal))
-        item("★ Открити тайни: \(secrets.count) от \(potSecretCount)", nil)
+        item(unseen > 0 ? "Дневник… (\(unseen) нови, докато те нямаше)" : "Дневник…", #selector(showJournal))
+        item("★ Открити тайни: \(secrets.count)", nil)
         if !weedPanels.isEmpty { item("Изскубни всички бурени по пода (\(weedPanels.count))", #selector(pullAllFloorWeeds)) }
         menu.addItem(.separator())
         item("🐹 Към Пиксчо (стария живот)", #selector(switchToPixcho))
@@ -339,6 +369,7 @@ extension PotGame {
     /// Звънец: порастват му крачета и бяга зад ръба; пак звънец (или след 3 минути) се връща.
     func ringBell() {
         sfx("Glass")
+        bellRungAgain()
         if hidePhase == 0 || hidePhase == 3 {
             closeCard()
             let sf = (NSScreen.screens.first { $0.frame.contains(NSPoint(x: panel.frame.midX, y: panel.frame.minY + 10)) } ?? NSScreen.main)?.frame ?? .zero
@@ -383,7 +414,7 @@ extension PotGame {
     // MARK: - гости
 
     func startVisitor(_ kind: PotVisitorKind) {
-        guard visitor == nil, !hidden, hidePhase == 0 else { return }
+        guard visitor == nil, !hidden, hidePhase == 0, userActive else { return }
         let vf = screenFloor()
         let fromLeft = panel.frame.midX > vf.midX
         let size = kind == .bird ? NSSize(width: 40, height: 32) : NSSize(width: 60, height: 50)
@@ -403,6 +434,8 @@ extension PotGame {
         case .gardener: say("Идва градинарят да ме подреже!", 2.5)
         case .bird: say(birdReturning ? "Птичката се връща! Ох-ох…" : "Птичка! Лети към мен!", 2.5)
         case .raccoon: say("Пст… някой се промъква към кофата! Хвани го!", 3)
+        case .pixcho: say("Кой е този жълт квадрат?! Идва към мен!", 3)
+        case .hen: say("Кокошка?! Кът-кудяк! Гледа плодовете в кофата!", 3)
         }
     }
 
@@ -414,9 +447,9 @@ extension PotGame {
         let target: NSPoint
         switch v.stage {
         case 0:
-            if v.kind == .raccoon, let bk = bucketPanel {
+            if v.kind == .raccoon || v.kind == .hen, let bk = bucketPanel {
                 target = NSPoint(x: bk.frame.midX - v.panel.frame.width / 2 + (v.fromLeft ? -30 : 30), y: vf.minY)
-            } else if v.kind == .gardener {
+            } else if v.kind == .gardener || v.kind == .pixcho {
                 target = NSPoint(x: panel.frame.midX + (v.fromLeft ? -1 : 1) * (panel.frame.width / 2 + 10) - v.panel.frame.width / 2, y: vf.minY)
             } else {
                 target = NSPoint(x: panel.frame.midX - 20, y: panel.frame.maxY - PotView.top - 10)
@@ -457,6 +490,9 @@ extension PotGame {
 
     func finishVisit(_ kind: PotVisitorKind) {
         if kind == .raccoon { raccoonFinished(caught: false); return }
+        if kind == .pixcho { pixchoVisitDone(); return }
+        if kind == .hen { henVisitDone(); return }
+        if kind == .gardener && repairPotIfCracked() { return }
         if kind == .bird && birdReturning { birdBackScandal(); return }
         if kind == .gardener {
             overgrowth = 0

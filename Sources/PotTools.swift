@@ -69,7 +69,9 @@ final class PotBucketView: NSView {
             g.fruitsCollected -= 1
             let p = overlayPanel(NSRect(x: m.x - 10, y: m.y - 10, width: 20, height: 20), key: false)
             p.ignoresMouseEvents = true
-            p.contentView = PotFruitView(frame: NSRect(x: 0, y: 0, width: 20, height: 20))
+            let fv = PotFruitView(frame: NSRect(x: 0, y: 0, width: 20, height: 20))
+            fv.golden = g.talkingFruit
+            p.contentView = fv
             p.orderFrontRegardless()
             handFruit = p
         }
@@ -81,8 +83,10 @@ final class PotBucketView: NSView {
             handFruit = nil
             f.orderOut(nil)
             let fp = NSPoint(x: f.frame.midX, y: f.frame.midY)
-            if g.overCreature(fp) { g.feedCreature() }
-            else if g.overPlant(fp) { g.feedFruit() } else { g.fruitsCollected += 1 }
+            let golden = (f.contentView as? PotFruitView)?.golden ?? false
+            if g.overCreature(fp) { if golden { g.talkingFruitGiven(toCreature: true) } else { g.feedCreature() } }
+            else if g.overPlant(fp) { if golden { g.talkingFruitGiven(toCreature: false) } else { g.feedFruit() } }
+            else { g.fruitsCollected += 1 }
             return
         }
         if !moved {
@@ -115,9 +119,10 @@ final class PotBucketView: NSView {
 }
 
 final class PotFruitView: NSView {
+    var golden = false
     override func draw(_ dirtyRect: NSRect) {
         NSColor(hex: 0x2b2b3a).setFill(); bounds.insetBy(dx: 2, dy: 2).fill()
-        NSColor(hex: 0xe63946).setFill(); bounds.insetBy(dx: 4, dy: 4).fill()
+        NSColor(hex: golden ? 0xffc300 : 0xe63946).setFill(); bounds.insetBy(dx: 4, dy: 4).fill()
         NSColor(hex: 0x52b788).setFill(); NSRect(x: bounds.midX, y: bounds.maxY - 5, width: 3, height: 4).fill()
     }
 }
@@ -216,6 +221,7 @@ extension PotGame {
 
     /// Дадеш му плод от кофата: подхранва го.
     func feedFruit() {
+        if reviveIfDormant() { return }
         health += 15
         growth += 3
         eyesUntil = time + 3

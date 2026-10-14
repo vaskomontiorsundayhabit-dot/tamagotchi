@@ -78,6 +78,10 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var musicPlaying = false
     var antsArrived: Double = 0
     var frameCount = 0
+    var pendingAnnounce: [(String, Double)] = []
+    var nextAnnounce: Double = 0
+    var nextMoreCheck: Double = 40
+    var bellTimes: [Double] = []
     var nextFateCheck: Double = 30
     var creatureHeartsUntil: Double = 0
     var lastCreaturePet: Double = -100
@@ -205,6 +209,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         rate *= health / 100
         if Date() < fertUntil { rate *= 2 }
         if stage >= 4 && overgrowth > 60 { rate *= 0.6 }
+        if dormant { rate = 0 }
         if hidePhase == 0 {
             let before = stage
             growth += rate * m
@@ -219,6 +224,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         updateWeedSpread()
         updateSecrets()
         updateFate(m)
+        updateMore()
         updatePanel()
         updateCard()
         if time > nextUpdateCheck { nextUpdateCheck = time + 30 * 60; checkForUpdate(manual: false) }
@@ -231,7 +237,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
     func stageReached(_ s: Int) {
         let lines = ["", "Пораснах! Вече имам стъбло!", "Пуснах листа!", "Цъфнах! Скоро ще имам плодове!",
                      "Станах ХРАСТ! Сега ще идва и градинар.", "Станах ДЪРВО! Птичките ще ме обичат!"]
-        say(lines[s], 4)
+        announce(lines[s], 4)
         sfx("Hero")
         journal("Стана: \(potStageNames[s].lowercased())")
     }
@@ -369,6 +375,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         fruitsOnPlant -= 1
         fruitsCollected += lunar ? 2 : 1
         sfx("Pop")
+        maybeTalkingFruit()
         say(["Плодът е в кофата!", "Заповядай! В кофата е.", "Още ще родя!"].randomElement()!, 2)
     }
 
@@ -523,9 +530,13 @@ final class PotGame: NSObject, NSApplicationDelegate {
         j.append(["t": Date().timeIntervalSince1970, "text": text])
         if j.count > 80 { j.removeFirst(j.count - 80) }
         d.set(j, forKey: "pot_journal")
+        // не гледаш: брои се до иконката горе (★N), докато не отвориш дневника
+        if !userActive { unseen += 1 }
     }
 
     @objc func showJournal() {
+        unseen = 0
+        statusItem.button?.title = ""
         NSApp.activate(ignoringOtherApps: true)
         let f = DateFormatter()
         f.dateFormat = "d.MM HH:mm"

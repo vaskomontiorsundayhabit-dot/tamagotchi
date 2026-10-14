@@ -117,7 +117,7 @@ extension PotGame {
     }
 
     func updateSecrets() {
-        guard time > nextSecretCheck, hidePhase == 0, !hidden else { return }
+        guard time > nextSecretCheck, hidePhase == 0, !hidden, userActive else { return }
         nextSecretCheck = time + 5
         let hour = Calendar.current.component(.hour, from: Date())
 
@@ -129,7 +129,7 @@ extension PotGame {
         // 5. пълнолуние
         if fullMoon && isNight && stage >= 2 && !secrets.contains("moon") {
             discover("moon", "Пълнолуние: растението свети в сребро")
-            say("Луната е пълна… чувствам се… СРЕБЪРЕН!", 4)
+            announce("Луната е пълна… чувствам се… СРЕБЪРЕН!", 4)
             if creature != nil { creatureSay = "Ауууу!"; creatureSayUntil = time + 4 }
         }
         // 3. съперничка
@@ -145,19 +145,19 @@ extension PotGame {
         if !antsAllies && !queenPresent && d.integer(forKey: "pot_shoo") >= 8 && stage >= 2 && Int.random(in: 0..<120) == 0 {
             queenPresent = true
             ants = (0..<12).map { _ in PotAnt(t: CGFloat.random(in: 0...0.3), side: Bool.random() ? -1 : 1, speed: CGFloat.random(in: 0.01...0.025)) }
-            say("МРАВЕШКАТА ЦАРИЦА дойде с цяла армия! „Стига сте гонили поданиците ми!“", 5)
+            announce("МРАВЕШКАТА ЦАРИЦА дойде с цяла армия! „Стига сте гонили поданиците ми!“", 5)
         }
         if antsAllies && Date().timeIntervalSince(d.object(forKey: "pot_antGift") as? Date ?? .distantPast) > 3 * 3600 {
             d.set(Date(), forKey: "pot_antGift")
             fruitsCollected += 1
-            say("Мравките-съюзници донесоха плод в кофата!", 3)
+            announce("Мравките-съюзници донесоха плод в кофата!", 3)
         }
         // 8. влюбената пчела носи мед
         if loveBee && dayKey() != d.string(forKey: "pot_honeyDay") && stage >= 3 && Int.random(in: 0..<240) == 0 {
             d.set(dayKey(), forKey: "pot_honeyDay")
             fruitsCollected += 5
             loveBeeUntil = time + 60
-            say("Влюбената пчела ми донесе мед! (+5 в кофата)", 4)
+            announce("Влюбената пчела ми донесе мед! (+5 в кофата)", 4)
         }
         // 9. птичката се връща и вижда кой се е излюпил
         if creature != nil && !secrets.contains("birdback") && visitor == nil && stage >= 4
@@ -170,7 +170,7 @@ extension PotGame {
         if d.bool(forKey: "pot_scorched") && !d.bool(forKey: "pot_rainbow")
             && Date().timeIntervalSince(d.object(forKey: "pot_scorchedAt") as? Date ?? Date()) > 4 * 3600 {
             d.set(true, forKey: "pot_rainbow")
-            say("От изгорялото място поникнаха ДЪГОВИ листа!", 4)
+            announce("От изгорялото място поникнаха ДЪГОВИ листа!", 4)
             journal("От изгорялото поникнаха дъгови листа")
         }
     }
@@ -191,7 +191,7 @@ extension PotGame {
         rivalPanel = p
         rivalStep = 0
         rivalNext = time + 3
-        say("Кой е ТОВА?! Някаква друга саксия!", 3)
+        announce("Кой е ТОВА?! Някаква друга саксия!", 3)
     }
 
     func updateRival() {
@@ -208,7 +208,7 @@ extension PotGame {
         ]
         if rivalStep < script.count {
             let (rival, line) = script[rivalStep]
-            if rival { v.text = line; v.textUntil = time + 4.5 } else { say(line, 4.5) }
+            if rival { v.text = line; v.textUntil = time + 4.5 } else { announce(line, 4.5) }
             rivalStep += 1
             rivalNext = time + 5
             if rivalStep == script.count && iWin { v.wilted = true }
@@ -217,11 +217,11 @@ extension PotGame {
             rivalPanel = nil
             if iWin {
                 discover("rival", "Съперничката саксия изсъхна от срам")
-                say("Победих! Само аз съм цвете тук!", 3)
+                announce("Победих! Само аз съм цвете тук!", 3)
             } else {
                 discover("rival", "Съперничката се подигра и открадна пчелите за ден")
                 nextBees = time + 6 * 3600
-                say("Грр! Ще порасна и ще види тя!", 3)
+                announce("Грр! Ще порасна и ще види тя!", 3)
             }
         }
     }
@@ -239,7 +239,7 @@ extension PotGame {
         p.orderFrontRegardless()
         weedKingPanel = p
         weedKingHP = 12
-        say("КРАЛЯТ НА БУРЕНИТЕ! Скубни го много пъти!", 4)
+        announce("КРАЛЯТ НА БУРЕНИТЕ! Скубни го много пъти!", 4)
     }
 
     func hitWeedKing() {
@@ -250,9 +250,9 @@ extension PotGame {
             weedKingPanel = nil
             pullAllFloorWeeds()
             discover("weedking", "Победи Краля на бурените")
-            say("Кралят падна! Всичките му бурени избягаха!", 4)
+            announce("Кралят падна! Всичките му бурени избягаха!", 4)
         } else if weedKingHP % 4 == 0 {
-            say(["Още! Държи се!", "Скубни го пак!", "Кралят пищи!"].randomElement()!, 1.5)
+            announce(["Още! Държи се!", "Скубни го пак!", "Кралят пищи!"].randomElement()!, 1.5)
         }
     }
 
@@ -264,7 +264,7 @@ extension PotGame {
             queenPresent = false
             antsAllies = true
             discover("queen", "Примирие с мравешката царица: мравките стават съюзници")
-            say("Царицата се предаде! Мравките вече ще ми носят плодове.", 4.5)
+            announce("Царицата се предаде! Мравките вече ще ми носят плодове.", 4.5)
         }
     }
 
@@ -275,7 +275,7 @@ extension PotGame {
         d.set(n, forKey: "pot_overwater")
         if n >= 3 && !hasMushroom {
             hasMushroom = true
-            say("Ох… прекалено много вода… нещо поникна в саксията!", 3.5)
+            announce("Ох… прекалено много вода… нещо поникна в саксията!", 3.5)
         }
     }
 
@@ -285,7 +285,7 @@ extension PotGame {
         trippyUntil = time + 120
         sfx("Morse")
         discover("mushroom", "Странната гъба: виждаше всичко в цветове")
-        say("Уааа… виждам ЗВЕЗДИ… и цветове… и звуци…", 4)
+        announce("Уааа… виждам ЗВЕЗДИ… и цветове… и звуци…", 4)
     }
 
     // --- 8. влюбената пчела ---
@@ -293,11 +293,11 @@ extension PotGame {
     func beeCame(_ n: Int) {
         let total = d.integer(forKey: "pot_bees") + n
         d.set(total, forKey: "pot_bees")
-        if total >= 12 && !loveBee {
+        if total >= 12 && !loveBee && userActive {
             loveBee = true
             loveBeeUntil = time + 90
             discover("lovebee", "Една пчела се влюби в цветовете")
-            say("Тази пчела… ме гледа с ♥ в очите!", 4)
+            announce("Тази пчела… ме гледа с ♥ в очите!", 4)
         }
     }
 
@@ -315,7 +315,7 @@ extension PotGame {
         d.set(Date(), forKey: "pot_scorchedAt")
         health -= 25
         discover("lightning", "Мълния удари дървото")
-        say("БУУУМ! Мълния ме удари!!! Опърлих се!", 4.5)
+        announce("БУУУМ! Мълния ме удари!!! Опърлих се!", 4.5)
     }
 
     // --- 2. и 9.: драмите при гостите ---
@@ -324,7 +324,7 @@ extension PotGame {
         guard fruitsCollected >= 1, Int.random(in: 0..<4) == 0 else { return false }
         fruitsCollected -= 1
         discover("gardener", "Хвана градинаря да яде плод от кофата")
-        say("ЕЙ! Видях те как изяде плод от кофата ми! Скандал!", 4)
+        announce("ЕЙ! Видях те как изяде плод от кофата ми! Скандал!", 4)
         return true
     }
 
@@ -332,24 +332,24 @@ extension PotGame {
         birdReturning = false
         discover("birdback", "Птичката се върна и видя кой се е излюпил")
         if Bool.random() {
-            say("Птичката: „ТОВА НЕ Е МОЕТО ДЕТЕ!!!“ … после го прегърна и снесе ново яйце.", 5)
+            announce("Птичката: „ТОВА НЕ Е МОЕТО ДЕТЕ!!!“ … после го прегърна и снесе ново яйце.", 5)
             hasEgg = true
             eggCare = 30
             eggLaid = Date()
         } else {
-            say("Птичката: „Кой подмени яйцето ми?!“ И отлетя обидена.", 5)
+            announce("Птичката: „Кой подмени яйцето ми?!“ И отлетя обидена.", 5)
         }
     }
 
     func raccoonFinished(caught: Bool) {
         if caught {
             discover("thief", "Хвана нощния крадец на плодове")
-            say("Хванах те, крадецо! Плодовете остават!", 3.5)
+            announce("Хванах те, крадецо! Плодовете остават!", 3.5)
         } else {
             let n = min(2, fruitsCollected)
             fruitsCollected -= n
             discover("thief", "Нощен крадец отмъкна плодове")
-            say("Някой открадна \(n) плода от кофата! Видях опашка на райета!", 4)
+            announce("Някой открадна \(n) плода от кофата! Видях опашка на райета!", 4)
         }
     }
 

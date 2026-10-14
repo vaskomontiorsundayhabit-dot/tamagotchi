@@ -18,19 +18,10 @@ extension PotGame {
         guard creature != nil else { return }
         let before = creatureStage
         creatureXP += n
-        let s = creatureStage
-        guard s > before else { return }
-        sfx("Hero")
-        creatureSay = ["", "Пораснах!", "Вече съм голям и имам СИЛА!", "АЗ СЪМ ЛЕГЕНДА!"][s]
-        creatureSayUntil = time + 4
-        switch s {
-        case 1: discover("c_young", "\(creatureName.capitalizedFirst) порасна")
-        case 2:
-            discover("c_adult", "\(creatureName.capitalizedFirst) стана голямо и получи сила")
-            say("\(creatureName.capitalizedFirst) отключи своята сила! Ще ми помага!", 4)
-        default:
-            discover("c_legend", "\(creatureName.capitalizedFirst) стана легендарно")
-            say("ЛЕГЕНДАРНО! Около него свети златно!", 4)
+        // порасналото се обявява, когато гледаш (вж. updateMore)
+        if creatureStage > before && userActive {
+            d.set(creatureStage, forKey: "pot_cAnn")
+            announceCreatureStage(creatureStage)
         }
     }
 
@@ -66,12 +57,12 @@ extension PotGame {
                 d.set(true, forKey: "pot_cSulkSaid")
                 creatureSay = "Никой не ме обича…"
                 creatureSayUntil = time + 5
-                say("\(creatureName.capitalizedFirst) се сърди, че никой не го гали.", 3.5)
+                announce("\(creatureName.capitalizedFirst) се сърди, че никой не го гали.", 3.5)
             }
             if !creatureSulking { d.set(false, forKey: "pot_cSulkSaid") }
             if away > 96 * 3600 {
                 journal("\(creatureName.capitalizedFirst) избяга, защото никой не го обичаше")
-                say("\(creatureName.capitalizedFirst) си събра багажа и отлетя… Остави бележка: „Сбогом“.", 5)
+                announce("\(creatureName.capitalizedFirst) си събра багажа и отлетя… Остави бележка: „Сбогом“.", 5)
                 creature = creature2
                 creature2 = nil
                 creatureXP = 0
@@ -86,24 +77,24 @@ extension PotGame {
         if !d.bool(forKey: "pot_cactus") && d.double(forKey: "pot_dryMin") >= 360 && water > 50 {
             d.set(true, forKey: "pot_cactus")
             discover("cactus", "Оцеля след дълга суша и стана бодливо и издръжливо")
-            say("Преживях сушата! Пуснах бодли и вече пия наполовина по-малко.", 4.5)
+            announce("Преживях сушата! Пуснах бодли и вече пия наполовина по-малко.", 4.5)
         }
         // дърво на желанията
         if !d.bool(forKey: "pot_wish") && stage >= 5 && stageProgress > 0.9 && creatureStage >= 2 && weeds.isEmpty && weedPanels.isEmpty {
             d.set(true, forKey: "pot_wish")
             discover("wish", "Стана Дърво на желанията")
-            say("Нещо се промени… аз съм ДЪРВО НА ЖЕЛАНИЯТА!", 4.5)
+            announce("Нещо се промени… аз съм ДЪРВО НА ЖЕЛАНИЯТА!", 4.5)
         }
         if d.bool(forKey: "pot_wish") && d.string(forKey: "pot_wishDay") != dayKey() && Int.random(in: 0..<30) == 0 {
             d.set(dayKey(), forKey: "pot_wishDay")
             fruitsCollected += 10
-            say("Желанието ми днес: 10 златни плода в кофата!", 4)
+            announce("Желанието ми днес: 10 златни плода в кофата!", 4)
         }
         // месоядно: ако мравките често си тръгват сами (никой не ги гони)
         if carnivore && !ants.isEmpty && Int.random(in: 0..<3) == 0 {
             ants.removeLast()
             health += 5
-            say(["Ням! Мравка!", "Хрус! Още една мравка!", "Вкусни мравчици!"].randomElement()!, 2)
+            announce(["Ням! Мравка!", "Хрус! Още една мравка!", "Вкусни мравчици!"].randomElement()!, 2)
         }
     }
 
@@ -118,7 +109,7 @@ extension PotGame {
         if n >= 4 && !carnivore {
             d.set(true, forKey: "pot_carnivore")
             discover("carnivore", "Стана месоядно растение")
-            say("Писна ми от мравки… отсега нататък ГИ ЯМ! Хрус!", 4.5)
+            announce("Писна ми от мравки… отсега нататък ГИ ЯМ! Хрус!", 4.5)
         }
     }
 
@@ -127,7 +118,7 @@ extension PotGame {
         if fullMoon && isNight && !lunar {
             d.set(true, forKey: "pot_lunar")
             discover("lunar", "Лунна мутация: торено при пълнолуние")
-            say("Торът и луната… листата ми станаха СРЕБЪРНИ завинаги!", 4.5)
+            announce("Торът и луната… листата ми станаха СРЕБЪРНИ завинаги!", 4.5)
         }
     }
 
