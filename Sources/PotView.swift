@@ -227,6 +227,7 @@ final class PotView: NSView {
         var crownR: CGFloat = 0
         var stemTopY = soil
         var spots: [NSPoint] = []         // места за плодове, пчели, мравки
+        var stemH: CGFloat = 0, stemHalf: CGFloat = 1.5, stemSway: CGFloat = 0, stemX = baseX   // за бодлите
         switch st {
         case 0:
             let h = 8 + 8 * p
@@ -245,6 +246,7 @@ final class PotView: NSView {
                 NSRect(x: baseX - 1.5 + sway * k, y: soil - CGFloat(i + 1) * 6, width: 3, height: 6.5).fill()
             }
             stemTopY = soil - h
+            stemH = h; stemSway = sway; stemX = baseX
             let leafPairs = st == 1 ? 1 : (st == 2 ? 2 + Int(p * 2) : 4)
             for i in 0..<leafPairs {
                 let k = 0.3 + 0.6 * CGFloat(i) / CGFloat(max(1, leafPairs))
@@ -282,6 +284,7 @@ final class PotView: NSView {
             NSRect(x: mx - tw / 2, y: soil - trunkH - crown * 0.3, width: tw, height: trunkH + crown * 0.3).fill()
             NSColor(hex: 0x5c3a1e).setFill()
             NSRect(x: mx - tw / 2, y: soil - trunkH - crown * 0.3, width: 3, height: trunkH + crown * 0.3).fill()
+            stemH = trunkH; stemHalf = tw / 2; stemX = mx
             crownCenter = NSPoint(x: mx + sway, y: soil - trunkH - crown)
             crownR = crown
             spots = blob(center: crownCenter, rx: crown, ry: crown * 0.85, leaf: leaf, leaf2: leaf2, seed: 2)
@@ -340,11 +343,28 @@ final class PotView: NSView {
         }
         if g.cactus {
             NSColor(hex: 0xfefae0).setFill()
-            for k in 0..<10 {
-                let y = soil - (soil - stemTopY) * CGFloat(k + 1) / 11
-                let side: CGFloat = k % 2 == 0 ? -1 : 1
-                let x = (crownR > 0 ? crownCenter.x + side * crownR * 0.9 * CGFloat(k % 3 + 1) / 3 : baseX + side * 3)
-                NSRect(x: x + side * 2, y: y, width: 4, height: 1.5).fill()
+            if stemH > 0 {
+                // по стъблото / ствола, редуват се наляво и надясно
+                let n = max(4, Int(stemH / 9))
+                for k in 0..<n {
+                    let f = (CGFloat(k) + 0.5) / CGFloat(n)
+                    let y = soil - stemH * f
+                    let x = stemX + stemSway * f
+                    let side: CGFloat = k % 2 == 0 ? -1 : 1
+                    let len: CGFloat = stemHalf > 2 ? 6 : 4
+                    let sx = side < 0 ? x - stemHalf - len : x + stemHalf
+                    NSRect(x: sx, y: y, width: len, height: 1.5).fill()
+                    NSRect(x: side < 0 ? sx : sx + len - 1.5, y: y - 1.5, width: 1.5, height: 1.5).fill()
+                }
+            } else if crownR > 0 {
+                // храст без видимо стъбло: бодли по ръба на короната
+                for k in 0..<14 {
+                    let a = CGFloat(k) / 14 * 2 * .pi
+                    let ry = crownCenter.y - stemTopY
+                    let ex = crownCenter.x + cos(a) * crownR, ey = crownCenter.y + sin(a) * ry
+                    NSRect(x: ex + cos(a) * 2 - 1, y: ey + sin(a) * 2 - 1, width: 3, height: 3).fill()
+                    NSRect(x: ex + cos(a) * 5 - 0.75, y: ey + sin(a) * 5 - 0.75, width: 1.5, height: 1.5).fill()
+                }
             }
         }
         // гнездо, яйце, създанието
