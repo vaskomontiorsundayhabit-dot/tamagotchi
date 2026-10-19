@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Октонис: стилове</title>
+<style>
+  :root { --bg: #1d1830; --card: #2a2442; --line: #40385f; --text: #f6efe6; --muted: #b3a8cf; --peach: #f4a07a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 21px; margin: 4px 0 2px; }
+  p.lead { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 12px; }
+  .card h2 { font-size: 17px; margin: 0 0 2px; }
+  .card .d { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pair figure { margin: 0; }
+  .pair canvas { display: block; width: 100%; height: auto; border-radius: 12px; }
+  .pair figcaption { text-align: center; font-size: 12px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>🐙 Октонис: 6 нови стила</h1>
+<p class="lead">Всеки стил е показан как плува и как се ядосва. Кажи ми номера на този, който ти харесва (или кое от кой да смесим).</p>
+<div class="grid" id="grid"></div>
+
+<script>
+const STYLES = [
+  { id: "jelly",  n: "1. Желе",       d: "Прозрачен и лъскав като желирано бонбонче, розово-лилав, свети леко." },
+  { id: "flat",   n: "2. Плосък",     d: "Чисти прости форми без контури, тюркоазен. Модерен и спокоен." },
+  { id: "sketch", n: "3. Скица",      d: "Нарисуван с химикал в тетрадка, линиите леко треперят. Изобретателски." },
+  { id: "neon",   n: "4. Неон",       d: "Светещи контури на тъмен фон, като в технологичен свят." },
+  { id: "pixel",  n: "5. Пиксел 16-бит", d: "Ретро игра с по-фини пиксели и сенки, лилав." },
+  { id: "plush",  n: "6. Плюшен",     d: "Мек като плюшена играчка, мента с петънца, шевове и блестящи очи." },
+];
+const W = 300, H = 260, DPR = Math.min(devicePixelRatio || 1, 2);
+const cards = [];
+for (const s of STYLES) {
+  const c = document.createElement("div"); c.className = "card";
+  c.innerHTML = `<h2>${s.n}</h2><div class="d">${s.d}</div><div class="pair">
+    <figure><canvas></canvas><figcaption>🌊 Плува</figcaption></figure>
+    <figure><canvas></canvas><figcaption>😠 Ядосан</figcaption></figure></div>`;
+  document.getElementById("grid").appendChild(c);
+  const [a, b] = c.querySelectorAll("canvas");
+  for (const cv of [a, b]) { cv.width = W * DPR; cv.height = H * DPR; }
+  cards.push({ s, swim: a.getContext("2d"), angry: b.getContext("2d"), swimSt: {}, angrySt: {} });
+}
+
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function ell(g, x, y, rx, ry, rot = 0) { g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); }
+
+// ---------- обща геометрия: 8 пипала ----------
+// mode: swim | angry; pulse 0..1 (при плуване: 1 = разперени, 0 = прибрани)
+function tentacles(t, mode, pulse, L = 105) {
+  const out = [], n = 8, N = 26;
+  for (let i = 0; i < n; i++) {
+    const o = i - (n - 1) / 2;
+    let x = o * 10, y = 34, ang;
+    if (mode === "swim") ang = Math.PI / 2 + o * (0.05 + pulse * 0.16);
+    else ang = Math.PI / 2 + o * 0.52;
+    const pts = [];
+    for (let j = 0; j <= N; j++) {
+      const k = j / N;
+      pts.push([x, y, k, i]);
+      let d;
+      if (mode === "swim") d = Math.sin(t * 5.2 + i * 0.5 - j * 0.3) * 0.07 * (0.3 + k) + (k > 0.8 ? -Math.sign(o || 0.5) * 0.05 : 0);
+      else d = Math.sin(t * 14 + i * 1.3 - j * 0.4) * 0.045 * (0.3 + k) - Math.sign(o || 0.5) * (k > 0.62 ? 0.13 : 0.012);
+      ang += d;
+      x += Math.cos(ang) * L / N; y += Math.sin(ang) * L / N;
+    }
+    out.push(pts);
+  }
+  return out;
+}
+// как се движи в картинката
+function pose(t, mode, st) {
+  if (mode === "swim") {
+    const ph = (t * 0.45) % 2, dir = ph < 1 ? 1 : -1;
+    const u = ph < 1 ? ph : ph - 1, e = (1 - Math.cos(u * Math.PI)) / 2;
+    const x = dir > 0 ? 95 + e * 110 : 205 - e * 110;
+    const pulse = (Math.sin(t * 5.2) + 1) / 2;
+    return { x, y: 125 + Math.sin(t * 2.6) * 10, rot: dir * 0.85, sx: 0.78 * (1 + pulse * 0.05), sy: 0.78 * (1 - pulse * 0.08), pulse, dir, shake: 0 };
+  }
+  const sh = Math.sin(t * 45) * 2.5;
+  const puff = 1 + Math.sin(t * 7) * 0.035;
+  return { x: 150 + sh, y: 112, rot: Math.sin(t * 30) * 0.03, sx: puff * 0.85, sy: puff * 0.85, pulse: 0.5, dir: 1, shake: sh };
+}
+function blink(t) { const b = t % 3.9; return b < 0.14 ? Math.sin(b / 0.14 * Math.PI) : 0; }
+function bubbles(g, t, st, col, dir) {
+  st.b = st.b || Array.from({ length: 14 }, () => ({ x: rnd(0, W), y: rnd(0, H), r: rnd(1.5, 5), s: rnd(15, 40) }));
+  g.strokeStyle = col; g.lineWidth = 1.5;
+  for (const b of st.b) {
+    b.y -= b.s / 60; if (b.y < -10) { b.y = H + 10; b.x = rnd(0, W); }
+    ell(g, b.x + Math.sin(t + b.s) * 4, b.y, b.r, b.r); g.stroke();
+  }
+}
+// стандартни очи
+function eyes(g, t, mode, o) {
+  const { ex = 21, ey = 2, r = 12, white = "#fff", ink = "#151320", outline = null, lw = 3, skin, sparkle = false } = o;
+  const bl = mode === "angry" ? 0 : blink(t);
+  for (const s of [-1, 1]) {
+    const x = s * ex;
+    g.fillStyle = white; ell(g, x, ey, r, r * 1.12); g.fill();
+    if (outline) { g.strokeStyle = outline; g.lineWidth = lw; g.stroke(); }
+    const lx = mode === "swim" ? 0.35 : 0, ly = mode === "angry" ? 0.15 : 0;
+    g.fillStyle = ink; ell(g, x + lx * r * 0.45, ey + ly * r + 1, r * 0.58, r * 0.66); g.fill();
+    g.fillStyle = "#fff"; ell(g, x + lx * r * 0.45 - r * 0.2, ey - r * 0.22, r * 0.2, r * 0.2); g.fill();
+    if (sparkle) { ell(g, x + r * 0.22, ey + r * 0.25, r * 0.09, r * 0.09); g.fill(); }
+    if (mode === "angry") {                         // клепач, наклонен към носа
+      g.save(); ell(g, x, ey, r + 0.5, r * 1.12 + 0.5); g.clip();
+      g.fillStyle = skin; g.beginPath(); g.moveTo(x - r - 2, ey - r * 1.3); g.lineTo(x + r + 2, ey - r * 1.3);
+      g.lineTo(x + r + 2, ey - 3 + s * 6); g.lineTo(x - r - 2, ey - 3 - s * 6); g.fill();
+      g.strokeStyle = ink; g.lineWidth = 3; g.beginPath(); g.moveTo(x - r, ey - 3 - s * 6); g.lineTo(x + r, ey - 3 + s * 6); g.stroke();
+      g.restore();
+    } else if (bl > 0) {
+      g.save(); ell(g, x, ey, r + 0.5, r * 1.12 + 0.5); g.clip();
+      g.fillStyle = skin; g.fillRect(x - r - 2, ey - r * 1.2, r * 2 + 4, r * 2.24 * bl); g.restore();
+    }
+  }
+}
+function mouth(g, mode, ink, y = 20, w = 2.5) {
+  g.strokeStyle = ink; g.lineWidth = w; g.lineCap = "round"; g.beginPath();
+  if (mode === "angry") { g.moveTo(-8, y + 2); for (let i = 1; i <= 4; i++) g.lineTo(-8 + i * 4, y + (i % 2 ? -1.5 : 2)); }
+  else { g.moveTo(-5, y); g.quadraticCurveTo(0, y + 4, 5, y); }
+  g.stroke();
+}
+function brows(g, ink, w = 4, y = -16) {
+  g.strokeStyle = ink; g.lineWidth = w; g.lineCap = "round";
+  g.beginPath(); g.moveTo(-34, y - 6); g.lineTo(-9, y + 2); g.stroke();
+  g.beginPath(); g.moveTo(34, y - 6); g.lineTo(9, y + 2); g.stroke();
+}
+function angerMark(g, x, y, col, k = 1) {
+  g.save(); g.translate(x, y); g.scale(k, k); g.strokeStyle = col; g.lineWidth = 3.5; g.lineCap = "round";
+  for (let i = 0; i < 4; i++) { g.save(); g.rotate(i * Math.PI / 2); g.beginPath(); g.moveTo(3, -10); g.quadraticCurveTo(3, -3, 10, -3); g.stroke(); g.restore(); }
+  g.restore();
+}
+function steam(g, t, col, line) {
+  for (let i = 0; i < 2; i++) {
+    const z = (t * 1.3 + i * 0.5) % 1, sx = (i ? 1 : -1) * (30 + z * 18);
+    g.globalAlpha = 1 - z; g.fillStyle = col; ell(g, sx, -62 - z * 30, 6 + z * 8, 6 + z * 8); g.fill();
+    if (line) { g.strokeStyle = line; g.lineWidth = 2; g.stroke(); }
+    g.globalAlpha = 1;
+  }
+}
+function headPath(g, sc = 1) {   // кръгла глава, малко по-тясна отдолу
+  g.beginPath(); g.moveTo(-50 * sc, 10 * sc);
+  g.bezierCurveTo(-56 * sc, -60 * sc, 56 * sc, -60 * sc, 50 * sc, 10 * sc);
+  g.bezierCurveTo(46 * sc, 40 * sc, -46 * sc, 40 * sc, -50 * sc, 10 * sc); g.closePath();
+}
+function tube(g, pts, w0, fill, taper = 0.72) {
+  g.fillStyle = fill;
+  for (const [x, y, k] of pts) { g.beginPath(); g.arc(x, y, w0 * (1 - taper * k), 0, Math.PI * 2); g.fill(); }
+}
+function withPose(g, p, fn) {
+  g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.scale(p.sx, p.sy); fn(); g.restore();
+}
+
+// ---------- 1. Желе ----------
+function jelly(g, t, mode, st) {
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#1b2c6b"); bg.addColorStop(1, "#0b1238");
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  bubbles(g, t, st, "rgba(200,220,255,.35)");
+  const p = pose(t, mode, st), ang = mode === "angry";
+  const c1 = ang ? "#ff6b6b" : "#ff9ad5", c2 = ang ? "#ff2e63" : "#a77bff";
+  withPose(g, p, () => {
+    g.shadowColor = ang ? "rgba(255,60,90,.8)" : "rgba(255,150,230,.7)"; g.shadowBlur = 22;
+    const tt = tentacles(t, mode, p.pulse);
+    g.globalAlpha = 0.8;
+    for (const pts of tt) { const gr = g.createLinearGradient(0, 30, 0, 140); gr.addColorStop(0, c1); gr.addColorStop(1, c2); tube(g, pts, 7, gr); }
+    g.globalAlpha = 0.9;
+    headPath(g); const hg = g.createRadialGradient(-18, -28, 4, 0, -5, 70); hg.addColorStop(0, "#fff0fb"); hg.addColorStop(0.35, c1); hg.addColorStop(1, c2);
+    g.fillStyle = hg; g.fill(); g.shadowBlur = 0; g.globalAlpha = 1;
+    g.fillStyle = "rgba(255,255,255,.75)"; ell(g, -22, -32, 13, 7, -0.5); g.fill(); ell(g, -5, -42, 3, 2.5); g.fill();
+    g.fillStyle = "rgba(255,255,255,.5)"; for (const [x, y] of [[26, -26], [34, -10], [-34, -8]]) { ell(g, x, y, 2.5, 2.5); g.fill(); }
+    eyes(g, t, mode, { r: 12, ink: "#2a0f3d", skin: ang ? "#ff6b88" : "#e9a2ec", sparkle: true });
+    g.fillStyle = "rgba(255,90,150,.45)"; ell(g, -31, 16, 7, 4); g.fill(); ell(g, 31, 16, 7, 4); g.fill();
+    mouth(g, mode, "#2a0f3d");
+    if (ang) { brows(g, "#2a0f3d", 4); angerMark(g, 36, -42, "#fff"); }
+  });
+}
+
+// ---------- 2. Плосък ----------
+function flat(g, t, mode, st) {
+  g.fillStyle = "#dff3ee"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#c9ebe3"; ell(g, W / 2, H * 0.95, W * 0.7, 40); g.fill();
+  bubbles(g, t, st, "rgba(43,179,163,.35)");
+  const p = pose(t, mode, st), ang = mode === "angry";
+  const main = ang ? "#e4572e" : "#2bb3a3", dark = ang ? "#b8401f" : "#1e8a7d", light = ang ? "#ff8a5c" : "#5fd4c4";
+  withPose(g, p, () => {
+    const tt = tentacles(t, mode, p.pulse);
+    tt.forEach((pts, i) => { if (i % 2) tube(g, pts, 7.5, dark); });
+    tt.forEach((pts, i) => { if (!(i % 2)) tube(g, pts, 8, main); });
+    headPath(g); g.fillStyle = main; g.fill();
+    g.save(); headPath(g); g.clip(); g.fillStyle = light; ell(g, -20, -30, 30, 20, -0.4); g.fill(); g.restore();
+    eyes(g, t, mode, { r: 11, ink: "#123a36", skin: main });
+    g.fillStyle = ang ? "#ff9c80" : "#ffb3b3"; ell(g, -32, 15, 6, 3.5); g.fill(); ell(g, 32, 15, 6, 3.5); g.fill();
+    mouth(g, mode, "#123a36");
+    if (ang) { brows(g, "#123a36", 5); steam(g, t, "#ffffff"); }
+  });
+}
+
+// ---------- 3. Скица ----------
+function sketch(g, t, mode, st) {
+  g.fillStyle = "#fbf7ee"; g.fillRect(0, 0, W, H);
+  g.strokeStyle = "rgba(90,140,220,.25)"; g.lineWidth = 1; for (let y = 22; y < H; y += 20) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  g.strokeStyle = "rgba(230,90,90,.35)"; g.beginPath(); g.moveTo(34, 0); g.lineTo(34, H); g.stroke();
+  const p = pose(t, mode, st), ang = mode === "angry";
+  const seed = Math.floor(t * 8);                 // линиите „кипят“ 8 пъти в секунда
+  const jit = (i) => (Math.sin(seed * 12.9 + i * 78.2) * 43758.5 % 1) * 1.6;
+  const ink = "#23395d", fill = ang ? "#ff9a8a" : "#ffd36b";
+  withPose(g, p, () => {
+    const tt = tentacles(t, mode, p.pulse);
+    g.lineCap = "round"; g.lineJoin = "round";
+    tt.forEach((pts, i) => {
+      g.fillStyle = fill; for (const [x, y, k] of pts) { g.beginPath(); g.arc(x + 2, y + 2, 7 * (1 - 0.7 * k), 0, Math.PI * 2); g.fill(); }
+      for (const side of [-1, 1]) {
+        g.strokeStyle = ink; g.lineWidth = 1.8; g.beginPath();
+        pts.forEach(([x, y, k], j) => {
+          const a = pts[Math.min(j + 1, pts.length - 1)], b = pts[Math.max(j - 1, 0)];
+          let nx = -(a[1] - b[1]), ny = a[0] - b[0]; const l = Math.hypot(nx, ny) || 1;
+          const w = 7 * (1 - 0.7 * k);
+          const X = x + nx / l * w * side + jit(i * 50 + j), Y = y + ny / l * w * side + jit(i * 50 + j + 7);
+          j ? g.lineTo(X, Y) : g.moveTo(X, Y);
+        });
+        g.stroke();
+      }
+    });
+    headPath(g); g.save(); g.translate(3, 3); headPath(g); g.fillStyle = fill; g.fill(); g.restore();
+    g.strokeStyle = ink; g.lineWidth = 2.2;
+    for (let pass = 0; pass < 2; pass++) { g.save(); g.translate(jit(pass * 3), jit(pass * 3 + 1)); headPath(g); g.stroke(); g.restore(); }
+    // щриховка за сянка
+    g.save(); headPath(g); g.clip(); g.strokeStyle = "rgba(35,57,93,.35)"; g.lineWidth = 1.2;
+    for (let x = 10; x < 70; x += 6) { g.beginPath(); g.moveTo(x, 40); g.lineTo(x + 30, -10); g.stroke(); }
+    g.restore();
+    g.lineWidth = 2;
+    eyes(g, t, mode, { r: 12, white: "#fffdf6", ink, outline: ink, lw: 2, skin: fill });
+    mouth(g, mode, ink, 20, 2);
+    g.fillStyle = "rgba(255,120,120,.4)"; ell(g, -32, 15, 7, 3.5); g.fill(); ell(g, 32, 15, 7, 3.5); g.fill();
+    if (ang) {
+      brows(g, ink, 3);
+      g.strokeStyle = "#d63b3b"; g.lineWidth = 1.8; g.beginPath();      // драскулка над главата
+      for (let i = 0; i <= 40; i++) { const a = i / 40 * Math.PI * 8; g.lineTo(Math.cos(a) * (18 + jit(i) * 3) + i * 0.4 - 8, -78 + Math.sin(a) * 9 + jit(i + 99)); }
+      g.stroke();
+      g.fillStyle = "#d63b3b"; g.font = "bold 15px 'Comic Sans MS', cursive"; g.textAlign = "center"; g.fillText("#@!", 40, -62);
+    }
+  });
+  if (mode === "swim") {                           // линии зад него
+    g.strokeStyle = "rgba(35,57,93,.4)"; g.lineWidth = 1.5;
+    for (let i = 0; i < 3; i++) { const y = p.y - 10 + i * 14, x = p.x - p.dir * 70; g.beginPath(); g.moveTo(x, y); g.lineTo(x - p.dir * 25, y); g.stroke(); }
+  }
+}
+
+// ---------- 4. Неон ----------
+function neon(g, t, mode, st) {
+  g.fillStyle = "#0b0820"; g.fillRect(0, 0, W, H);
+  g.strokeStyle = "rgba(120,80,255,.15)"; g.lineWidth = 1;
+  for (let x = 0; x < W; x += 20) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+  for (let y = 0; y < H; y += 20) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  const p = pose(t, mode, st), ang = mode === "angry";
+  const flick = ang && Math.sin(t * 37) > 0.85 ? 0.4 : 1;
+  const c1 = ang ? "#ff3355" : "#3ff5ff", c2 = ang ? "#ff8a00" : "#ff4fd8";
+  withPose(g, p, () => {
+    g.globalAlpha = flick; g.lineCap = "round"; g.lineJoin = "round";
+    const tt = tentacles(t, mode, p.pulse);
+    g.shadowBlur = 14;
+    for (const pts of tt) {
+      g.shadowColor = c2; g.strokeStyle = c2; g.lineWidth = 3; g.beginPath();
+      pts.forEach(([x, y], j) => j ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke();
+    }
+    headPath(g); g.fillStyle = "#14102e"; g.shadowBlur = 0; g.fill();
+    g.shadowColor = c1; g.shadowBlur = 18; g.strokeStyle = c1; g.lineWidth = 3.5; headPath(g); g.stroke();
+    g.shadowBlur = 10; g.lineWidth = 2.5;
+    const bl = ang ? 0 : blink(t);
+    for (const s of [-1, 1]) {
+      g.strokeStyle = "#fff"; g.shadowColor = "#fff";
+      if (bl > 0.5) { g.beginPath(); g.moveTo(s * 21 - 9, 4); g.lineTo(s * 21 + 9, 4); g.stroke(); continue; }
+      ell(g, s * 21, 2, 10, 12); g.stroke();
+      g.fillStyle = c1; ell(g, s * 21 + (mode === "swim" ? 3 : 0), 4, 4.5, 5.5); g.fill();
+    }
+    if (ang) { g.strokeStyle = c1; g.shadowColor = c1; brows(g, c1, 3); }
+    g.strokeStyle = c1; g.shadowColor = c1; mouth(g, mode, c1, 22, 2.5);
+    g.shadowBlur = 0; g.globalAlpha = 1;
+    if (ang) {
+      for (let i = 0; i < 5; i++) {               // искри
+        const a = rnd(0, Math.PI * 2), r = rnd(60, 80);
+        g.strokeStyle = pick(["#ff3355", "#ffcc00", "#fff"]); g.lineWidth = 2;
+        g.beginPath(); g.moveTo(Math.cos(a) * r, Math.sin(a) * r - 20); g.lineTo(Math.cos(a) * (r + 8), Math.sin(a) * (r + 8) - 20); g.stroke();
+      }
+    }
+  });
+}
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+// ---------- 5. Пиксел ----------
+const PW = 100, PH = 87;
+function pixel(g, t, mode, st) {
+  st.c = st.c || Object.assign(document.createElement("canvas"), { width: PW, height: PH });
+  const c = st.c.getContext("2d"); c.imageSmoothingEnabled = false;
+  const ang = mode === "angry";
+  const pal = ang ? { out: "#2a0b14", dark: "#8a1f2d", main: "#d93a3a", light: "#ff8a6b", hi: "#ffd0b8" }
+                  : { out: "#22142f", dark: "#4b2a7b", main: "#8e5bd6", light: "#c39bff", hi: "#efe0ff" };
+  // фон
+  for (let y = 0; y < PH; y++) { c.fillStyle = y < 30 ? "#1f4f8a" : y < 60 ? "#1a4277" : "#153562"; c.fillRect(0, y, PW, 1); }
+  c.fillStyle = "#e3c88a"; c.fillRect(0, PH - 6, PW, 6); c.fillStyle = "#c9ad70"; for (let x = 0; x < PW; x += 4) c.fillRect(x + ((x / 4) % 2), PH - 6, 1, 1);
+  const bt = Math.floor(t * 12);
+  c.fillStyle = "#9cd2ff"; for (let i = 0; i < 6; i++) { const y = (PH - ((bt * (1 + i % 3) + i * 37) % (PH + 10))); c.fillRect((i * 29 + 7) % PW, y, 1, 1); c.fillRect((i * 29 + 7) % PW + 1, y - 1, 1, 1); }
+  // поза в пиксели
+  const p = pose(t, mode, st), k = PW / W;
+  const px = Math.round(p.x * k), py = Math.round(p.y * k);
+  const dot = (x, y, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), 1, 1); };
+  // пипалата: всяка точка от кривата се рисува като малък пиксел-кръг
+  const tt = tentacles(t, mode, p.pulse, 100);
+  const rot = (x, y) => { const s = Math.sin(p.rot), co = Math.cos(p.rot); return [px + (x * co - y * s) * k * p.sx, py + (x * s + y * co) * k * p.sy]; };
+  for (const pass of [0, 1]) for (const pts of tt) for (const [x, y, kk] of pts) {
+    const [X, Y] = rot(x, y), r = Math.max(1, Math.round((pass ? 2.2 : 3.2) * (1 - 0.6 * kk)));
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) dot(X + dx, Y + dy, pass ? (dy < 0 ? pal.main : pal.dark) : pal.out);
+  }
+  // глава
+  const R = 16;
+  for (let dy = -R - 2; dy <= R; dy++) for (let dx = -R - 1; dx <= R + 1; dx++) {
+    const yy = dy < 0 ? dy / 1.05 : dy / 0.75, d = Math.hypot(dx, yy);
+    const [X, Y] = rot(dx / k, dy / k - 4);
+    if (d <= R + 1) {
+      let col = pal.out;
+      if (d <= R - 0.3) { col = pal.main; if (dx + dy < -14) col = pal.light; if (dx - dy > 16 || dy > 7) col = pal.dark; if ((dx + 7) ** 2 + (dy + 9) ** 2 < 6) col = pal.hi; }
+      dot(X, Y, col);
+    }
+  }
+  // лице
+  const [fx, fy] = rot(0, 0);
+  const bl = ang ? 0 : blink(t);
+  for (const s of [-1, 1]) {
+    const ex = Math.round(fx + s * 6), ey = Math.round(fy - 1);
+    if (bl > 0.5) { c.fillStyle = pal.out; c.fillRect(ex - 2, ey + 1, 5, 1); continue; }
+    c.fillStyle = "#fff"; c.fillRect(ex - 2, ey - 2, 5, 6);
+    c.fillStyle = pal.out; c.fillRect(ex - 1 + (mode === "swim" ? 1 : 0), ey - 1 + (ang ? 1 : 0), 3, 4);
+    c.fillStyle = "#fff"; c.fillRect(ex - 1 + (mode === "swim" ? 1 : 0), ey - 1 + (ang ? 1 : 0), 1, 1);
+    if (ang) { c.fillStyle = pal.main; c.fillRect(ex - 2, ey - 2, 5, 1); c.fillStyle = pal.out; for (let i = 0; i < 5; i++) c.fillRect(ex - 2 + i, ey - 4 + (s > 0 ? Math.floor(i / 2) : 2 - Math.floor(i / 2)), 1, 1); }
+  }
+  c.fillStyle = pal.out;
+  if (ang) { c.fillRect(fx - 2, fy + 6, 1, 1); c.fillRect(fx - 1, fy + 5, 1, 1); c.fillRect(fx, fy + 6, 1, 1); c.fillRect(fx + 1, fy + 5, 1, 1); }
+  else { c.fillRect(fx - 1, fy + 6, 3, 1); c.fillStyle = "#ff9ab5"; c.fillRect(fx - 10, fy + 4, 2, 1); c.fillRect(fx + 9, fy + 4, 2, 1); }
+  if (ang) {                                       // пара в пиксели
+    const z = Math.floor(t * 10) % 8;
+    c.fillStyle = "#ffffff"; c.fillRect(fx - 9, fy - 22 - z, 2, 2); c.fillRect(fx + 8, fy - 20 - ((z + 4) % 8), 2, 2);
+    c.fillStyle = "#ff3b3b"; c.fillRect(fx + 11, fy - 16, 1, 3); c.fillRect(fx + 13, fy - 16, 1, 3); c.fillRect(fx + 10, fy - 15, 5, 1);
+  }
+  g.imageSmoothingEnabled = false; g.drawImage(st.c, 0, 0, W, H);
+}
+
+// ---------- 6. Плюшен ----------
+function plush(g, t, mode, st) {
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#ffe9f1"); bg.addColorStop(1, "#ffd6e5");
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = "rgba(255,255,255,.6)"; for (let i = 0; i < 12; i++) { const x = (i * 71) % W, y = (i * 53) % H; ell(g, x, y, 2, 2); g.fill(); }
+  bubbles(g, t, st, "rgba(214,120,160,.35)");
+  const p = pose(t, mode, st), ang = mode === "angry";
+  const main = ang ? "#f59a8a" : "#9be3b6", dark = ang ? "#d9705f" : "#6cc496", line = "#5a3b2e";
+  withPose(g, p, () => {
+    const tt = tentacles(t, mode, p.pulse, 95);
+    for (const pts of tt) tube(g, pts, 10.5, line, 0.6);
+    tt.forEach((pts, i) => tube(g, pts, 8, i % 2 ? dark : main, 0.62));
+    g.lineWidth = 6; g.strokeStyle = line; headPath(g, 1.04); g.stroke();
+    headPath(g, 1.04); g.fillStyle = main; g.fill();
+    g.save(); headPath(g, 1.04); g.clip();
+    g.fillStyle = dark; for (const [x, y, r] of [[-30, -30, 8], [28, -38, 6], [38, -8, 5], [-40, 0, 4], [8, -50, 5]]) { ell(g, x, y, r, r); g.fill(); }
+    g.fillStyle = "rgba(255,255,255,.35)"; ell(g, -18, -34, 18, 10, -0.5); g.fill();
+    g.restore();
+    g.setLineDash([4, 4]); g.strokeStyle = "rgba(90,59,46,.55)"; g.lineWidth = 1.6;      // шев
+    g.beginPath(); g.moveTo(0, -56); g.quadraticCurveTo(4, -36, 0, -18); g.stroke(); g.setLineDash([]);
+    eyes(g, t, mode, { r: 13, ink: "#2b1a14", outline: line, lw: 2.5, skin: main, sparkle: true });
+    g.fillStyle = ang ? "#ff5f5f" : "#ff9eb8"; const ch = ang ? 1.5 + Math.sin(t * 7) * 0.2 : 1;
+    ell(g, -33, 17, 7 * ch, 4.5 * ch); g.fill(); ell(g, 33, 17, 7 * ch, 4.5 * ch); g.fill();
+    if (ang) { g.fillStyle = main; g.strokeStyle = line; g.lineWidth = 2.5; ell(g, 0, 22, 8, 6); g.fill(); g.stroke(); }  // надути бузи / свита уста
+    else mouth(g, mode, line, 20, 2.5);
+    if (ang) { brows(g, line, 4.5); angerMark(g, 40, -44, "#e5383b", 1.1); }
+  });
+}
+
+const DRAW = { jelly, flat, sketch, neon, pixel, plush };
+let frame = 0;
+function loop() {
+  requestAnimationFrame(loop);
+  if (frame++ % 2) return;                       // 30 кадъра стигат
+  const t = performance.now() / 1000;
+  for (const c of cards) {
+    for (const [g, mode, st] of [[c.swim, "swim", c.swimSt], [c.angry, "angry", c.angrySt]]) {
+      g.setTransform(DPR, 0, 0, DPR, 0, 0); g.imageSmoothingEnabled = true;
+      DRAW[c.s.id](g, t, mode, st);
+    }
+  }
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
