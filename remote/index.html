@@ -164,7 +164,7 @@
     $("chips").innerHTML = chips.map(function (c) { return '<span class="chip">' + esc(c) + "</span>"; }).join("");
 
     var b = "";
-    if (s.wish) b += btn("🌠", "Желание", "дървото чака", "wish", true, { wide: true, glow: true });
+    if (s.wish) b += btn("✨", "Дървото свети", "цъкни го", "wish", true, { wide: true, glow: true });
     b += btn("💧", "Полей", s.water > 90 ? "пълно е" : "", "water", true);
     b += btn("🧪", "Тор", s.fert ? "двоен растеж" : "още не може", "fert", s.fert);
     if (s.st >= 3) b += btn("🍎", "Откъсни плод", "в кофата", "pick", s.fruits > 0);
