@@ -128,6 +128,7 @@
     background: rgba(255,250,242,.95); border: 3px solid var(--ink); box-shadow: 0 4px 0 rgba(0,0,0,.28); font-size: 27px; padding: 0; z-index: 4; cursor: pointer; }
   #chatBtn i { position: absolute; top: -3px; right: -3px; width: 18px; height: 18px; border-radius: 50%; background: #ff5a5f; border: 3px solid var(--ink); display: none; }
   #chatBtn.ping i { display: block; } #chatBtn.ping { animation: wig .6s infinite; }
+  .msgs.quick { max-height: none; min-height: 0; }
   .msgs { max-height: 42vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px 0 10px; }
   .m { max-width: 80%; padding: 7px 12px; border-radius: 16px; font-size: 15px; line-height: 1.3; }
   .m.o { align-self: flex-start; background: #fffaf2; color: #2a1730; border-bottom-left-radius: 4px; }
@@ -605,7 +606,7 @@ const CONFUSED = [
 function chatPush(f, x) {
   S.chat = S.chat || [];
   if (f === "o") x = String(x).replace(NO_EMO, "").replace(/[ \t]+/g, " ").trim();
-  S.chat.push({ f, x, t: Date.now() }); if (S.chat.length > 160) S.chat.splice(0, S.chat.length - 160);
+  S.chat.push({ f, x, t: Date.now() }); if (S.chat.length > 6) S.chat.splice(0, S.chat.length - 6);   // не се пази като чат
   dirty = true; if (sheetKind === "chat") fillSheet("chat");
 }
 function oSays(x, ms = 6000) { const y = babify(String(x)); chatPush("o", y); say("", "~" + y, ms); }
@@ -642,7 +643,7 @@ function askNext(forced) {
   const fu = list.filter(q => S.followUp && q.id === S.followUp);
   if (fu.length) list = fu;
   else list = list.filter(q => !Q.some(p => p.next && Object.values(p.next).includes(q.id)));   // последващите идват само след отговор
-  if (!list.length) { if (forced) oSays(pick(["Нямам въпроси сега. Мисля си.", "Хм… Ще измисля нещо и ще те питам."])); return; }
+  if (!list.length) { if (forced) { closeSheet(); oSays(pick(["Нямам въпроси сега. Мисля си.", "Хм… Ще измисля нещо и ще те питам."])); } return; }
   const q = pick(list);
   S.followUp = null;
   S.q = { id: q.id, t: now, tries: 0, text: qText(q) };
@@ -670,6 +671,7 @@ function chatEmoji(e) {
   chatPush("u", e);
   if (S.q && !S.naming) {
     S.q.tries++;
+    closeSheet();
     const pending = S.q;
     capture = true; careAct(e); capture = false;          // все пак му е приятно
     setTimeout(() => {
@@ -1089,7 +1091,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 17;
+const PAGE_V = 18;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1241,8 +1243,9 @@ function fillSheet(kind) {
       <button id="logoutBtn">🚪 Изход (${esc(myNick)})</button>`;
     $("logoutBtn").onclick = logout;
   } else if (kind === "chat") {
-    const msgs = (S.chat || []).slice(-60).map(m => m.f === "n" ? `<div class="m n">${esc(m.x)}</div>`
-      : `<div class="m ${m.f}">${esc(m.x)}</div>`).join("") || `<div class="m n">Още не сте си говорили.</div>`;
+    const notes = (S.chat || []).filter(m => m.f === "n").slice(-2);
+    const msgs = S.naming ? notes.map(m => `<div class="m n">${esc(m.x)}</div>`).join("")
+      : S.q ? `<div class="m o">${esc(S.q.text.replace(/^~/, ""))}</div>` : "";
     let ctl = "";
     if (role !== "keeper") ctl = `<div class="sub">Само гледаш разговора.</div>`;
     else if (S.naming) ctl = `<div class="row2">${S.naming.opts.map(n => `<button class="ans nm" data-n="${esc(n)}">${esc(n)}</button>`).join("")}<button class="ans" id="otherName">Друго име</button></div>
@@ -1252,11 +1255,10 @@ function fillSheet(kind) {
     else ctl = (S.q ? `<div class="row2"><button class="ans yes" id="aYes">Да</button><button class="ans no" id="aNo">Не</button></div>`
         : `<div class="row2"><button class="ans" id="askMe">Питай ме нещо</button></div>`) +
       `<div class="emo">${["❤️", "🤗", "👍", "😂", "👋"].map(e => `<button data-e="${e}">${e}</button>`).join("")}</div>`;
-    sh.innerHTML = head("💬 " + esc(S.name)) + `<div class="msgs" id="msgs">${msgs}</div>` + ctl;
-    const box = $("msgs"); box.scrollTop = box.scrollHeight;
-    if ($("aYes")) { $("aYes").onclick = () => answer("yes"); $("aNo").onclick = () => answer("no"); }
-    if ($("askMe")) $("askMe").onclick = () => { chatPush("u", "Питай ме нещо!"); setTimeout(() => askNext(true), 600); };
-    sh.querySelectorAll(".emo button").forEach(b => b.onclick = () => chatEmoji(b.dataset.e));
+    sh.innerHTML = head("💬 " + esc(S.name)) + (msgs ? `<div class="msgs quick" id="msgs">${msgs}</div>` : "") + ctl;
+    if ($("aYes")) { $("aYes").onclick = () => { answer("yes"); closeSheet(); }; $("aNo").onclick = () => { answer("no"); closeSheet(); }; }
+    if ($("askMe")) $("askMe").onclick = () => askNext(true);
+    sh.querySelectorAll(".emo button").forEach(b => b.onclick = () => { const q = S.q; chatEmoji(b.dataset.e); if (!q) closeSheet(); });
     sh.querySelectorAll(".nm").forEach(b => b.onclick = () => chooseName(b.dataset.n));
     if ($("otherName")) $("otherName").onclick = () => { chatPush("u", "Не ми харесват."); setTimeout(() => { chatPush("n", "Тогава ти кажи как да се казва."); $("nameRow")?.classList.remove("hidden"); $("nameIn")?.focus(); }, 500); };
     if ($("nameOk")) { const go = () => chooseName($("nameIn").value); $("nameOk").onclick = go; $("nameIn").onkeydown = ev => { if (ev.key === "Enter") go(); }; }
@@ -1285,13 +1287,10 @@ function lifeBox() {
   const i = stageIdx(), dur = STAGE_MIN[S.stage];
   const done = S.stage === "egg" ? Math.min(1, (S.t - S.stageT) / (dur * MIN)) : Math.min(1, S.grow / dur);
   const leftMin = S.stage === "egg" ? Math.max(0, dur - (S.t - S.stageT) / MIN) : Math.max(0, dur - S.grow);
-  const leftTxt = leftMin < 60 ? `${Math.ceil(leftMin)} мин` : leftMin < 1440 ? `${Math.round(leftMin / 60)} ч` : `${Math.round(leftMin / 1440)} дни`;
-  const next = S.stage === "old" ? "до края на пътя си" : "до " + STAGE_NAME[STAGES[i + 1]].toLowerCase();
   const tr = traitsOf();
-  return `<div class="life"><div><b>${esc(S.name)}</b> · ${STAGE_NAME[S.stage]} <small>(${S.gen}-во поколение)</small></div>
-    <div class="stages">${STAGES.map((k, j) => `<span class="${j < i ? "past" : j === i ? "cur" : ""}">${STAGE_NAME[k]}</span>`).join("")}</div>
+  return `<div class="life"><div><b>${esc(S.name)}</b> · ${STAGE_NAME[S.stage]}</div>
+    <div class="sub" style="margin:4px 0 2px">Расте</div>
     <div class="track"><div class="fill" style="width:${(done * 100).toFixed(0)}%;background:#b39ddb"></div></div>
-    <div class="sub" style="margin:4px 0 0">Още около ${leftTxt} ${next}${S.stage !== "egg" ? ", ако е гледан добре" : ""}.</div>
     <div class="sub" style="margin:6px 0 0">📚 Прочетени книги: ${S.books || 0}${S.glasses ? " · 👓 има очила" : ""}</div>
     <div class="sub" style="margin:6px 0 0">Какъв става: ${tr.length ? tr.map(k => `<b>${TRAITS[k].n}</b>`).join(", ") : "още се оформя"}${S.inherit ? ` · от родителя: <b>${TRAITS[S.inherit].n}</b>` : ""}</div></div>`;
 }
@@ -1517,6 +1516,29 @@ function drawMuseum(t, s) {                // колекционерът си п
   g.textAlign = "center"; g.textBaseline = "middle"; g.font = `${Math.max(20, 44 * s)}px system-ui, "Apple Color Emoji", sans-serif`;
   list.forEach(([k], i) => g.fillText(elE(k), R.cx - R.rw * 0.32 + i * R.rw * 0.16, R.top - 12 * s + Math.sin(t * 2 + i) * 2));
 }
+// гледа новото нещо на дъното и казва нещо за него
+const TRASH_SAY = {
+  can: ["Консерва! Кой изхвърля консерви в морето?", "Пак консерва. Поне е подредена. Цилиндър."],
+  cup: ["Чаша. Без капаче. Безобразие.", "Някой си е пил сока и е хвърлил чашата. При мен!"],
+  plastic: ["Торбичка! Медузите ще я помислят за приятелка.", "Торбичка… Летяща торбичка. Не е хубаво."],
+  sock: ["Чорап. Само един. Къде е другият?!", "Стар чорап… Мирише на приключения. Лоши."],
+  bone: ["Кокал? Тук няма кучета. Подозрително.", "Кокал. Записвам го като улика."],
+  paper: ["Вестник! Да видим новините… Мокри са.", "Вестник от вчера. Под водата всичко е от вчера."],
+  bottle: ["Бутилка! Дали има писмо вътре?", "Бутилка… празна. Разочарование."],
+  tire: ["Гума?! Цяла гума! Някой кара кола под водата?", "Гума. Тежка, кръгла, ненужна. Е, почти ненужна."],
+};
+let lastNotice = -1e9, gaze = null;
+function notice(it, tries = 0) {
+  if (!S || !S.hatched || S.asleep || working || reading || hidden()) return;
+  if (performance.now() < bubbleUntil - 500 || performance.now() - lastNotice < 15000) { if (tries < 12) setTimeout(() => notice(it, tries + 1), 2500); return; }
+  const f = floorHits.find(h => h.id === it.id); if (!f) return;
+  lastNotice = performance.now(); gaze = { x: f.x, y: f.y, until: performance.now() + 4000 };
+  const cat = EL[it.k] && EL[it.k][3];
+  if (S.stage === "baby") return say("", pick(cat === "junk" ? ["~Ова? Каки?", "~Бее! Каки падна!"] : ["~Ова? Кво е ова?", "~Ооо! Лъскаво!"]));
+  if (TRASH_SAY[it.k]) return say("", pick(TRASH_SAY[it.k]) + (S.trash.length >= 3 ? " И не е единствената." : ""));
+  say("", cat === "food" ? pick([`${elN(it.k)}! Пада храна отгоре! Да го прибера, докато е прясно.`, `Ооо, ${elN(it.k).toLowerCase()}! Проверявам датата.`])
+    : pick([`${elN(it.k)}! Ще ми потрябва за нещо.`, `Виж! ${elN(it.k)}. Блести.`, `Ооо, ${elN(it.k).toLowerCase()}! Имам идеи.`]));
+}
 function drawFloor(t, s) {
   floorHits = [];
   const now = performance.now(), sandY = H * 0.88 + 4, sz = Math.max(26, 64 * s);
@@ -1528,7 +1550,7 @@ function drawFloor(t, s) {
     if (a < 1) { g.font = `${sz * 1.3}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.fillText("🐟", W * (1.1 - a * 1.3), H * 0.25 + Math.sin(a * 20) * 10); g.font = `${sz * 0.7}px system-ui, sans-serif`; g.fillText("✉️", W * (1.1 - a * 1.3) - sz * 0.5, H * 0.25 + 18); }
   }
   for (const it of list) {
-    if (!seen[it.id]) seen[it.id] = now;
+    if (!seen[it.id]) { seen[it.id] = now; if (it.kind !== "parcel" && Date.now() - it.t < 3 * MIN) setTimeout(() => notice(it), 1800); }
     const age = (now - seen[it.id]) / 1000, fall = Math.min(1, age / 2.2);
     const x = it.x * W + Math.sin(age * 3) * 10 * (1 - fall);
     const y = H * 0.1 + (sandY - H * 0.1) * (1 - (1 - fall) * (1 - fall)) - sz * 0.3;
@@ -1591,7 +1613,7 @@ function loop() {
   const near = oct.py > ground - 260 * oct.sc && !(drag && drag.moved) && mode !== "swim" && !lie;
   const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * oct.sc, s: oct.sc, age, mode, t, mt: t - modeAt, st, lie, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
     ground: near || age === "egg" ? ground : null, drop: age === "egg", style: STYLE, dir: oct.dir,
-    lookAt: performance.now() - ptr.t < 3000 ? ptr : null });
+    lookAt: performance.now() - ptr.t < 3000 ? ptr : gaze && performance.now() < gaze.until ? gaze : null });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
   if (age === "egg") eggBox = { x: oct.px, y: ground - 60 * s, r: 80 * s };
   if (departing && performance.now() - departing.at < 9000) {     // старият Октонис отплава нагоре
@@ -1757,7 +1779,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
