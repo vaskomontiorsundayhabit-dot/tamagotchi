@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 11;
+const VER = 12;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -973,6 +973,6 @@ function draw(ctx, o) {
   return { top: o.y + top * k, r: 260 * k, cy: o.y + (top + 200) * k / 2 };
 }
 
-window.Octo = { V: 11, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
+window.Octo = { V: 12, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
   AGE_NAMES: { egg: "Яйце", baby: "Бебе", kid: "Малък", teen: "Тийнейджър", adult: "Голям", aging: "Застаряващ", old: "Много стар" } };
 })();

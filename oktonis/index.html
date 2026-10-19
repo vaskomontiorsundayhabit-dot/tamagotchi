@@ -102,6 +102,13 @@
   .made div { background: rgba(255,255,255,.08); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
   .made span { font-size: 28px; } .made small { color: var(--muted); font-size: 11px; line-height: 1.25; }
   .try { width: 100%; }
+  .it { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .it .ii { font-size: 28px; text-align: center; }
+  .it .in { display: flex; flex-direction: column; font-size: 15px; } .it .in small { color: var(--muted); font-size: 12px; }
+  .sell { background: #ffd166; color: #2a1730; font-weight: 700; padding: 8px 12px; }
+  .grp { margin: 12px 0 2px; font-weight: 700; color: #ffe7a8; }
+  .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
+  #bubble .t { font-size: 15px !important; }
   /* вход */
   .center { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
     padding-bottom: max(8vh, env(safe-area-inset-bottom)); z-index: 7; text-align: center; }
@@ -186,6 +193,15 @@ const INV = {
   perfect: { e: "📏", n: "Перфектометър", d: "Казва дали нещо е съвършено. Почти никога не е.", need: { bolt: 1, bulb: 1, feather: 1, magnet: 1 } },
 };
 const TRASH = [["🥫", "консерва"], ["🥤", "чаша"], ["🛍️", "торбичка"], ["🧦", "стар чорап"], ["🦴", "кокал"], ["🗞️", "вестник"], ["🍌", "кора"]];
+// морската валута: перлинги (◉)
+const CUR = "перлинги";
+const JUNK_PRICE = { "🥫": 2, "🥤": 1, "🛍️": 1, "🧦": 1, "🦴": 2, "🗞️": 1, "🍌": 1 };
+const PART_PRICE = { bolt: 3, gear: 5, bat: 6, magnet: 7, bulb: 5, wire: 4, shell: 4, sponge: 3, feather: 3, spoon: 4 };
+const invPrice = id => 15 + Object.entries(INV[id].need).reduce((a, [k, n]) => a + PART_PRICE[k] * n, 0) * 3;
+const junkName = e => (TRASH.find(x => x[0] === e) || [e, "боклук"])[1];
+const partNames = need => { const a = Object.entries(need).map(([k, n]) => (n > 1 ? n + " " : "") + PARTS[k][1].toLowerCase());
+  return a.length > 1 ? a.slice(0, -1).join(", ") + " и " + a[a.length - 1] : a[0] || ""; };
+const money = n => `◉ ${n} ${n === 1 ? "перлинг" : CUR}`;
 const partList = need => Object.entries(need).map(([k, n]) => (PARTS[k][0] + " ").repeat(n).trim()).join(" ");
 
 // ---------- Състояние ----------
@@ -203,7 +219,7 @@ function fresh(now) {
   return {
     v: 2, t: now, born: now, hatched: false, taps: 0,
     hunger: 15, energy: 90, mood: 70, health: 100, hurt: 0, asleep: false,
-    trash: [], parts: [], bag: {}, idea: null, nextIdea: now + 3 * MIN, made: [], fails: 0,
+    trash: [], parts: [], bag: {}, junk: {}, gadgets: {}, pearls: 0, idea: null, nextIdea: now + 3 * MIN, made: [], fails: 0,
     meals: [], lastMeal: now, lastGrumble: 0, lastCare: now,
     journal: [{ t: now, x: "🥚 В морето се появи яйце. Нещо мърда вътре…" }],
   };
@@ -256,7 +272,7 @@ function newIdea(t, quiet) {
   const id = pick(left.length ? left : Object.keys(INV));
   S.idea = id; S.ideaT = t;
   log(`💡 Хрумна му: ${INV[id].e} ${INV[id].n}! Трябват: ${partList(INV[id].need)}`, t);
-  if (!quiet) { ideaFlash = performance.now(); say("💡" + INV[id].e, `Идея! ${INV[id].n}!\nТрябват ми: ${partList(INV[id].need)}`, 9000); }
+  if (!quiet) { ideaFlash = performance.now(); say("", `Идея! ${INV[id].n}!\nТрябват ми ${partNames(INV[id].need)}.`, 9000); }
 }
 function catchUp(now) {
   const offline = role === "keeper" && now - S.t > 3 * MIN;
@@ -282,7 +298,7 @@ function chatter() {
   if (S.trash.length >= 3) return say("😖🗑️", pick(["Боклуци! Навсякъде боклуци!", "Не мога да мисля в тази бъркотия.", "Някой да махне това, моля!"]));
   if (S.hunger > 65) return say("🍕?", "Коремът ми къркори…");
   if (S.energy < 22) return say("🥱", "Очите ми се затварят…");
-  if (S.idea && Math.random() < 0.5) { const m = missing(); if (Object.keys(m).length) return say("💭" + INV[S.idea].e, `Още ми трябват: ${partList(m)}`); }
+  if (S.idea && Math.random() < 0.5) { const m = missing(); if (Object.keys(m).length) return say("", `Още ми трябват ${partNames(m)}.`); }
   say(...pick(CHATTER));
 }
 
@@ -338,10 +354,11 @@ function pickTrash(id) {
   if (role !== "keeper") return;
   const i = S.trash.findIndex(x => x.id === id); if (i < 0) return;
   const [tr] = S.trash.splice(i, 1);
+  S.junk[tr.e] = (S.junk[tr.e] || 0) + 1;
   S.mood = clamp(S.mood + 4); S.lastCare = Date.now(); dirty = true;
   poof(tr.x);
   if (!S.trash.length) { log("✨ Всичко е чисто."); say("✨😌", "Чисто! Най-сетне мога да дишам."); }
-  else say("🧹", pick(["Благодаря! Още малко…", `Махна ${tr.n}. Отлично.`, "Едно по едно. Систематично."]));
+  else say("🧹", pick(["Благодаря! Още малко…", `Прибрах ${tr.n} в торбата. Ще я рециклираме.`, "Едно по едно. Систематично."]));
   save();
 }
 function pickPart(id) {
@@ -355,6 +372,23 @@ function pickPart(id) {
   else say(PARTS[p.k][0], `${PARTS[p.k][1]}. Ще го прибера, може да потрябва.`);
   save();
   if (S.idea && !Object.keys(missing()).length) setTimeout(build, 2500);
+}
+
+// ---------- Продаване ----------
+function sell(kind, key, quiet) {
+  if (role !== "keeper") return;
+  let price = 0, name = "";
+  if (kind === "j" && S.junk[key] > 0) { S.junk[key]--; price = JUNK_PRICE[key] || 1; name = junkName(key); }
+  else if (kind === "p" && S.bag[key] > (need()[key] || 0)) { S.bag[key]--; price = PART_PRICE[key]; name = PARTS[key][1].toLowerCase(); }
+  else if (kind === "g" && S.gadgets[key] > 0) { S.gadgets[key]--; price = invPrice(key); name = INV[key].n; }
+  else return;
+  S.pearls = (S.pearls || 0) + price; dirty = true;
+  if (!quiet) {
+    log(`◉ Продаде ${name} за ${price} ${CUR}.`);
+    say("", kind === "g" ? pick([`Продадохме ${name}! ${price} ${CUR}. Ще направя още по-хубав.`, `${price} ${CUR}! Броих ги два пъти.`])
+      : kind === "j" ? pick(["Рециклиране! Полезно и подредено.", `${price} ${CUR} от боклук. Харесва ми.`]) : `Продадох ${name} за ${price} ${CUR}.`);
+  } else log(`♻️ Рециклира ${name} за ${price} ${CUR}.`);
+  save(); render();
 }
 
 // ---------- Изобретяване ----------
@@ -376,6 +410,7 @@ function finish() {
   if (Math.random() < p) {
     for (const [k, n] of Object.entries(inv.need)) S.bag[k] -= n;
     if (!S.made.includes(id)) S.made.push(id);
+    S.gadgets[id] = (S.gadgets[id] || 0) + 1;
     S.idea = null; S.fails = 0; S.nextIdea = now + rnd(8, 15) * MIN;
     S.mood = clamp(S.mood + 20); fx.party = performance.now();
     log(`🎉 Изобрети ${inv.e} ${inv.n}!`);
@@ -457,6 +492,8 @@ function catchUpView() {
 let viewBase = null;
 function afterLoad() {
   if (!S.v || S.v < 2) { S = fresh(Date.now()); dirty = true; }    // нов свят: започва отначало с яйце
+  S.junk = S.junk || {}; S.gadgets = S.gadgets || {}; S.pearls = S.pearls || 0;
+  for (const k of S.made || []) if (S.gadgets[k] == null) S.gadgets[k] = 1;
   if (role === "viewer") viewBase = JSON.stringify(S);
   const before = S.journal.length ? S.journal[0].t : 0;
   const steps = catchUp(Date.now());
@@ -471,7 +508,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 11;
+const PAGE_V = 12;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -541,6 +578,21 @@ function fillSheet(kind) {
       `<div><span>${INV[k].e}</span><b>${esc(INV[k].n)}</b><small>${esc(INV[k].d)}</small></div>`).join("")}</div>`;
     sh.innerHTML = h;
     if ($("buildBtn")) $("buildBtn").onclick = build;
+  } else if (kind === "bag") {
+    const m = missing(), rows = [];
+    const row = (kind, key, ic, name, n, price, keep) => rows.push(`<div class="it"><span class="ii">${ic}</span><span class="in">${esc(name)}<small>${n} бр. · по ${money(price)}${keep ? ` · ${keep} ${keep === 1 ? "нужна" : "нужни"} за идеята` : ""}</small></span>
+      ${role === "keeper" ? `<button class="sell" data-k="${kind}" data-key="${key}" ${n - keep <= 0 ? "disabled" : ""}>Продай</button>` : ""}</div>`);
+    const gs = Object.entries(S.gadgets).filter(([, n]) => n > 0), ps = Object.entries(S.bag).filter(([, n]) => n > 0), js = Object.entries(S.junk).filter(([, n]) => n > 0);
+    if (gs.length) { rows.push(`<div class="sub grp">Изобретения</div>`); for (const [k, n] of gs) row("g", k, INV[k].e, INV[k].n, n, invPrice(k), 0); }
+    if (ps.length) { rows.push(`<div class="sub grp">Части</div>`); for (const [k, n] of ps) row("p", k, PARTS[k][0], PARTS[k][1], n, PART_PRICE[k], Math.min(n, (need()[k] || 0))); }
+    if (js.length) { rows.push(`<div class="sub grp">Боклуци за рециклиране</div>`); for (const [e, n] of js) row("j", e, e, junkName(e), n, JUNK_PRICE[e] || 1, 0); }
+    const junkTotal = js.reduce((a, [e, n]) => a + n * (JUNK_PRICE[e] || 1), 0);
+    sh.innerHTML = head("🎒 Торба", `<b class="cash">${money(S.pearls)}</b> `) +
+      (rows.length ? rows.join("") : `<div class="sub">Торбата е празна. Събирай частите и боклуците по дъното.</div>`) +
+      (js.length && role === "keeper" ? `<button class="try" id="sellJunk">♻️ Рециклирай всички боклуци (+${money(junkTotal)})</button>` : "") +
+      `<div class="sub" style="margin-top:10px">◉ Перлингите са морските пари. Октонис ги брои по два пъти.</div>`;
+    sh.querySelectorAll(".sell").forEach(b => b.onclick = () => sell(b.dataset.k, b.dataset.key));
+    if ($("sellJunk")) $("sellJunk").onclick = () => { for (const [e] of js) while (S.junk[e] > 0) sell("j", e, true); say("", "Рециклирах всичко! Чисто, подредено и с пари. Перфектно."); };
   } else if (kind === "stats") {
     const clean = Math.max(0, 100 - S.trash.length * 15);
     const bars = [["🍕", 100 - S.hunger, "#ffb36b"], ["⚡", S.energy, "#ffd166"], ["😊", S.mood, "#7cc8f2"], ["❤️", S.health, "#ff6b81"], ["🧹", clean, "#6fd3a0"]];
@@ -582,11 +634,11 @@ function toggleFull() {
 }
 function ringItems() {
   const extra = [fullItem(), ["logout", "🚪", "Изход"]].filter(Boolean);
-  if (role !== "keeper") return [["inv", "💡", "Изобретения"], ["stats", "📊", "Как е"], ["journal", "📖", "Дневник"], ...extra];
+  if (role !== "keeper") return [["inv", "💡", "Изобретения"], ["bag", "🎒", "Торба"], ["stats", "📊", "Как е"], ["journal", "📖", "Дневник"], ...extra];
   if (ringPage === "food") return [["back", "↩️", "Назад"], ["e🍕", "🍕", "Пица"], ["e🥦", "🥦", "Броколи"], ["e🦐", "🦐", "Скариди"]];
   if (ringPage === "talk") return [["back", "↩️", "Назад"], ...["❤️", "🤗", "👍", "😂", "👋"].map(e => ["e" + e, e, ""])];
   return [["food", "🍕", "Храна"], S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Сън"], ["talk", "💬", "Кажи"],
-    ["inv", "💡", "Изобретения"], ["stats", "📊", "Как е"], ["journal", "📖", "Дневник"], ...extra];
+    ["inv", "💡", "Изобретения"], ["bag", "🎒", "Торба"], ["stats", "📊", "Как е"], ["journal", "📖", "Дневник"], ...extra];
 }
 function openRing() {
   if (!inGame || sheetKind || !S.hatched) return;
@@ -627,7 +679,7 @@ function paintRing() {
 function ringAction(id) {
   if (id === "talk" || id === "food") { ringPage = id; return paintRing(); }
   if (id === "back") { ringPage = "main"; return paintRing(); }
-  if (id === "inv" || id === "stats" || id === "journal") return openSheet(id);
+  if (id === "inv" || id === "bag" || id === "stats" || id === "journal") return openSheet(id);
   if (id === "full") { closeRing(); return toggleFull(); }
   if (id === "logout") { closeRing(); return logout(); }
   const e = { sleep: "😴", wake: "☀️" }[id] || id.slice(1);
@@ -638,8 +690,14 @@ function ringAction(id) {
 // ---------- Говорене (балончето следва Октонис) ----------
 let bubbleUntil = 0;
 function say(e, t = "", ms = 4500) { bubbleUntil = performance.now() + ms; showBubble(e, t, false); }
+// говори само с думи: махам картинките (емотиконите) от текста
+const NO_EMO = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}\u{20E3}]/gu;
+const WORDS = { "🤣": "Ха-ха-ха!", "🤗": "Прегръдка! Обичам прегръдки.", "☺️": "Ох, благодаря!", "🥰": "И аз те обичам!", "💤💗": "Хм… обичам те… хррр…",
+  "👋🐙": "Здрасти!", "😆": "Хи-хи!", "💤": "Шшш… спи.", "🍕?": "Гладен съм…", "🥱": "Много съм уморен…" };
 function showBubble(e, t, want) {
-  $("bubbleE").textContent = e; $("bubbleT").textContent = t;
+  let txt = String(t || "").replace(NO_EMO, "").replace(/[ \t]+/g, " ").replace(/ ?\n ?/g, "\n").trim();
+  if (!txt) txt = WORDS[e] || "…";
+  $("bubbleE").textContent = ""; $("bubbleE").style.display = "none"; $("bubbleT").textContent = txt;
   $("bubble").classList.toggle("want", want); $("bubble").classList.toggle("hidden", !inGame);
 }
 function updateBubble() {
@@ -938,7 +996,7 @@ setInterval(() => {
   if (role === "keeper") {
     const hadIdea = S.idea;
     if (catchUp(now)) render();
-    if (!hadIdea && S.idea) { ideaFlash = p; say("💡" + INV[S.idea].e, `Идея! ${INV[S.idea].n}!\nТрябват ми: ${partList(INV[S.idea].need)}`, 9000); }
+    if (!hadIdea && S.idea) { ideaFlash = p; say("", `Идея! ${INV[S.idea].n}!\nТрябват ми ${partNames(INV[S.idea].need)}.`, 9000); }
     grumble(now);
     chatter();
     if (S.idea && !Object.keys(missing()).length && !working && !S.asleep && p - (window.__lastAuto || 0) > 60000) { window.__lastAuto = p; build(); }
