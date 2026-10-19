@@ -475,7 +475,7 @@ const PAGE_V = 11;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
-const STYLE = new URLSearchParams(location.search).get("style") || "sketch";   // sketch | goggles | cute | art
+const STYLE = new URLSearchParams(location.search).get("style") || "goggles";   // goggles | sketch | cute | art
 function show(v) {
   $("loginView").classList.toggle("hidden", v !== "loginView");
   $("loadView").classList.toggle("hidden", v !== "loadView");
@@ -823,7 +823,10 @@ function loop() {
   if (!oct.wp || t > oct.wpT) { oct.wp = [rnd(0.2, 0.6) * W, H * rnd(0.3, 0.6)]; oct.wpT = t + rnd(5, 10); }
   let tx = oct.wp[0], ty = oct.wp[1], k = 0.02;
   if (age === "egg") { tx = W * 0.33; ty = ground - 60 * s; k = 1; mode = "idle"; if (performance.now() - eggShake < 600) mode = "happy"; }
-  else if (mode === "sleep") { tx = Math.max(W * 0.2, R.cx - R.rw * 0.5 - 230 * s); ty = ground - 54 * s; lie = true; k = 0.03; }
+  else if (mode === "sleep") {               // ляга на дъното до камъка
+    tx = Math.max(W * 0.32, R.cx - R.rw * 0.5 - 230 * s); k = 0.03;
+    if (STYLE === "sketch") { ty = ground - 54 * s; lie = true; } else ty = ground - 170 * s;
+  }
   else if (mode === "work") { tx = oct.px ?? tx; ty = ground - 201 * s; k = 0.035; }
   else if (hidden() && !(drag && drag.moved)) { scale = s * 0.55; tx = R.cx; ty = R.top + 40 * scale + Math.sin(t * 2) * 4; k = 0.05; mode = "idle"; }
   if ((ringOpen || sheetKind) && age !== "egg") { tx = oct.px; ty = oct.py; }

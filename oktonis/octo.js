@@ -42,7 +42,7 @@ function tentPts(T, t) {
   if (GROUND == null) amp *= 1.5;                       // във вода се полюшват повече
   let x = T.dx, y = 62;
   const armA = mode === "work" ? 1.15 + Math.sin(t * 13 + T.ph) * 0.25 : 0.55 + (A.cane ? 0.3 : 0);
-  let ang = T.kind === "arm" ? (s > 0 ? armA : Math.PI - armA) : Math.PI / 2 + -s * T.spread * (CUTE ? 1.6 : 1);
+  let ang = T.kind === "arm" ? (s > 0 ? armA : Math.PI - armA) : Math.PI / 2 + -s * T.spread * (CUTE ? 1.6 : 1) * (mode === "sleep" ? 1.8 : 1);
   const pts = [];
   for (let j = 0; j <= N; j++) {
     const k = j / N;
@@ -313,7 +313,7 @@ function body(t, mt, st) {
   let bob = Math.sin(t * 2 * SP) * 4, tilt = Math.sin(t * 0.8) * 0.03, squash = 1 + Math.sin(t * 2 * SP) * 0.015;
   if (mode === "happy") { bob = Math.sin(t * 3.4) * 7; tilt = Math.sin(t * 1.7) * 0.07; }
   if (mode === "party") { const j = Math.abs(Math.sin(t * 6 * SP)); bob = -j * 40 * (A.cane ? 0.4 : 1); squash = 1 + (j - 0.4) * 0.08; }
-  if (mode === "sleep") { bob = 10 + Math.sin(t * 0.9) * 3; tilt = 0.12; squash = 1 + Math.sin(t * 0.9) * 0.03; }
+  if (mode === "sleep") { bob = 10 + Math.sin(t * 0.9) * 3; tilt = 0.12; squash = (GROUND != null ? 0.84 : 1) + Math.sin(t * 0.9) * 0.03; }
   if (mode === "hurt") { bob = 6; tilt = -0.08 + (mt < 0.6 ? Math.sin(mt * 50) * 0.1 * (1 - mt / 0.6) : Math.sin(t * 2.4) * 0.04); }
   if (mode === "work") { bob = Math.sin(t * 8) * 2; tilt = 0.04; }
   if (mode === "wee") { tilt = Math.sin(t * 5) * 0.12; }
