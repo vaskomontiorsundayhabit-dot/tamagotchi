@@ -16,6 +16,7 @@
   canvas { display: block; width: 100%; height: auto; }
   .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .row.m { grid-template-columns: repeat(3, 1fr); }
+  #styles { grid-template-columns: repeat(2, 1fr); }
   button { font: inherit; font-size: 14px; color: var(--text); background: #4a3f6b; border: 0; border-radius: 12px; padding: 9px 4px; cursor: pointer; }
   button.on { background: var(--peach); color: #2a1730; font-weight: 700; }
 </style>
@@ -39,6 +40,7 @@ const MODES = [["idle", "😐 Обикновен"], ["happy", "😊 Щастли
 const AGE_ICON = { egg: "🥚", baby: "🍼", kid: "🧒", teen: "🛹", adult: "🧑‍🔬", aging: "🧓", old: "👴" };
 let mode = "idle", age = "adult", modeAt = 0, style = "art";
 const st = {};
+let lookAt = null, lookT = 0;
 function buttons(boxId, list, get, set) {
   const box = document.getElementById(boxId);
   const paint = () => { for (const b of box.children) b.classList.toggle("on", b.dataset.v === get()); };
@@ -48,11 +50,11 @@ function buttons(boxId, list, get, set) {
   }
   paint();
 }
-buttons("styles", [["art", "🖌️ Твоите кадри"], ["cute", "🐙 Сладък"], ["goggles", "🥽 С очила"]], () => style, v => style = v);
+buttons("styles", [["art", "🖌️ Твоят (очи)"], ["artanim", "🎞️ Твоите кадри"], ["cute", "🐙 Сладък"], ["goggles", "🥽 С очила"]], () => style, v => style = v);
 buttons("ages", Octo.AGES.map(a => [a, AGE_ICON[a] + " " + Octo.AGE_NAMES[a]]), () => age, v => age = v);
 buttons("modes", MODES, () => mode, v => { mode = v; modeAt = performance.now() / 1000; });
 
-const PAGE_V = 8;
+const PAGE_V = 9;
 document.getElementById("ver").textContent = Octo.V === PAGE_V ? `версия ${PAGE_V} ✓` : `⚠️ рисунката е стара (v${Octo.V}), страницата е v${PAGE_V}. Презареди след минута.`;
 const cv = document.getElementById("c"), g = cv.getContext("2d");
 const LW = 600, LH = 560;
@@ -64,10 +66,14 @@ function frame() {
   g.setTransform(d, 0, 0, d, 0, 0);
   g.fillStyle = "#f7f3ec"; g.fillRect(0, 0, LW, LH);
   g.fillStyle = "#ece5f4"; g.beginPath(); g.ellipse(LW / 2, LH * 0.45, LW * 0.42, LH * 0.38, 0, 0, Math.PI * 2); g.fill();
-  Octo.draw(g, { x: LW / 2, y: 290, s: 0.95, age, mode, t, mt: t - modeAt, st, ground: LH - 70, style });
+  Octo.draw(g, { x: LW / 2, y: 290, s: 0.95, age, mode, t, mt: t - modeAt, st, ground: LH - 70, style, lookAt });
   if (mode === "sleep") { g.fillStyle = "rgba(40,30,90,.25)"; g.fillRect(0, 0, LW, LH); }
 }
 requestAnimationFrame(frame);
+// очите следят мишката/пръста над картинката
+cv.addEventListener("pointermove", ev => { const r = cv.getBoundingClientRect(); lookAt = { x: (ev.clientX - r.left) / r.width * LW, y: (ev.clientY - r.top) / r.height * LH }; lookT = performance.now(); });
+cv.addEventListener("pointerleave", () => { lookAt = null; });
+setInterval(() => { if (lookAt && performance.now() - lookT > 2500) lookAt = null; }, 500);
 </script>
 </body>
 </html>

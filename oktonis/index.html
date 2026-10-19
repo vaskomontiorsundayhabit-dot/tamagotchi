@@ -532,7 +532,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 8;
+const PAGE_V = 9;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -808,6 +808,9 @@ function drawBubbles(t) {
   }
 }
 let frameN = 0;
+const ptr = { x: 0, y: 0, t: -1e9 };       // очите следят пръста/мишката
+addEventListener("pointermove", ev => { ptr.x = ev.clientX; ptr.y = ev.clientY; ptr.t = performance.now(); });
+addEventListener("pointerdown", ev => { ptr.x = ev.clientX; ptr.y = ev.clientY; ptr.t = performance.now(); });
 function loop() {
   requestAnimationFrame(loop);
   if (frameN++ % 2) return;                 // 30 кадъра стигат
@@ -829,7 +832,7 @@ function loop() {
   if (mode !== lastMode) { lastMode = mode; modeAt = t; }
   const near = oct.py > ground - 260 * s && !(drag && drag.moved);
   const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * s, s, age: S ? AGE : "egg", mode, t, mt: t - modeAt, st,
-    ground: near ? ground : null, drop: false, style: STYLE });
+    ground: near ? ground : null, drop: false, style: STYLE, lookAt: performance.now() - ptr.t < 3000 ? ptr : null });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
   if (Math.random() < 0.02) bubbles[Math.floor(Math.random() * bubbles.length)] = { x: (oct.x + rnd(-20, 20)) / W, y: info.top / H, r: rnd(2, 5), s: 0.05, p: rnd(0, 6) };
   if (night) { g.fillStyle = "rgba(10,10,40,.25)"; g.fillRect(0, 0, W, H); }

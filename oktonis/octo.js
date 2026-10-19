@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 8;
+const VER = 9;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let g, mode, A, COL, GROUND, SP, DROP, CUTE;
+let g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK;
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -494,13 +494,113 @@ function artFrames(pose) {
   const list = IMG[pose];
   return list.every(im => im.complete && im.naturalWidth) ? list : null;
 }
+let LINE = null;
+function artLine() {
+  if (!LINE) { LINE = new Image(); LINE.src = `art/idle_1_line.png?v=${VER}`; }
+  return LINE.complete && LINE.naturalWidth ? LINE : null;
+}
 function artReady() { return !!artFrames("idle"); }
+
+// Лицето върху нарисувания кадър: очите и устата се рисуват наново, за да се движат (в пиксели на 512×512 кадъра)
+const EYES = [{ x: 202, y: 167, rx: 44, ry: 46, s: -1 }, { x: 337, y: 166, rx: 42, ry: 46, s: 1 }];
+const SKIN = "rgb(252,106,31)", INK = "#120f18";
+let comp = null;
+function lookAround(t, st) {
+  if (LOOK) return LOOK;
+  if (!st.lt || t > st.lnext) {                 // от време на време поглежда нанякъде
+    st.lt = Math.random() < 0.35 ? [0, 0] : [rnd(-1, 1), rnd(-0.6, 0.7)];
+    st.lnext = t + rnd(1.2, 3.5);
+  }
+  st.lc = st.lc || [0, 0];
+  st.lc[0] += (st.lt[0] - st.lc[0]) * 0.25; st.lc[1] += (st.lt[1] - st.lc[1]) * 0.25;
+  return st.lc;
+}
+function lidCover(e, amt, slant) {               // клепач отгоре до amt (0..1), наклонен
+  g.save(); ell(e.x, e.y, e.rx, e.ry); g.clip();
+  const yb = e.y - e.ry + amt * 2 * e.ry;
+  g.fillStyle = SKIN; g.beginPath(); g.moveTo(e.x - e.rx - 2, e.y - e.ry - 2); g.lineTo(e.x + e.rx + 2, e.y - e.ry - 2);
+  g.lineTo(e.x + e.rx + 2, yb + slant * e.s); g.lineTo(e.x - e.rx - 2, yb - slant * e.s); g.closePath(); g.fill();
+  g.strokeStyle = INK; g.lineWidth = 6; g.lineCap = "round";
+  g.beginPath(); g.moveTo(e.x - e.rx, yb - slant * e.s); g.lineTo(e.x + e.rx, yb + slant * e.s); g.stroke();
+  g.restore();
+}
+function artFace(t, st) {
+  const look = lookAround(t, st);
+  const bt = t % 4.3, blinkAmt = bt < 0.18 ? Math.sin(bt / 0.18 * Math.PI) : (((t + 1.7) % 9.1) < 0.18 ? 1 : 0);
+  g.lineCap = "round"; g.lineJoin = "round";
+  // устата: замазвам оригиналната
+  const mg = g.createRadialGradient(270, 191, 4, 270, 191, 24);
+  mg.addColorStop(0, SKIN); mg.addColorStop(0.75, SKIN); mg.addColorStop(1, "rgba(252,106,31,0)");
+  g.fillStyle = mg; ell(270, 191, 26, 13); g.fill();
+  const closedFace = mode === "happy" || mode === "party" || mode === "wee" || mode === "sleep" || mode === "hurt";
+  g.globalCompositeOperation = "source-atop";     // не излиза извън тялото
+  for (const e of EYES) {
+    if (closedFace) {
+      g.fillStyle = SKIN; ell(e.x, e.y, e.rx + 3, e.ry + 3); g.fill();
+      g.strokeStyle = INK; g.lineWidth = 7; g.beginPath();
+      if (mode === "sleep") g.arc(e.x, e.y - 6, e.rx * 0.6, 0.15 * Math.PI, 0.85 * Math.PI);
+      else if (mode === "hurt") { const q = 16; g.moveTo(e.x + e.s * q, e.y - q); g.lineTo(e.x - e.s * q, e.y); g.lineTo(e.x + e.s * q, e.y + q); }
+      else g.arc(e.x, e.y + 12, e.rx * 0.55, 1.15 * Math.PI, 1.85 * Math.PI);
+      g.stroke();
+      continue;
+    }
+    // бялото с лека сянка горе
+    g.save(); ell(e.x, e.y, e.rx, e.ry); g.clip();
+    g.fillStyle = "#dfe4ee"; g.fillRect(e.x - e.rx, e.y - e.ry, e.rx * 2, e.ry * 2);
+    g.fillStyle = "#fbfbfd"; ell(e.x + 3, e.y + 7, e.rx, e.ry); g.fill();
+    // зеницата
+    let lx = look[0], ly = look[1], pk = 1;
+    if (mode === "work") { lx = -e.s * 0.35; ly = 0.75; }
+    if (mode === "angry") { lx = 0; ly = 0.1; pk = 0.85; }
+    const px = e.x + lx * e.rx * 0.36, py = e.y + ly * e.ry * 0.33 + 4;
+    const prx = e.rx * 0.56 * pk, pry = e.ry * 0.62 * pk;
+    g.fillStyle = INK; ell(px, py, prx, pry); g.fill();
+    g.fillStyle = "#fff"; ell(px - prx * 0.32, py - pry * 0.38, prx * 0.3, prx * 0.3); g.fill();
+    ell(px + prx * 0.35, py + pry * 0.38, prx * 0.11, prx * 0.11); g.fill();
+    g.restore();
+    if (mode === "work") lidCover(e, 0.42, 0);
+    else if (mode === "angry") lidCover(e, 0.36, 10);
+    else if (blinkAmt > 0) lidCover(e, blinkAmt * 0.98, 0);
+    g.strokeStyle = INK; g.lineWidth = 6; ell(e.x, e.y, e.rx, e.ry); g.stroke();
+  }
+  g.globalCompositeOperation = "source-over";
+  const line = artLine();                          // контурът на тялото отгоре, ако е покрит от очите
+  if (line) g.drawImage(line, 0, 0, 512, 512);
+  if (mode === "angry") {                       // вежди
+    g.strokeStyle = INK; g.lineWidth = 10;
+    g.beginPath(); g.moveTo(160, 112); g.lineTo(236, 132); g.stroke();
+    g.beginPath(); g.moveTo(378, 110); g.lineTo(304, 131); g.stroke();
+  }
+  if (mode === "happy" || mode === "party" || mode === "wee") {   // руменина
+    g.fillStyle = "rgba(255,120,140,.55)"; ell(186, 222, 18, 9); g.fill(); ell(352, 220, 18, 9); g.fill();
+  }
+  // устата
+  const mx = 270, my = 191;
+  g.strokeStyle = INK; g.lineWidth = 5; g.beginPath();
+  if (mode === "happy" || mode === "wee") g.arc(mx, my - 8, 13, 0.15 * Math.PI, 0.85 * Math.PI);
+  else if (mode === "party") { g.moveTo(mx - 16, my - 5); g.quadraticCurveTo(mx, my + 24, mx + 16, my - 5); g.closePath(); g.fillStyle = "#7a1f2b"; g.fill(); }
+  else if (mode === "angry") { g.moveTo(mx - 14, my + 3); for (let i = 1; i <= 4; i++) g.lineTo(mx - 14 + i * 7, my + (i % 2 ? -3 : 3)); }
+  else if (mode === "sleep") ell(mx, my, 5, 3.5 + Math.sin(t * 0.9) * 1.5);
+  else if (mode === "hurt") { g.moveTo(mx - 12, my + 3); g.quadraticCurveTo(mx - 6, my - 4, mx, my + 2); g.quadraticCurveTo(mx + 6, my + 8, mx + 12, my); }
+  else if (mode === "work") { g.moveTo(mx - 10, my); g.quadraticCurveTo(mx, my - 3, mx + 10, my); }
+  else { g.moveTo(mx - 11, my + 3); g.quadraticCurveTo(mx, my - 4, mx + 11, my + 3); }
+  g.stroke();
+  if (mode === "work") {                        // изплезва се от време на време
+    const tp = t % 3.4, out = tp < 1.6 ? Math.min(1, tp / 0.25, (1.6 - tp) / 0.25) : 0;
+    if (out > 0) {
+      g.save(); g.translate(mx + 6, my); g.rotate(0.55 + Math.sin(t * 14) * 0.18);
+      g.fillStyle = "#ff7d92"; g.strokeStyle = INK; g.lineWidth = 3.5;
+      g.beginPath(); g.moveTo(-7, 0); g.lineTo(-7, 8 + 13 * out); g.arc(0, 8 + 13 * out, 7, Math.PI, 0, true); g.lineTo(7, 0); g.fill(); g.stroke();
+      g.restore();
+    }
+  }
+}
 function drawArt(t, mt, st) {
   const frames = artFrames("idle");
   const fps = { idle: 7, happy: 10, party: 14, work: 14, hurt: 5, sleep: 3, wee: 12, angry: 16 }[mode] || 7;
   const n = frames.length, cyc = Math.floor(t * fps) % (2 * n - 2);
-  const im = frames[cyc < n ? cyc : 2 * n - 2 - cyc];          // напред-назад
-  let bob = Math.sin(t * 2 * SP) * 6, tilt = Math.sin(t * 0.8) * 0.03, sq = 1 + Math.sin(t * 2 * SP) * 0.02, shx = 0;
+  const im = STATIC ? frames[0] : frames[cyc < n ? cyc : 2 * n - 2 - cyc];   // статично или напред-назад
+  let bob = Math.sin(t * 1.6 * SP) * (STATIC ? 3 : 6), tilt = Math.sin(t * 0.8) * (STATIC ? 0.012 : 0.03), sq = 1 + Math.sin(t * 1.6 * SP) * (STATIC ? 0.012 : 0.02), shx = 0;
   if (mode === "happy") { bob = Math.sin(t * 3.4) * 9; tilt = Math.sin(t * 1.7) * 0.06; }
   if (mode === "party") { const j = Math.abs(Math.sin(t * 6)); bob = -j * 45; sq = 1 + (j - 0.4) * 0.1; }
   if (mode === "wee") { tilt = Math.sin(t * 5) * 0.15; }
@@ -516,17 +616,17 @@ function drawArt(t, mt, st) {
   }
   g.save();
   g.translate(shx, bob + bottom); g.rotate(tilt); g.scale(1 / sq, sq); g.translate(0, -bottom);
-  let src = im;
+  comp = comp || document.createElement("canvas");
+  comp.width = im.naturalWidth; comp.height = im.naturalHeight;
+  const outer = g, c = comp.getContext("2d");
+  c.clearRect(0, 0, comp.width, comp.height); c.drawImage(im, 0, 0);
+  if (STATIC) { g = c; c.save(); c.scale(comp.width / 512, comp.height / 512); artFace(t, st); c.restore(); g = outer; }
   if (mode === "angry" || mode === "sleep") {     // оцветяване: червено при яд, синкаво в съня
-    tint = tint || document.createElement("canvas");
-    tint.width = im.naturalWidth; tint.height = im.naturalHeight;
-    const c = tint.getContext("2d");
-    c.clearRect(0, 0, tint.width, tint.height); c.drawImage(im, 0, 0);
     c.globalCompositeOperation = "source-atop";
     c.fillStyle = mode === "angry" ? `rgba(230,30,30,${0.22 + Math.sin(t * 6) * 0.07})` : "rgba(40,30,110,.25)";
-    c.fillRect(0, 0, tint.width, tint.height); c.globalCompositeOperation = "source-over";
-    src = tint;
+    c.fillRect(0, 0, comp.width, comp.height); c.globalCompositeOperation = "source-over";
   }
+  const src = comp;
   g.drawImage(src, -S / 2, top - 41 * f, S, S);
   if (mode === "hurt") {                          // лепенка
     g.save(); g.translate(60, top + 40);
@@ -563,7 +663,13 @@ function draw(ctx, o) {
   const sc = o.s || 1;
   const age = o.age || "adult";
   A = AGES[age] || AGES.adult;
-  CUTE = o.style === "cute" || o.style === "art";
+  CUTE = o.style === "cute" || o.style === "art" || o.style === "artanim";
+  STATIC = o.style === "art";
+  LOOK = null;
+  if (o.lookAt) {                      // гледа към пръста или мишката
+    const dx = o.lookAt.x - o.x, dy = o.lookAt.y - (o.y - 90 * (o.s || 1)), d = Math.hypot(dx, dy) || 1, m = Math.min(1, d / (220 * (o.s || 1)));
+    LOOK = [dx / d * m, dy / d * m * 0.8];
+  }
   if (CUTE) {                          // сладкият стил: без очила (само маска при работа), кръгла глава
     const old = age === "old", aging = age === "aging";
     A = { ...A, gog: mode === "work" ? "on" : "none", brows: null, mustache: false, paci: false, freckles: false, tuft: false,
@@ -580,7 +686,7 @@ function draw(ctx, o) {
   g.save(); g.translate(o.x, o.y); g.scale(k, k);
   g.lineJoin = "round";
   if (age === "egg") egg(o.t, st);
-  else if (o.style === "art" && artReady()) drawArt(o.t, o.mt || 9, st);
+  else if ((o.style === "art" || o.style === "artanim") && artReady()) drawArt(o.t, o.mt || 9, st);
   else body(o.t, o.mt || 9, st);
   st.parts = st.parts.filter(p => {
     p.x += p.vx; p.y += p.vy; p.vy += p.k === "spark" ? 0.28 : p.k === "conf" ? 0.02 : 0.32; p.l--;
@@ -591,10 +697,10 @@ function draw(ctx, o) {
   });
   g.restore();
   // къде е върхът на главата и колко е голям (за балончето и докосването)
-  const top = age === "egg" ? -150 : o.style === "art" ? -150 : 70 - 238 * A.head;
+  const top = age === "egg" ? -150 : (o.style === "art" || o.style === "artanim") ? -150 : 70 - 238 * A.head;
   return { top: o.y + top * k, r: 260 * k, cy: o.y + (top + 200) * k / 2 };
 }
 
-window.Octo = { V: 8, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
+window.Octo = { V: 9, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
   AGE_NAMES: { egg: "Яйце", baby: "Бебе", kid: "Малък", teen: "Тийнейджър", adult: "Голям", aging: "Застаряващ", old: "Много стар" } };
 })();
