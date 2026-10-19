@@ -54,7 +54,7 @@ buttons("styles", [["sketch", "✏️ Скица"], ["art", "🖌️ Твоят 
 buttons("ages", Octo.AGES.map(a => [a, AGE_ICON[a] + " " + Octo.AGE_NAMES[a]]), () => age, v => age = v);
 buttons("modes", MODES, () => mode, v => { mode = v; modeAt = performance.now() / 1000; });
 
-const PAGE_V = 16;
+const PAGE_V = 17;
 document.getElementById("ver").textContent = Octo.V === PAGE_V ? `версия ${PAGE_V} ✓` : `⚠️ рисунката е стара (v${Octo.V}), страницата е v${PAGE_V}. Презареди след минута.`;
 const cv = document.getElementById("c"), g = cv.getContext("2d");
 const LW = 600, LH = 560;

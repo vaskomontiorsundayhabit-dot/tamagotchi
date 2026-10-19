@@ -546,14 +546,15 @@ function night(t) { const h = new Date(t).getHours(); return h >= 22 || h < 7; }
 // mood (как се чувства), every (след колко минути може пак; без него е еднократен), next (последващ въпрос).
 const F = () => S.facts;
 const Q = [
-  { id: "mama", st: ["baby"], q: "Ти мама ли си?", yes: "Мама! Мама! Обичам те, мамо!", no: "А… тогава тате ли си?", set: { yes: { parent: "mama" } }, next: { no: "tate" } },
-  { id: "tate", st: ["baby"], q: "Тате ли си?", yes: "Тате! Тате ще ми прави мехурчета!", no: "Хм… значи си просто моят приятел. Хубаво!", set: { yes: { parent: "tate" }, no: { parent: "friend" } } },
-  { id: "bubble", st: ["baby", "kid"], q: "Видя ли онова голямо мехурче?", yes: "Беше огромно! Като глава на кит!", no: "Ами гледай! Ей там! Ох, пукна се.", every: 600 },
+  { id: "mama", st: ["baby"], q: "~Ти… ма-ма?", yes: "~Мама! Мама! Оби-цам мама!", no: "~Не ма-ма? Та-те?", set: { yes: { parent: "mama" } }, next: { no: "tate" } },
+  { id: "tate", st: ["baby"], q: "~Та-те?", yes: "~Тате! Тате! Мехур прави!", no: "~Хм… При-я-тел! Бебо има при-я-тел!", set: { yes: { parent: "tate" }, no: { parent: "friend" } } },
+  { id: "bubble", st: ["kid"], q: "Видя ли онова голямо мехурче?", yes: "Беше огромно! Като глава на кит!", no: "Ами гледай! Ей там! Ох, пукна се.", every: 600 },
   { id: "likeMe", q: "Харесваш ли ме?", yes: "Ура! Записах го в дневника. Два пъти.", no: "О… Ще се постарая повече. Дева никога не се отказва.", mood: { yes: 10, no: -8 }, set: { yes: { likesMe: true }, no: { likesMe: false } }, every: 4320 },
   { id: "pizza", q: "Ти обичаш ли пица?", yes: "Знаех си! И аз. Но само по режим.", no: "Наистина? Значи си по-здравословен от мен.", set: { yes: { pizza: true }, no: { pizza: false } }, next: { yes: "pineapple" } },
   { id: "pineapple", q: "А пица с ананас?", yes: "Ужас! Ананасът няма място там. Това не е подредено!", no: "Правилно. Ананасът е за десерт. Уважавам те.", set: { yes: { pineapple: true } }, mood: { no: 4 } },
   { id: "morning", q: "Сутрешен човек ли си?", yes: "Аз също! Ставам точно в 7:00. Не в 7:01.", no: "Значи си нощна птица. Или нощна риба.", set: { yes: { morning: true }, no: { morning: false } } },
-  { id: "busy", q: "Имаш ли много работа днес?", yes: "Тогава няма да те разсейвам. Направи си списък! Помага.", no: "Чудесно! Значи имаш време и за мен.", set: { yes: { busyDay: () => new Date().toDateString() } }, every: 1200, next: { yes: "list" } },
+  { id: "job", st: ["kid", "teen", "adult", "aging", "old"], q: "Ти ходиш ли на работа?", yes: "Значи си голям и важен. Като изобретател!", no: "Хм. Значи учиш или почиваш. И двете са важни.", set: { yes: { works: true }, no: { works: false } } },
+  { id: "busy", when: () => F().works === true, q: "Имаш ли много работа днес?", yes: "Тогава няма да те разсейвам. Направи си списък! Помага.", no: "Чудесно! Значи имаш време и за мен.", set: { yes: { busyDay: () => new Date().toDateString() } }, every: 1200, next: { yes: "list" } },
   { id: "list", q: "Направи ли си списък със задачите?", yes: "Браво! Списъците са моята любима форма на изкуство.", no: "Ей, направи! Ще ти стане по-леко, обещавам.", mood: { yes: 5 } },
   { id: "busyDone", when: () => F().busyDay && F().busyDay !== new Date().toDateString(), q: "Вчера каза, че имаш много работа. Успя ли да я свършиш?", yes: "Знаех си, че ще се справиш! Гордея се.", no: "Нищо. Днес е нов ден. Започни от най-малкото.", set: { yes: { busyDay: null }, no: { busyDay: null } } },
   { id: "tired", q: "Уморен ли си?", yes: "Пийни вода и легни рано. Като мен.", no: "Супер! И аз съм бодър. Хайде да измислим нещо.", every: 1440, next: { yes: "sleepEarly" } },
@@ -586,6 +587,15 @@ Q.push({ id: "diary", when: () => (S.diary || []).some(e => !e.ok), every: 30,
   q: () => { const e = S.diary.find(x => !x.ok); S.diaryCur = e.k; return `В дневника на ${e.by} пише, че ${e.x}. Вярно ли е?`; },
   yes: () => { const e = S.diary.find(x => x.k === S.diaryCur); if (e) { e.ok = true; S.facts[e.k] = e.v; } return pick(["Значи дневникът не лъже! Записвам и аз.", "Знаех си! Нашият род те познава добре."]); },
   no: () => { S.diary = S.diary.filter(x => x.k !== S.diaryCur); return pick(["Хм, май се е объркал. Задрасквам го.", "Ще го поправя. Дневникът трябва да е точен!"]); } });
+Q.push(
+  { id: "bBubble", st: ["baby"], q: "~Ова… ме-хур?", yes: "~Мехур! Мехур! Голям мехур!", no: "~Не мехур? Кво е? Бебо не знае.", every: 6 },
+  { id: "bFish", st: ["baby"], q: "~Това… риб-ка?", yes: "~Рибка! Бебо знае рибка!", no: "~Не рибка? А кво? А онова?", every: 8 },
+  { id: "bRock", st: ["baby"], q: "~Ка-мък? Голям ка-мък?", yes: "~Ка-мък! Бебо се крие там! Хи-хи!", no: "~Не камък? Бебо обърка.", every: 10 },
+  { id: "bPlay", st: ["baby"], q: "~Игра? Игра с бебо?", mood: { yes: 8, no: -4 }, every: 5,
+    yes: () => { S.track.play++; setTimeout(() => { hideUntil = performance.now() + 15000; }, 2500); return "~Ииии! Бебо се крие! Намери бебо!"; },
+    no: "~Ууу… Моля? Мо-ля-мо-ля?" },
+  { id: "bAm", st: ["baby"], when: () => S.hunger > 35, q: "~Ам-ам? Дай ам-ам?", yes: "~Ура! Ам-ам!", no: "~Уаааа! Гладно!", mood: { no: -5 }, every: 10 },
+);
 Q.push({ id: "idea", when: () => false, q: () => ideaText(S.idea || { a: "can", b: "wire" }), yes: ideaYes, no: ideaNo });
 const CONFUSED = [
   e => `Ъъ… благодаря за ${{ "❤️": "сърцето", "🤗": "прегръдката", "👍": "палеца", "😂": "смеха", "👋": "махането" }[e] || "това"}, но аз те питах нещо…`,
@@ -598,7 +608,29 @@ function chatPush(f, x) {
   S.chat.push({ f, x, t: Date.now() }); if (S.chat.length > 160) S.chat.splice(0, S.chat.length - 160);
   dirty = true; if (sheetKind === "chat") fillSheet("chat");
 }
-function oSays(x, ms = 6000) { chatPush("o", x); say("", x, ms); }
+function oSays(x, ms = 6000) { const y = babify(String(x)); chatPush("o", y); say("", "~" + y, ms); }
+// бебето говори като бебе и се учи: в началото срички, после думи, накрая кратки изречения
+function babyLv() { return S && S.stage === "baby" ? Math.min(2, Math.floor(Math.min(1, S.grow / STAGE_MIN.baby) * 3)) : 2; }
+const BABY = [
+  [/гладен|храна|пица|хапн|ядох|вкусн|Ммм|коремът|режим|Скариди|Здравослов/i, ["Ам-ам!", "Ам-ам! Още ам-ам!", "Гладно! Дай ам-ам!"]],
+  [/спи|Лека нощ|уморен|сили|Шшш|затварят/i, ["Нани…", "Нани-нани…", "Бебо нани сега."]],
+  [/Добро утро|Буден|събуди/i, ["Ааа!", "Утро! Утро!", "Бебо буден! Игра?"]],
+  [/Намери ме|видя ме|Ку-ку|Крия се/i, ["Ку-ку!", "Ку-ку! Пак!", "Ку-ку! Пак! Пак крий!"]],
+  [/обичам|благодаря|прегръд|не беше|Ох, благ/i, ["Гу-гу!", "Оби-цам!", "Обичам те! Много!"]],
+  [/Здрасти|Здравей/i, ["Гу!", "Здъ-ти!", "Здрасти! Здрасти!"]],
+  [/боклук|Чисто|бъркотия|махне/i, ["Бее!", "Бее! Каки!", "Каки! Махни каки!"]],
+  [/контуз|боли|пипалото|Уф/i, ["Уаа!", "Уаа! Боли!", "Ох! Бебо боли!"]],
+  [/Ха-ха|смях/i, ["Хи-хи!", "Хи-хи-хи!", "Смешно! Пак!"]],
+];
+const BABY_ANY = [["Гу-гу!", "Ба-ба-бу!", "Ааа?", "Бу!"], ["Това… кво е?", "Мехур! Мехур!", "Ова? А ова?", "Игра! Игра!"],
+  ["Какво е това? А онова?", "Игра! Искам игра!", "Бебо учи думи!", "Хвани ме! Хи-хи!", "Пипни! Не пипна! Хи-хи!"]];
+function babify(t, e = "") {
+  if (t.startsWith("~")) return t.slice(1);
+  if (!S || S.stage !== "baby") return t;
+  const lv = babyLv(), src = t || (typeof WORDS !== "undefined" && WORDS[e]) || "";
+  for (const [re, a] of BABY) if (re.test(src)) return a[lv];
+  return pick(BABY_ANY[lv]);
+}
 function qText(q) { return typeof q.q === "function" ? q.q() : q.q; }
 function askNext(forced) {
   if (!S.hatched || S.q || S.naming) return;
@@ -606,6 +638,7 @@ function askNext(forced) {
   const ok = q => (!q.st || q.st.includes(S.stage)) && (!q.when || q.when()) &&
     (asked[q.id] == null || (q.every && now - asked[q.id] > q.every * MIN));
   let list = Q.filter(ok);
+  if (S.stage === "baby") list = list.filter(q => q.st && q.st.includes("baby"));
   const fu = list.filter(q => S.followUp && q.id === S.followUp);
   if (fu.length) list = fu;
   else list = list.filter(q => !Q.some(p => p.next && Object.values(p.next).includes(q.id)));   // последващите идват само след отговор
@@ -797,7 +830,7 @@ function minute(t, offline, ev) {
     S.energy = clamp(S.energy - (night(t) ? 0.25 : 1 / 6) * drain);
     if (S.energy <= 8) { S.asleep = true; log("😴 Легна на дъното и заспа от умора.", t); }
   }
-  S.hunger = clamp(S.hunger + (S.asleep ? 1 / 14 : 1 / 8) * (st === "baby" ? 1.5 : 1));
+  S.hunger = clamp(S.hunger + (S.asleep ? 1 / 14 : 1 / 8) * (st === "baby" ? 2.6 : 1));
   if (S.hunger >= 95) S.health = clamp(S.health - 0.1);
   else if (S.hunger < 70) S.health = clamp(S.health + (S.hurt ? 0.03 : 0.1));
   if (S.hurt && S.health >= 95) S.hurt = 0;
@@ -842,7 +875,7 @@ function chatter() {
   if (fc.blue === true) mem.push("Днес водата е особено синя. Специално за теб.");
   if (fc.parent === "mama" || fc.parent === "tate") mem.push(fc.parent === "mama" ? "Мамо, гледай какво мога!" : "Тате, гледай какво мога!");
   if (mem.length && Math.random() < 0.25) { lastChat = performance.now(); return say("", pick(mem)); }
-  if (S.stage === "baby" && Math.random() < 0.3) { lastChat = performance.now(); return say("", pick(["Гу-гу!", "Мехурче! Мехурче!", "Ам-ам?", "Какво е това? А това?"])); }
+  if (S.stage === "baby" && Math.random() < 0.6) { lastChat = performance.now(); return say("", ""); }
   if (Math.random() > 0.35) return;
   lastChat = performance.now();
   if (S.trash.length >= 3) return say("😖🗑️", pick(["Боклуци! Навсякъде боклуци!", "Не мога да мисля в тази бъркотия.", "Някой да махне това, моля!"]));
@@ -853,11 +886,21 @@ function chatter() {
 }
 
 // ---------- Грижи ----------
+let spam = { e: "", n: 0, t: 0 };
 function careAct(e) {
   if (role !== "keeper" || !S.hatched) return;
   const now = Date.now();
   S.lastCare = now; dirty = true;
   if (S.asleep && e !== "☀️" && e !== "❤️") { save(); return say("💤", "Шшш… спи."); }
+  const EN = { "👍": ["палец", "палци", "Палец"], "❤️": ["сърце", "сърца", "Сърце"], "🤗": ["прегръдка", "прегръдки", "Прегръдка"], "😂": ["смях", "смехове", "Смях"], "👋": ["махане", "махания", "Махане"] }[e];
+  if (EN) {
+    spam = spam.e === e && now - spam.t < 45000 ? { e, n: spam.n + 1, t: now } : { e, n: 1, t: now };
+    if (spam.n >= 3) {
+      S.mood = clamp(S.mood + (spam.n >= 5 ? -2 : 1)); save();
+      if (S.stage === "baby") return say("", `~${EN[2]}? Още ${EN[0]}? ${spam.n >= 5 ? "Стига! Хи-хи!" : "Хи-хи!"}`);
+      return say("", spam.n >= 5 ? `Добре, добре! Разбрах. ${spam.n} ${EN[1]}. Броих ги. Стига.` : pick([`Пак ${EN[0]}? Защо ми даваш толкова ${EN[1]}?`, `${EN[2]}… и пак ${EN[0]}. Това някакъв код ли е?`, `Хм. ${spam.n} ${EN[1]} подред. Записвам го, но не разбирам.`]));
+    }
+  }
   switch (e) {
     case "🍕": case "🥦": case "🦐": eat(e, now); break;
     case "😴":
@@ -876,7 +919,9 @@ function careAct(e) {
   save(); render();
 }
 function eat(e, now) {
-  if (S.hunger < 25) { S.mood = clamp(S.mood - 2); return say("🙅", "Не съм гладен. Режимът си е режим! 📋"); }
+  if (S.hunger < (S.stage === "baby" ? 10 : 25)) { S.mood = clamp(S.mood - 2); return say("🙅", S.stage === "baby" ? "~Не! Пълно коремче!" : "Не съм гладен. Режимът си е режим! 📋"); }
+  if (S.stage === "baby" && e === "🥦" && Math.random() < 0.7) { S.mood = clamp(S.mood - 3); fx.hurt = performance.now(); return say("", pick(["~Бее! Зелено! Не ам!", "~Пфу! Не! Бебо не иска зелено!", "~Ъъъ! Дай пица!"])); }
+  if (S.stage === "baby" && e !== "🥦") { S.hunger = clamp(S.hunger - (e === "🦐" ? 40 : 45)); S.mood = clamp(S.mood + 6); S.meals = [...S.meals, { h: new Date(now).getHours(), d: new Date(now).toDateString() }].slice(-14); S.lastMeal = now; e === "🍕" && S.track.pizza++; log(`${e} Хапна.`); return say("", pick(["~Ам-ам! Още!", "~Мммм! Вкусно! Още ам-ам!", "~Ням-ням-ням!"])); }
   const d = new Date(now), h = d.getHours() + d.getMinutes() / 60, day = d.toDateString();
   const usual = S.meals.filter(m => m.d !== day && Math.abs(m.h - h) < 0.75).length >= 2;
   S.meals = [...S.meals, { h, d: day }].slice(-14);
@@ -1044,7 +1089,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 16;
+const PAGE_V = 17;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1321,7 +1366,7 @@ function ringAction(id) {
 
 // ---------- Говорене (балончето следва Октонис) ----------
 let bubbleUntil = 0;
-function say(e, t = "", ms = 4500) { bubbleUntil = performance.now() + ms; showBubble(e, t, false); }
+function say(e, t = "", ms = 4500) { bubbleUntil = performance.now() + ms; showBubble(e, babify(String(t), e), false); }
 // говори само с думи: махам картинките (емотиконите) от текста
 const NO_EMO = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}\u{20E3}]/gu;
 const WORDS = { "🤣": "Ха-ха-ха!", "🤗": "Прегръдка! Обичам прегръдки.", "☺️": "Ох, благодаря!", "🥰": "И аз те обичам!", "💤💗": "Хм… обичам те… хррр…",
@@ -1336,7 +1381,7 @@ function showBubble(e, t, want) {
 function updateBubble() {
   if (!inGame || performance.now() < bubbleUntil) return;
   if (!S.hatched || S.asleep || hidden()) return $("bubble").classList.add("hidden");
-  if (S.q) return showBubble("", S.q.text, true);
+  if (S.q) return showBubble("", S.q.text.replace(/^~/, ""), true);
   if (S.hunger > 70) return showBubble("🍕?", "Гладен съм…", true);
   if (S.trash.length >= 4) return showBubble("🗑️!!", "Тук е ужасна бъркотия!", true);
   if (S.energy < 15) return showBubble("🥱", "Много съм уморен…", true);
@@ -1671,10 +1716,11 @@ setInterval(() => {
     }
     selfWork(p);
     if (S.hatched && !S.asleep && !working && !hidden() && p > nextHide && !ringOpen && !sheetKind) {   // понякога се крие (Дева е малко срамежлив)
-      nextHide = p + rnd(4, 8) * 60000;
-      if (S.trash.length >= 4 || S.mood < 55 || Math.random() < (has("hermit") || S.stage === "teen" ? 0.5 : 0.25)) {
+      const baby = S.stage === "baby";
+      nextHide = p + (baby ? rnd(1.5, 3) : rnd(4, 8)) * 60000;
+      if (S.trash.length >= 4 || S.mood < 55 || Math.random() < (baby ? 0.75 : has("hermit") || S.stage === "teen" ? 0.5 : 0.25)) {
         hideUntil = p + 18000;
-        say("🙈", S.trash.length >= 4 ? "Не мога да гледам тази бъркотия…" : pick(["Крия се! Намери ме.", "Малко ми трябва тишина…"]));
+        say("🙈", baby ? pick(["~Хи-хи! Бебо се крие!", "~Ку-ку! Къде е бебо?", "~Намери бебо! Хи-хи!"]) : S.trash.length >= 4 ? "Не мога да гледам тази бъркотия…" : pick(["Крия се! Намери ме.", "Малко ми трябва тишина…"]));
       }
     }
     if (dirty && now - lastSave > 60000) save();
