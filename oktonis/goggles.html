@@ -24,6 +24,8 @@
 <h1>🐙 Октонис: проба на дизайна</h1>
 <p>Избери възраст и настроение.</p>
 <div class="scene"><canvas id="c"></canvas></div>
+<h2>Стил</h2>
+<div class="row m" id="styles"></div>
 <h2>Възраст</h2>
 <div class="row" id="ages"></div>
 <h2>Настроение</h2>
@@ -34,7 +36,7 @@ const MODES = [["idle", "😐 Обикновен"], ["happy", "😊 Щастли
   ["work", "🔧 Изобретява"], ["hurt", "🤕 Контузен"], ["sleep", "😴 Спи"],
   ["wee", "🎢 Уиии (влачене)"], ["angry", "😠 Ядосан"]];
 const AGE_ICON = { egg: "🥚", baby: "🍼", kid: "🧒", teen: "🛹", adult: "🧑‍🔬", aging: "🧓", old: "👴" };
-let mode = "idle", age = "adult", modeAt = 0;
+let mode = "idle", age = "adult", modeAt = 0, style = "cute";
 const st = {};
 function buttons(boxId, list, get, set) {
   const box = document.getElementById(boxId);
@@ -45,6 +47,7 @@ function buttons(boxId, list, get, set) {
   }
   paint();
 }
+buttons("styles", [["cute", "🐙 Сладък"], ["goggles", "🥽 С очила"]], () => style, v => style = v);
 buttons("ages", Octo.AGES.map(a => [a, AGE_ICON[a] + " " + Octo.AGE_NAMES[a]]), () => age, v => age = v);
 buttons("modes", MODES, () => mode, v => { mode = v; modeAt = performance.now() / 1000; });
 
@@ -58,7 +61,7 @@ function frame() {
   g.setTransform(d, 0, 0, d, 0, 0);
   g.fillStyle = "#f7f3ec"; g.fillRect(0, 0, LW, LH);
   g.fillStyle = "#ece5f4"; g.beginPath(); g.ellipse(LW / 2, LH * 0.45, LW * 0.42, LH * 0.38, 0, 0, Math.PI * 2); g.fill();
-  Octo.draw(g, { x: LW / 2, y: 290, s: 0.95, age, mode, t, mt: t - modeAt, st, ground: LH - 70 });
+  Octo.draw(g, { x: LW / 2, y: 290, s: 0.95, age, mode, t, mt: t - modeAt, st, ground: LH - 70, style });
   if (mode === "sleep") { g.fillStyle = "rgba(40,30,90,.25)"; g.fillRect(0, 0, LW, LH); }
 }
 requestAnimationFrame(frame);
