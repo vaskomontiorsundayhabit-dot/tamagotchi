@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Октонис: гладък стил</title>
+<style>
+  :root { --bg: #2a2140; --card: #362c52; --line: #4a3f6b; --text: #f6efe6; --muted: #b3a8cf; --peach: #f4a07a; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 4px 0 2px; }
+  p { color: var(--muted); margin: 0 0 12px; font-size: 14px; }
+  .scene { border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
+  canvas { display: block; width: 100%; height: auto; }
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  button { font: inherit; color: var(--text); background: #4a3f6b; border: 0; border-radius: 12px; padding: 10px 6px; cursor: pointer; }
+  button.on { background: var(--peach); color: #2a1730; font-weight: 700; }
+</style>
+</head>
+<body>
+<h1>🐙 Октонис в гладък стил</h1>
+<p>Само проба. Натискай бутоните да видиш как изглежда в различно настроение.</p>
+<div class="scene"><canvas id="c"></canvas></div>
+<div class="modes" id="modes"></div>
+
+<script>
+const MODES = [["idle", "😐 Обикновен"], ["happy", "😊 Щастлив"], ["party", "🎉 Получи се!"],
+  ["work", "🔧 Изобретява"], ["hurt", "🤕 Контузен"], ["sleep", "😴 Спи"]];
+let mode = "idle", modeAt = 0;
+const box = document.getElementById("modes");
+for (const [m, label] of MODES) {
+  const b = document.createElement("button");
+  b.textContent = label;
+  b.onclick = () => { mode = m; modeAt = performance.now() / 1000; parts = []; render(); };
+  b.dataset.m = m; box.appendChild(b);
+}
+function render() { for (const b of box.children) b.classList.toggle("on", b.dataset.m === mode); }
+render();
+
+const cv = document.getElementById("c"), g = cv.getContext("2d");
+const LW = 600, LH = 540;
+function resize() {
+  const d = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = LW * d; cv.height = LH * d; g.setTransform(d, 0, 0, d, 0, 0);
+}
+resize();
+
+const COL = { body: "#f4a07a", light: "#ffc9a8", shade: "#d9774f", deep: "#b85d3d", line: "#7a3a2a", cheek: "#ff8fa3" };
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const bubbles = Array.from({ length: 16 }, () => ({ x: rnd(0, LW), y: rnd(0, LH), r: rnd(2, 6), s: rnd(8, 22), p: rnd(0, 6) }));
+let parts = [];
+
+function tentacle(t, hx, hy, R, i, front) {
+  const o = i - 3.5;
+  const sp = { idle: 1.6, happy: 3, party: 7, work: 3.5, hurt: 1.2, sleep: 0.6 }[mode];
+  const amp = { idle: 0.05, happy: 0.08, party: 0.13, work: 0.06, hurt: 0.03, sleep: 0.025 }[mode];
+  let x = hx + o * R * 0.21, y = hy + R * 0.45;
+  let ang = Math.PI / 2 - o * 0.2;
+  const N = 26, L = R * (front ? 1.35 : 1.2), step = L / N;
+  const pts = [];
+  for (let j = 0; j <= N; j++) {
+    const k = j / N;
+    pts.push([x, y, k]);
+    ang += Math.sin(t * sp + i * 1.1 - j * 0.28) * amp;
+    if (Math.abs(o) > 2) ang -= Math.sign(o) * 0.035;                  // крайните се разтварят
+    if (k > 0.65) ang -= Math.sign(o || 1) * 0.11 * (mode === "sleep" ? 0.5 : 1); // върхът се къдри навън
+    if (mode === "work" && (i === 0 || i === 7)) ang -= Math.sign(o) * 0.09;     // ръцете вдигнати
+    if (mode === "party" && (i === 0 || i === 7)) ang -= Math.sign(o) * (0.08 + Math.sin(t * 9) * 0.03);
+    x += Math.cos(ang) * step; y += Math.sin(ang) * step;
+    if (y > LH - 70) y = LH - 70 - (y - (LH - 70)) * 0.2;
+  }
+  return pts;
+}
+function drawTentacle(pts, R, front) {
+  const w0 = R * (front ? 0.17 : 0.15);
+  const L = [], Rt = [];
+  for (let j = 0; j < pts.length; j++) {
+    const [x, y, k] = pts[j];
+    const a = pts[Math.min(j + 1, pts.length - 1)], b = pts[Math.max(j - 1, 0)];
+    let nx = -(a[1] - b[1]), ny = a[0] - b[0];
+    const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
+    const w = w0 * (1 - k * 0.82);
+    L.push([x + nx * w, y + ny * w]); Rt.push([x - nx * w, y - ny * w]);
+  }
+  g.beginPath();
+  g.moveTo(...L[0]);
+  for (let j = 1; j < L.length; j++) g.lineTo(...L[j]);
+  const tip = pts[pts.length - 1], tw = w0 * 0.18;
+  g.arc(tip[0], tip[1], tw, 0, Math.PI * 2);
+  for (let j = Rt.length - 1; j >= 0; j--) g.lineTo(...Rt[j]);
+  g.closePath();
+  const gr = g.createLinearGradient(pts[0][0] - w0, 0, pts[0][0] + w0, 0);
+  if (front) { gr.addColorStop(0, COL.light); gr.addColorStop(0.5, COL.body); gr.addColorStop(1, COL.shade); }
+  else { gr.addColorStop(0, COL.shade); gr.addColorStop(1, COL.deep); }
+  g.fillStyle = gr; g.fill();
+  g.lineWidth = 2.5; g.strokeStyle = COL.line; g.lineJoin = "round"; g.stroke();
+  if (front) {   // вендузи
+    g.fillStyle = "rgba(255,225,205,.85)";
+    for (let j = 9; j < pts.length - 2; j += 3) {
+      const [x, y, k] = pts[j], r = w0 * (1 - k * 0.82) * 0.38;
+      g.beginPath(); g.ellipse(x, y, r, r * 0.8, 0, 0, Math.PI * 2); g.fill();
+    }
+  }
+}
+function headPath(hx, hy, R, sx, sy) {
+  const top = R * 1.18 * sy, bot = R * 0.62 / sy, w = R * sx;
+  g.beginPath();
+  g.moveTo(hx - w, hy);
+  g.bezierCurveTo(hx - w, hy - top * 1.05, hx + w, hy - top * 1.05, hx + w, hy);
+  g.bezierCurveTo(hx + w, hy + bot * 0.9, hx + w * 0.5, hy + bot, hx, hy + bot);
+  g.bezierCurveTo(hx - w * 0.5, hy + bot, hx - w, hy + bot * 0.9, hx - w, hy);
+  g.closePath();
+}
+function eye(x, y, R, t, look) {
+  const rx = R * 0.15, ry = R * 0.19;
+  const blink = (t % 4.1) < 0.12 || ((t + 0.25) % 9.3) < 0.12;
+  g.lineCap = "round"; g.lineWidth = 4; g.strokeStyle = "#3a1d2a";
+  if (mode === "sleep" || blink) {
+    g.beginPath(); g.arc(x, y - ry * 0.1, rx * 0.9, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke(); return;
+  }
+  if (mode === "happy" || mode === "party") {
+    g.beginPath(); g.arc(x, y + ry * 0.35, rx * 0.9, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke(); return;
+  }
+  if (mode === "hurt") {
+    const s = rx * 0.7, dir = x < 300 ? 1 : -1;
+    g.beginPath(); g.moveTo(x - s * dir, y - s); g.lineTo(x + s * dir, y); g.lineTo(x - s * dir, y + s); g.stroke(); return;
+  }
+  g.fillStyle = "#fff"; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill();
+  g.lineWidth = 2.5; g.stroke();
+  const px = x + look[0] * rx * 0.35, py = y + look[1] * ry * 0.35 + ry * 0.1;
+  g.fillStyle = "#2a1730"; g.beginPath(); g.ellipse(px, py, rx * 0.68, ry * 0.72, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = "#fff";
+  g.beginPath(); g.arc(px - rx * 0.25, py - ry * 0.3, rx * 0.26, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(px + rx * 0.22, py + ry * 0.25, rx * 0.11, 0, Math.PI * 2); g.fill();
+}
+function gear(x, y, r, a, c) {
+  g.save(); g.translate(x, y); g.rotate(a);
+  g.beginPath();
+  for (let i = 0; i < 16; i++) {
+    const rr = i % 2 ? r : r * 1.28, a1 = i / 16 * Math.PI * 2, a2 = (i + 1) / 16 * Math.PI * 2;
+    g.lineTo(Math.cos(a1) * rr, Math.sin(a1) * rr); g.lineTo(Math.cos(a2) * rr, Math.sin(a2) * rr);
+  }
+  g.closePath(); g.fillStyle = c; g.fill(); g.lineWidth = 2.5; g.strokeStyle = "#3a3355"; g.stroke();
+  g.beginPath(); g.arc(0, 0, r * 0.38, 0, Math.PI * 2); g.fillStyle = "#6b5f8f"; g.fill(); g.stroke();
+  g.restore();
+}
+function star(x, y, r, c) {
+  g.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+  g.closePath(); g.fillStyle = c; g.fill();
+}
+
+function frame() {
+  requestAnimationFrame(frame);
+  const t = performance.now() / 1000, mt = t - modeAt;
+  // фон
+  const bg = g.createLinearGradient(0, 0, 0, LH);
+  bg.addColorStop(0, "#a497c9"); bg.addColorStop(1, "#8576b0");
+  g.fillStyle = bg; g.fillRect(0, 0, LW, LH);
+  for (const b of bubbles) {
+    const y = ((b.y - t * b.s) % LH + LH) % LH, x = b.x + Math.sin(t + b.p) * 8;
+    g.fillStyle = "rgba(255,250,235,.35)"; g.beginPath(); g.arc(x, y, b.r, 0, Math.PI * 2); g.fill();
+  }
+  g.fillStyle = "#7566a0"; g.beginPath(); g.ellipse(LW / 2, LH - 40, LW * 0.75, 40, 0, Math.PI, 0); g.fill(); g.fillRect(0, LH - 40, LW, 40);
+
+  // тяло
+  const R = 120;
+  let bob = Math.sin(t * 2) * 6, sx = 1 + Math.sin(t * 2) * 0.015, sy = 1 - Math.sin(t * 2) * 0.015, tilt = 0;
+  if (mode === "happy") { bob = Math.sin(t * 3.5) * 9; tilt = Math.sin(t * 1.7) * 0.06; }
+  if (mode === "party") { const j = Math.abs(Math.sin(t * 6)); bob = -j * 45; sy = 1 + (j - 0.5) * 0.12; sx = 1 - (j - 0.5) * 0.08; }
+  if (mode === "sleep") { bob = Math.sin(t * 0.9) * 4; sx = 1 + Math.sin(t * 0.9) * 0.03; sy = 1 + Math.sin(t * 0.9) * 0.03; tilt = 0.1; }
+  if (mode === "hurt") { tilt = Math.sin(t * 2.5) * 0.08 + (mt < 0.6 ? Math.sin(mt * 50) * 0.08 * (1 - mt / 0.6) : 0); bob = 4; }
+  if (mode === "work") { bob = Math.sin(t * 7) * 2; }
+  const hx = LW / 2, hy = 225 + bob;
+
+  // сянка
+  const sh = 1 - Math.min(0.5, -Math.min(0, bob) / 90);
+  g.fillStyle = "rgba(40,20,70,.28)"; g.beginPath(); g.ellipse(hx, LH - 62, 150 * sh, 16 * sh, 0, 0, Math.PI * 2); g.fill();
+
+  g.save(); g.translate(hx, hy); g.rotate(tilt); g.translate(-hx, -hy);
+  const back = [1, 3, 4, 6], front = [0, 2, 5, 7];
+  const tips = {};
+  for (const i of back) drawTentacle(tentacle(t, hx, hy, R, i, false), R, false);
+  for (const i of front) { const p = tentacle(t, hx, hy, R, i, true); tips[i] = p[p.length - 6]; drawTentacle(p, R, true); }
+
+  // глава
+  headPath(hx, hy, R, sx, sy);
+  const hg = g.createRadialGradient(hx - R * 0.35, hy - R * 0.75, R * 0.1, hx, hy - R * 0.2, R * 1.4);
+  hg.addColorStop(0, COL.light); hg.addColorStop(0.55, COL.body); hg.addColorStop(1, COL.shade);
+  g.fillStyle = hg; g.fill(); g.lineWidth = 3; g.strokeStyle = COL.line; g.stroke();
+  // отблясък
+  g.fillStyle = "rgba(255,255,255,.45)";
+  g.beginPath(); g.ellipse(hx - R * 0.45, hy - R * 0.78, R * 0.16, R * 0.08, -0.6, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(hx - R * 0.22, hy - R * 0.92, R * 0.04, 0, Math.PI * 2); g.fill();
+
+  // лице
+  const look = mode === "work" ? [Math.sin(t * 3) * 0.6, 0.7] : [Math.sin(t * 0.5) * 0.7, Math.sin(t * 0.33) * 0.3];
+  const ey = hy - R * 0.08;
+  eye(hx - R * 0.36, ey, R, t, look); eye(hx + R * 0.36, ey, R, t, look);
+  // бузки
+  if (mode !== "hurt") {
+    g.fillStyle = "rgba(255,120,150," + (mode === "happy" || mode === "party" ? 0.55 : 0.3) + ")";
+    for (const s of [-1, 1]) { g.beginPath(); g.ellipse(hx + s * R * 0.58, ey + R * 0.22, R * 0.11, R * 0.065, 0, 0, Math.PI * 2); g.fill(); }
+  }
+  // уста
+  const my = hy + R * 0.25;
+  g.lineWidth = 4; g.strokeStyle = "#3a1d2a"; g.lineCap = "round";
+  g.beginPath();
+  if (mode === "happy") g.arc(hx, my - 8, 14, 0.15 * Math.PI, 0.85 * Math.PI);
+  else if (mode === "party") { g.moveTo(hx - 18, my - 4); g.quadraticCurveTo(hx, my + 26, hx + 18, my - 4); g.closePath(); g.fillStyle = "#7a2a3a"; g.fill(); }
+  else if (mode === "hurt") { g.moveTo(hx - 12, my + 4); g.quadraticCurveTo(hx - 6, my - 4, hx, my + 2); g.quadraticCurveTo(hx + 6, my + 8, hx + 12, my); }
+  else if (mode === "sleep") { g.ellipse(hx, my, 5, 3 + Math.sin(t * 0.9) * 1.5, 0, 0, Math.PI * 2); }
+  else if (mode === "work") { g.moveTo(hx - 8, my); g.lineTo(hx + 6, my); }
+  else { g.moveTo(hx - 10, my - 2); g.quadraticCurveTo(hx, my + 4, hx + 10, my - 2); }
+  g.stroke();
+  if (mode === "work") { g.fillStyle = COL.cheek; g.beginPath(); g.ellipse(hx + 9, my + 4, 5, 6, 0, 0, Math.PI); g.fill(); }
+
+  // лепенка
+  if (mode === "hurt") {
+    g.save(); g.translate(hx + R * 0.42, hy - R * 0.62);
+    for (const a of [0.75, -0.75]) {
+      g.save(); g.rotate(a);
+      g.fillStyle = "#f6dfb4"; g.strokeStyle = "#b38a5a"; g.lineWidth = 2;
+      g.beginPath(); g.roundRect(-30, -9, 60, 18, 8); g.fill(); g.stroke();
+      g.fillStyle = "#e8c98f"; g.fillRect(-9, -7, 18, 14);
+      g.restore();
+    }
+    g.restore();
+  }
+  g.restore();
+
+  // предмети и ефекти
+  if (mode === "work") {
+    const a = tips[0], b = tips[7];
+    gear(a[0] - 10, a[1] - 18, 22, t * 2.5, "#bfc7da");
+    // гаечен ключ
+    g.save(); g.translate(b[0] + 6, b[1] - 20); g.rotate(-0.6 + Math.sin(t * 10) * 0.35);
+    g.fillStyle = "#c9cfe0"; g.strokeStyle = "#3a3355"; g.lineWidth = 2.5;
+    g.beginPath(); g.roundRect(-5, -2, 10, 50, 4); g.fill(); g.stroke();
+    g.beginPath(); g.arc(0, -8, 13, 0.35 * Math.PI, 2.65 * Math.PI); g.lineTo(0, -8); g.closePath(); g.fill(); g.stroke();
+    g.restore();
+    if (Math.random() < 0.5) parts.push({ x: hx + rnd(-20, 20), y: hy + R * 0.95, vx: rnd(-3, 3), vy: rnd(-5, -2), l: 22, c: pick(["#ffd166", "#fff3b0", "#ffb347"]), k: "spark" });
+  }
+  if (mode === "party" && Math.random() < 0.7)
+    for (let i = 0; i < 3; i++) parts.push({ x: rnd(40, LW - 40), y: -10, vx: rnd(-1, 1), vy: rnd(1, 3), l: 200, c: pick(["#ffd166", "#ff8fa3", "#7cc8f2", "#6fd3a0", "#fff"]), k: "conf", a: rnd(0, 6) });
+  if (mode === "hurt") for (let i = 0; i < 3; i++) {
+    const a = t * 2.5 + i * Math.PI * 2 / 3;
+    star(hx + Math.cos(a) * R * 0.8, hy - R * 1.25 + Math.sin(a) * 14, 12, "#ffd166");
+  }
+  if (mode === "sleep") {
+    g.fillStyle = "rgba(25,12,60,.38)"; g.fillRect(0, 0, LW, LH);
+    g.fillStyle = "#fff6dc"; g.textAlign = "center";
+    for (let i = 0; i < 3; i++) {
+      const z = (t * 0.35 + i / 3) % 1;
+      g.globalAlpha = Math.sin(z * Math.PI);
+      g.font = `bold ${18 + z * 22}px sans-serif`;
+      g.fillText("z", hx + R * 0.7 + z * 50 + Math.sin(z * 8) * 6, hy - R * 0.9 - z * 90);
+    }
+    g.globalAlpha = 1;
+  }
+  parts = parts.filter(p => {
+    p.x += p.vx; p.y += p.vy; p.vy += p.k === "spark" ? 0.25 : 0.02; p.l--;
+    if (p.k === "spark") { g.strokeStyle = p.c; g.lineWidth = 3; g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * 2, p.y - p.vy * 2); g.stroke(); }
+    else { p.a += 0.15; g.save(); g.translate(p.x + Math.sin(p.a) * 6, p.y); g.rotate(p.a); g.fillStyle = p.c; g.fillRect(-5, -3, 10, 6); g.restore(); }
+    return p.l > 0 && p.y < LH;
+  });
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
