@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 9;
+const VER = 10;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -209,6 +209,11 @@ function brawl(cx, cy, t) {
   }
 }
 function part(p) {
+  if (p.k === "skbolt") {              // болтче с химикал
+    g.save(); g.translate(p.x, p.y); g.rotate(p.a); g.strokeStyle = SK.ink; g.fillStyle = "#fbf7ee"; g.lineWidth = 1.5;
+    g.beginPath(); g.rect(-1.8, -1, 3.6, 12); g.fill(); g.stroke(); g.beginPath(); g.rect(-4.5, -4, 9, 4); g.fill(); g.stroke();
+    g.restore(); return;
+  }
   g.save(); g.translate(p.x, p.y); g.rotate(p.a);
   g.strokeStyle = C.line; g.lineWidth = 3.5; g.lineJoin = "round"; g.fillStyle = "#c9cfdc";
   if (p.k === "bolt") {
@@ -655,8 +660,269 @@ function drawArt(t, mt, st) {
   if (mode === "angry") anger(100, top + 30, 1 + Math.sin(t * 10) * 0.12);
 }
 
+// ---------- Стил „Скица“: химикал в тетрадка ----------
+// Рисува се в малки единици (глава ~50) и се увеличава ×2.
+const SK = { ink: "#23395d", red: "#d63b3b" };
+let SEED = 0, DIR = 1;
+function jit(i, a = 1.6) { const v = Math.sin(SEED * 12.9898 + i * 78.233) * 43758.5453; return (v - Math.floor(v) - 0.5) * a; }
+function skFill(age) {
+  if (mode === "angry") return "#ff9a8a";
+  return { baby: "#ffe39a", kid: "#ffdb7d", teen: "#ffd36b", adult: "#ffd36b", aging: "#f4d27c", old: "#efdcaa" }[age] || "#ffd36b";
+}
+function skHead(sc = 1) {
+  g.beginPath(); g.moveTo(-50 * sc, 10 * sc);
+  g.bezierCurveTo(-56 * sc, -60 * sc, 56 * sc, -60 * sc, 50 * sc, 10 * sc);
+  g.bezierCurveTo(46 * sc, 40 * sc, -46 * sc, 40 * sc, -50 * sc, 10 * sc); g.closePath();
+}
+function skTents(t, pulse, L) {
+  const out = [], n = 8, N = 26;
+  for (let i = 0; i < n; i++) {
+    const o = i - (n - 1) / 2, sg = Math.sign(o);
+    let x = o * 12, y = 14, ang = Math.PI / 2 + o * 0.4;
+    if (mode === "swim") ang = Math.PI / 2 + o * (0.05 + pulse * 0.16);
+    if (mode === "angry") ang = Math.PI / 2 + o * 0.52;
+    if (mode === "sleep") ang = Math.PI / 2 + o * 0.56;
+    if (mode === "party" && Math.abs(o) > 2) ang = Math.PI / 2 + o * 0.6;
+    if (mode === "work") ang = Math.PI / 2 + o * 0.26;
+    const pts = [];
+    for (let j = 0; j <= N; j++) {
+      const k = j / N;
+      pts.push([x, y, k]);
+      let d;
+      if (mode === "swim") d = Math.sin(t * 5.2 + i * 0.5 - j * 0.3) * 0.07 * (0.3 + k) + (k > 0.8 ? -sg * 0.05 : 0);
+      else if (mode === "angry") d = Math.sin(t * 14 + i * 1.3 - j * 0.4) * 0.045 * (0.3 + k) - sg * (k > 0.62 ? 0.13 : 0.012);
+      else if (mode === "party") d = Math.sin(t * 9 + i - j * 0.4) * 0.06 * (0.3 + k) - sg * (Math.abs(o) > 2 ? 0.075 : k > 0.6 ? 0.1 : 0);
+      else if (mode === "wee") d = Math.sin(t * 7 + i - j * 0.4) * 0.06 * (0.3 + k) - sg * 0.02;
+      else if (mode === "work") d = Math.sin(t * 13 + i * 1.7 - j * 0.5) * 0.06 * (0.3 + k);
+      else if (mode === "sleep") d = Math.sin(t * 0.8 + i - j * 0.2) * 0.008 - sg * (k > 0.5 ? 0.06 : 0.01);
+      else if (mode === "hurt") d = Math.sin(t * 1.4 + i - j * 0.2) * 0.012 - sg * (k > 0.7 ? 0.08 : 0);
+      else d = Math.sin(t * 2.2 * SP + i * 0.9 - j * 0.25) * 0.02 * (0.3 + k) - sg * (k > 0.62 ? 0.15 : 0.004);
+      ang += d;
+      x += Math.cos(ang) * L / N; y += Math.sin(ang) * L / N;
+      if (GROUND != null && y > GROUND) y = GROUND;
+    }
+    out.push(pts);
+  }
+  return out;
+}
+function skTube(pts, i, w0, fill, outlineW) {
+  g.fillStyle = fill;
+  for (const [x, y, k] of pts) { g.beginPath(); g.arc(x + 2, y + 2, w0 * (1 - 0.7 * k), 0, Math.PI * 2); g.fill(); }
+  g.strokeStyle = SK.ink; g.lineWidth = outlineW; g.lineCap = "round"; g.lineJoin = "round";
+  for (const side of [-1, 1]) {
+    g.beginPath();
+    pts.forEach(([x, y, k], j) => {
+      const a = pts[Math.min(j + 1, pts.length - 1)], b = pts[Math.max(j - 1, 0)];
+      let nx = -(a[1] - b[1]), ny = a[0] - b[0]; const l = Math.hypot(nx, ny) || 1;
+      const w = w0 * (1 - 0.7 * k);
+      const X = x + nx / l * w * side + jit(i * 50 + j + side * 300), Y = y + ny / l * w * side + jit(i * 50 + j + 7 + side * 300);
+      j ? g.lineTo(X, Y) : g.moveTo(X, Y);
+    });
+    g.stroke();
+  }
+  const [ex, ey, ek] = pts[pts.length - 1];       // заоблен връх
+  g.beginPath(); g.arc(ex, ey, w0 * (1 - 0.7 * ek), 0, Math.PI * 2); g.stroke();
+  for (let j = 8; j < pts.length - 3; j += 5) {   // вендузи като малки кръгчета
+    const [x, y, k] = pts[j], w = w0 * (1 - 0.7 * k);
+    g.lineWidth = 1; g.beginPath(); g.arc(x + jit(j + i * 9) * 0.5, y + w * 0.35, Math.max(1, w * 0.3), 0, Math.PI * 2); g.stroke();
+  }
+}
+function skEyes(t, age) {
+  const ink = SK.ink, fill = skFill(age);
+  const bt = t % 4.1, bl = bt < 0.16 ? Math.sin(bt / 0.16 * Math.PI) : 0;
+  const r = age === "baby" ? 14 : 12, ex = 21;
+  let look = LOOK || [Math.sin(t * 0.5) * 0.6, Math.sin(t * 0.33) * 0.3];
+  if (mode === "swim") look = [0.7, -0.1];
+  if (mode === "work") look = [0, 0.8];
+  g.lineCap = "round"; g.lineJoin = "round";
+  for (const s of [-1, 1]) {
+    const x = s * ex, y = 2;
+    g.strokeStyle = ink; g.lineWidth = 2.6;
+    if (mode === "happy" || mode === "party" || mode === "wee") { g.beginPath(); g.arc(x, y + 5, r * 0.6, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke(); continue; }
+    if (mode === "sleep") { g.beginPath(); g.arc(x, y - 2, r * 0.6, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke(); continue; }
+    if (mode === "hurt") { const q = 7; g.beginPath(); g.moveTo(x + s * q, y - q); g.lineTo(x - s * q, y); g.lineTo(x + s * q, y + q); g.stroke(); continue; }
+    g.fillStyle = "#fffdf6"; ell(x, y, r, r * 1.12); g.fill();
+    g.lineWidth = 2; g.beginPath(); g.ellipse(x + jit(s * 3), y + jit(s * 5), r, r * 1.12, 0, 0, Math.PI * 2); g.stroke();
+    const pk = mode === "angry" ? 0.5 : 0.58;
+    const px = x + look[0] * r * 0.42, py = y + look[1] * r * 0.38 + 1;
+    g.fillStyle = ink; ell(px, py, r * pk, r * pk * 1.12); g.fill();
+    g.fillStyle = "#fff"; ell(px - r * 0.2, py - r * 0.24, r * 0.2, r * 0.2); g.fill();
+    let lid = 0, sl = 0;
+    if (mode === "angry") { lid = 0.45; sl = 6; }
+    else if (mode === "work") lid = 0.42;
+    else if (age === "old") lid = 0.5;
+    else if (bl > 0) lid = bl;
+    if (lid > 0) {
+      g.save(); ell(x, y, r + 0.5, r * 1.12 + 0.5); g.clip();
+      const yb = y - r * 1.12 + lid * r * 2.24;
+      g.fillStyle = fill; g.beginPath(); g.moveTo(x - r - 2, y - r * 1.3); g.lineTo(x + r + 2, y - r * 1.3);
+      g.lineTo(x + r + 2, yb + s * sl); g.lineTo(x - r - 2, yb - s * sl); g.fill();
+      g.strokeStyle = ink; g.lineWidth = 2.2; g.beginPath(); g.moveTo(x - r, yb - s * sl); g.lineTo(x + r, yb + s * sl); g.stroke();
+      g.restore();
+    }
+  }
+}
+function skMouth(t, age) {
+  const ink = SK.ink, y = 20;
+  g.strokeStyle = ink; g.lineWidth = 2; g.lineCap = "round"; g.beginPath();
+  if (mode === "happy" || mode === "wee") g.arc(0, y - 4, 6, 0.15 * Math.PI, 0.85 * Math.PI);
+  else if (mode === "party") { g.moveTo(-8, y - 2); g.quadraticCurveTo(0, y + 12, 8, y - 2); g.closePath(); g.fillStyle = "#e86a6a"; g.fill(); }
+  else if (mode === "angry") { g.moveTo(-8, y + 2); for (let i = 1; i <= 4; i++) g.lineTo(-8 + i * 4, y + (i % 2 ? -1.5 : 2)); }
+  else if (mode === "sleep") g.ellipse(0, y, 2.5, 1.8 + Math.sin(t * 0.9), 0, 0, Math.PI * 2);
+  else if (mode === "hurt") { g.moveTo(-6, y + 1); g.quadraticCurveTo(-3, y - 2, 0, y + 1); g.quadraticCurveTo(3, y + 4, 6, y); }
+  else if (mode === "work") { g.moveTo(-5, y); g.lineTo(5, y - 1); }
+  else { g.moveTo(-5, y); g.quadraticCurveTo(0, y + 4, 5, y); }
+  g.stroke();
+  if (mode === "work") {                           // езикът навън
+    const tp = t % 3.4, out = tp < 1.6 ? Math.min(1, tp / 0.25, (1.6 - tp) / 0.25) : 0;
+    if (out > 0) { g.save(); g.translate(3, y); g.rotate(0.5 + Math.sin(t * 14) * 0.18);
+      g.fillStyle = "#ff8a9a"; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-3.5, 0); g.lineTo(-3.5, 4 + 6 * out); g.arc(0, 4 + 6 * out, 3.5, Math.PI, 0, true); g.lineTo(3.5, 0); g.fill(); g.stroke(); g.restore(); }
+  }
+  if (age === "baby" && mode !== "party") {        // биберонче
+    g.fillStyle = "#9fd3ff"; g.lineWidth = 1.6; ell(0, y + 3, 9, 5); g.fill(); g.stroke();
+    g.fillStyle = "#ffd36b"; ell(0, y + 3, 2.5, 2.5); g.fill(); g.stroke();
+  }
+  if (age === "old") {                             // бели мустаци
+    g.fillStyle = "#fff"; g.lineWidth = 1.6;
+    for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 7, y - 3, 9, 4.5, s * 0.35, 0, Math.PI * 2); g.fill(); g.stroke(); }
+  }
+}
+function skSpecs(age) {                            // кръгли очила за застаряващия и стария
+  if (age !== "aging" && age !== "old") return;
+  const y = mode === "sleep" ? -26 : 2;
+  g.strokeStyle = SK.ink; g.lineWidth = 1.8;
+  for (const s of [-1, 1]) { g.beginPath(); g.arc(s * 21, y, 15, 0, Math.PI * 2); g.stroke(); }
+  g.beginPath(); g.moveTo(-6, y - 2); g.quadraticCurveTo(0, y - 6, 6, y - 2); g.stroke();
+  g.beginPath(); g.moveTo(-36, y - 2); g.lineTo(-48, y - 6); g.moveTo(36, y - 2); g.lineTo(48, y - 6); g.stroke();
+  g.strokeStyle = "rgba(120,170,230,.6)"; g.lineWidth = 1.5;
+  for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 21 - 8, y - 6); g.lineTo(s * 21 - 3, y - 11); g.stroke(); }
+}
+function skBody(t, mt, st, age) {
+  SEED = Math.floor(t * 8);
+  const fill = skFill(age), ink = SK.ink;
+  const pulse = (Math.sin(t * 5.2) + 1) / 2;
+  let bob = Math.sin(t * 2 * SP) * 3, rot = Math.sin(t * 0.8) * 0.03, sx = 1, sy = 1 + Math.sin(t * 2 * SP) * 0.015, shx = 0;
+  if (mode === "swim") { rot = DIR * 0.8; sx = 1 + pulse * 0.05; sy = 1 - pulse * 0.08; bob = Math.sin(t * 2.6) * 4; }
+  if (mode === "happy") { bob = Math.sin(t * 3.4) * 5; rot = Math.sin(t * 1.7) * 0.07; }
+  if (mode === "party") { const j = Math.abs(Math.sin(t * 6 * SP)); bob = -j * 22 * (age === "old" ? 0.4 : 1); sy = 1 + (j - 0.4) * 0.08; }
+  if (mode === "wee") rot = Math.sin(t * 5) * 0.15;
+  if (mode === "angry") { shx = Math.sin(t * 45) * 1.5; rot = Math.sin(t * 30) * 0.03; const pf = 1 + Math.sin(t * 7) * 0.035; sx = pf; sy = pf; }
+  if (mode === "sleep") { bob = 4 + Math.sin(t * 0.9) * 1.5; rot = 0.1; sy = 1 + Math.sin(t * 0.9) * 0.03; }
+  if (mode === "hurt") rot = -0.06 + (mt < 0.6 ? Math.sin(mt * 50) * 0.1 * (1 - mt / 0.6) : Math.sin(t * 2.4) * 0.04);
+  if (mode === "work") { bob = Math.sin(t * 9) * 1; shx = Math.sin(t * 23) * 1; }
+  if (age === "old") rot += 0.08;
+  const L = 100 * A.tL, bottom = 14 + L * 0.92;
+  if (GROUND != null) {
+    if (DROP) { const drop = Math.max(0, GROUND - bottom); g.translate(0, drop); GROUND -= drop; }
+    g.strokeStyle = "rgba(35,57,93,.35)"; g.lineWidth = 1.2;              // сянка с щрихи
+    for (let x = -60; x <= 60; x += 6) { g.beginPath(); g.moveTo(x, GROUND + 4); g.lineTo(x + 5, GROUND - 1); g.stroke(); }
+  }
+  g.save(); g.translate(shx, bob); g.rotate(rot); g.scale(sx, sy);
+  const tt = skTents(t, pulse, L);
+  if (A.cane && mode !== "swim") {                 // бастун
+    const p = tt[7][16], bot = GROUND != null ? GROUND - bob : p[1] + 70;
+    g.strokeStyle = "#8a5a2b"; g.lineWidth = 3.5; g.lineCap = "round";
+    g.beginPath(); g.moveTo(p[0] + 4, bot); g.lineTo(p[0] + 4, p[1] - 6); g.arc(p[0] - 4, p[1] - 6, 8, 0, Math.PI * 1.05, true); g.stroke();
+    g.strokeStyle = ink; g.lineWidth = 1.2; g.stroke();
+  }
+  tt.forEach((pts, i) => skTube(pts, i, 9.5 * A.tW, fill, 1.8));
+  // главата
+  g.save(); g.translate(0, 14); g.scale(A.head, A.head); g.translate(0, -14);
+  g.save(); g.translate(3, 3); skHead(); g.fillStyle = fill; g.fill(); g.restore();
+  g.strokeStyle = ink; g.lineWidth = 2.2;
+  for (let pass = 0; pass < 2; pass++) { g.save(); g.translate(jit(pass * 3), jit(pass * 3 + 1)); skHead(); g.stroke(); g.restore(); }
+  g.save(); skHead(); g.clip(); g.strokeStyle = "rgba(35,57,93,.3)"; g.lineWidth = 1.1;
+  for (let x = 10; x < 70; x += 6) { g.beginPath(); g.moveTo(x, 40); g.lineTo(x + 30, -10); g.stroke(); }
+  if (A.wrinkles) { g.strokeStyle = ink; g.lineWidth = 1.4; for (let i = 0; i < A.wrinkles; i++) { g.beginPath(); g.arc(0, -16 - i * 6, 14 - i * 2, 1.2 * Math.PI, 1.8 * Math.PI); g.stroke(); } }
+  if (mode === "angry") { g.fillStyle = "rgba(214,59,59,.15)"; skHead(); g.fill(); }
+  g.restore();
+  if (age === "kid" || age === "teen") { g.fillStyle = "rgba(139,90,43,.55)"; for (const s of [-1, 1]) for (const [dx, dy] of [[-3, 0], [3, -2], [1, 3]]) { ell(s * 32 + dx, 13 + dy, 1.2, 1.2); g.fill(); } }
+  if (mode !== "hurt" && mode !== "angry") {       // руменина с молив
+    g.strokeStyle = "rgba(230,90,110,.55)"; g.lineWidth = 1.3;
+    for (const s of [-1, 1]) for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(s * 32 - 6 + i * 3, 18); g.lineTo(s * 32 - 3 + i * 3, 12); g.stroke(); }
+  }
+  skEyes(t, age); skSpecs(age); skMouth(t, age);
+  if (mode === "angry" || (mode === "work" && age !== "old")) {
+    g.strokeStyle = ink; g.lineWidth = 3; g.lineCap = "round";
+    const yy = mode === "work" ? -12 : -16;
+    g.beginPath(); g.moveTo(-34, yy - 6); g.lineTo(-9, yy + 2); g.stroke();
+    g.beginPath(); g.moveTo(34, yy - 6); g.lineTo(9, yy + 2); g.stroke();
+  }
+  if (A.brows) {                                   // бели рунтави вежди
+    g.strokeStyle = ink; g.lineWidth = 6; g.lineCap = "round";
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 10, -16); g.quadraticCurveTo(s * 22, -22, s * 34, -15); g.stroke(); }
+    g.strokeStyle = A.brows; g.lineWidth = 3.6; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 10, -16); g.quadraticCurveTo(s * 22, -22, s * 34, -15); g.stroke(); }
+  }
+  if (mode === "hurt") {                           // лепенка
+    g.save(); g.translate(22, -30);
+    for (const a of [0.75, -0.75]) { g.save(); g.rotate(a); g.fillStyle = "#f6dfb4"; g.strokeStyle = ink; g.lineWidth = 1.6; g.beginPath(); g.roundRect(-14, -4.5, 28, 9, 4); g.fill(); g.stroke(); g.restore(); }
+    g.restore();
+  }
+  g.restore();
+  g.restore();
+  // ефекти
+  const headTop = 14 - 59 * A.head;
+  if (mode === "angry") {
+    g.strokeStyle = SK.red; g.lineWidth = 1.8; g.beginPath();
+    for (let i = 0; i <= 40; i++) { const a = i / 40 * Math.PI * 8; g.lineTo(Math.cos(a) * (18 + jit(i) * 3) + i * 0.4 - 8, headTop - 14 + Math.sin(a) * 9 + jit(i + 99)); }
+    g.stroke();
+    g.fillStyle = SK.red; g.font = "bold 15px 'Comic Sans MS', 'Chalkboard SE', cursive"; g.textAlign = "center"; g.fillText("#@!", 42, headTop);
+  }
+  if (mode === "sleep") {
+    g.fillStyle = SK.ink; g.textAlign = "center";
+    for (let i = 0; i < 3; i++) { const z = (t * 0.35 + i / 3) % 1; g.globalAlpha = Math.sin(z * Math.PI);
+      g.font = `bold ${10 + z * 12}px 'Comic Sans MS', 'Chalkboard SE', cursive`; g.fillText("z", 40 + z * 22, headTop + 20 - z * 40); }
+    g.globalAlpha = 1;
+  }
+  if (mode === "hurt") {
+    g.strokeStyle = SK.ink; g.lineWidth = 1.5;
+    for (let i = 0; i < 3; i++) { const a = t * 2.5 + i * 2.1, x = Math.cos(a) * 42, y = headTop - 6 + Math.sin(a) * 6;
+      g.beginPath(); for (let k = 0; k < 10; k++) { const aa = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 2.5 : 6; g.lineTo(x + Math.cos(aa) * rr, y + Math.sin(aa) * rr); } g.closePath(); g.fillStyle = "#ffe066"; g.fill(); g.stroke(); }
+  }
+  if (mode === "swim") {                           // линии зад него
+    g.strokeStyle = "rgba(35,57,93,.45)"; g.lineWidth = 1.5;
+    for (let i = 0; i < 3; i++) { const y = -10 + i * 14, x = -DIR * 70; g.beginPath(); g.moveTo(x, y); g.lineTo(x - DIR * 22, y); g.stroke(); }
+  }
+  if (mode === "work") {                           // облак от суматоха, нарисуван с химикал
+    const cy = bottom - 18;
+    g.fillStyle = "#fbf7ee"; g.strokeStyle = ink; g.lineWidth = 1.8;
+    const puffs = [[-50, 0, 18], [-28, -12, 20], [0, -16, 22], [28, -12, 20], [50, 0, 18], [26, 10, 18], [-26, 10, 18], [0, 6, 22]];
+    for (const [x, y, r] of puffs) { g.beginPath(); g.arc(x + jit(x) * 2, cy + y + jit(y) * 2, r, 0, Math.PI * 2); g.fill(); }
+    for (const [x, y, r] of puffs) { g.beginPath(); g.arc(x + jit(x) * 2, cy + y + jit(y) * 2, r, Math.PI * 0.9, Math.PI * 2.1); g.stroke(); }
+    g.fillStyle = "#fbf7ee"; ell(0, cy, 60, 18); g.fill();
+    g.save(); g.translate(0, cy - 4); g.rotate(t * 4); g.strokeStyle = ink; g.lineWidth = 1.6; g.beginPath();
+    for (let i = 0; i < 16; i++) { const rr = i % 2 ? 6 : 8.5, a = i / 16 * Math.PI * 2; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.closePath(); g.stroke(); g.beginPath(); g.arc(0, 0, 2.5, 0, Math.PI * 2); g.stroke(); g.restore();
+    g.font = "bold 13px 'Comic Sans MS', 'Chalkboard SE', cursive"; g.fillStyle = ink; g.textAlign = "center";
+    const words = ["бум!", "дзън", "трак", "!!", "?!"]; g.fillText(words[SEED % words.length], 40 + jit(1) * 3, cy - 26);
+    if (Math.random() < 0.12) { const side = Math.random() < 0.5 ? -1 : 1;
+      st.parts.push({ x: side * rnd(10, 30), y: cy - 10, vx: side * rnd(1, 2.5), vy: rnd(-4, -2.5), l: 60, k: "skbolt", a: rnd(0, 6), va: rnd(-0.3, 0.3) }); }
+  }
+  if (mode === "party" && Math.random() < 0.35)
+    st.parts.push({ x: rnd(-140, 140), y: -170, vx: rnd(-0.5, 0.5), vy: rnd(0.6, 1.4), l: 260, c: pick(["#ff6b6b", "#ffd166", "#6fb3ff", "#6fd3a0"]), k: "conf", a: rnd(0, 6), sz: 0.45 });
+}
+function skEgg(t) {
+  SEED = Math.floor(t * 8);
+  const shake = (t % 5.5) < 0.7 ? Math.sin(t * 40) * 0.1 * (1 - (t % 5.5) / 0.7) : 0;
+  const cy = GROUND != null ? GROUND - 60 : 20 + Math.sin(t * 1.3) * 3;
+  g.save(); g.translate(0, cy + 58); g.rotate(Math.sin(t * 1.6) * 0.04 + shake); g.translate(0, -58);
+  const path = () => { g.beginPath(); g.moveTo(0, -60); g.bezierCurveTo(34, -60, 48, 5, 48, 20); g.bezierCurveTo(48, 48, 26, 58, 0, 58);
+    g.bezierCurveTo(-26, 58, -48, 48, -48, 20); g.bezierCurveTo(-48, 5, -34, -60, 0, -60); g.closePath(); };
+  g.save(); g.translate(3, 3); path(); g.fillStyle = "#fff4d6"; g.fill(); g.restore();
+  g.strokeStyle = SK.ink; g.lineWidth = 2.2;
+  for (let pass = 0; pass < 2; pass++) { g.save(); g.translate(jit(pass), jit(pass + 5)); path(); g.stroke(); g.restore(); }
+  g.save(); path(); g.clip(); g.strokeStyle = "rgba(35,57,93,.3)"; g.lineWidth = 1.1;
+  for (let x = 10; x < 60; x += 6) { g.beginPath(); g.moveTo(x, 60); g.lineTo(x + 30, 0); g.stroke(); }
+  g.restore();
+  g.lineWidth = 1.4; for (const [x, y, r] of [[-18, -20, 6], [16, -36, 4], [22, 10, 7], [-24, 24, 5], [4, 36, 6]]) { g.beginPath(); g.arc(x + jit(x), y + jit(y), r, 0, Math.PI * 2); g.stroke(); }
+  g.lineWidth = 2; g.beginPath(); g.moveTo(14, -48); g.lineTo(8, -38); g.lineTo(16, -30); g.lineTo(9, -20); g.stroke();
+  // очички през пукнатината
+  if ((t % 7) > 4.5) { g.fillStyle = SK.ink; ell(-6, -8, 2.5, 3); g.fill(); ell(8, -8, 2.5, 3); g.fill(); }
+  g.restore();
+}
+
 function draw(ctx, o) {
   g = ctx; mode = o.mode || "idle";
+  if (mode === "swim" && o.style !== "sketch") mode = "idle";
   const st = o.st || (o.st = {});
   st.parts = st.parts || [];
   if (st.mode !== mode) { st.mode = mode; st.parts = []; }
@@ -685,22 +951,25 @@ function draw(ctx, o) {
   DROP = o.drop !== false;
   g.save(); g.translate(o.x, o.y); g.scale(k, k);
   g.lineJoin = "round";
-  if (age === "egg") egg(o.t, st);
+  const sketch = o.style === "sketch";
+  if (sketch) { g.scale(2.3, 2.3); if (GROUND != null) GROUND /= 2.3; DIR = o.dir || 1; }
+  if (sketch) { if (age === "egg") skEgg(o.t); else skBody(o.t, o.mt || 9, st, age); }
+  else if (age === "egg") egg(o.t, st);
   else if ((o.style === "art" || o.style === "artanim") && artReady()) drawArt(o.t, o.mt || 9, st);
   else body(o.t, o.mt || 9, st);
   st.parts = st.parts.filter(p => {
     p.x += p.vx; p.y += p.vy; p.vy += p.k === "spark" ? 0.28 : p.k === "conf" ? 0.02 : 0.32; p.l--;
     if (p.k === "spark") { g.strokeStyle = p.c; g.lineWidth = 4; g.lineCap = "round"; g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * 2, p.y - p.vy * 2); g.stroke(); }
     else if (p.k !== "conf") { p.a += p.va; part(p); }
-    else { p.a += 0.15; g.save(); g.translate(p.x + Math.sin(p.a) * 6, p.y); g.rotate(p.a); g.fillStyle = p.c; g.fillRect(-6, -3.5, 12, 7); g.restore(); }
+    else { p.a += 0.15; g.save(); g.translate(p.x + Math.sin(p.a) * 6, p.y); g.rotate(p.a); g.fillStyle = p.c; const z = p.sz || 1; g.fillRect(-6 * z, -3.5 * z, 12 * z, 7 * z); g.restore(); }
     return p.l > 0;
   });
   g.restore();
   // къде е върхът на главата и колко е голям (за балончето и докосването)
-  const top = age === "egg" ? -150 : (o.style === "art" || o.style === "artanim") ? -150 : 70 - 238 * A.head;
+  const top = o.style === "sketch" ? (age === "egg" ? -80 : (14 - 59 * A.head) * 2.3 - 10) : age === "egg" ? -150 : (o.style === "art" || o.style === "artanim") ? -150 : 70 - 238 * A.head;
   return { top: o.y + top * k, r: 260 * k, cy: o.y + (top + 200) * k / 2 };
 }
 
-window.Octo = { V: 9, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
+window.Octo = { V: 10, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
   AGE_NAMES: { egg: "Яйце", baby: "Бебе", kid: "Малък", teen: "Тийнейджър", adult: "Голям", aging: "Застаряващ", old: "Много стар" } };
 })();

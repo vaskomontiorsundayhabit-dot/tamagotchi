@@ -16,7 +16,7 @@
   canvas { display: block; width: 100%; height: auto; }
   .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .row.m { grid-template-columns: repeat(3, 1fr); }
-  #styles { grid-template-columns: repeat(2, 1fr); }
+  #styles { grid-template-columns: repeat(3, 1fr); }
   button { font: inherit; font-size: 14px; color: var(--text); background: #4a3f6b; border: 0; border-radius: 12px; padding: 9px 4px; cursor: pointer; }
   button.on { background: var(--peach); color: #2a1730; font-weight: 700; }
 </style>
@@ -36,9 +36,9 @@
 <script>
 const MODES = [["idle", "😐 Обикновен"], ["happy", "😊 Щастлив"], ["party", "🎉 Получи се!"],
   ["work", "🔧 Изобретява"], ["hurt", "🤕 Контузен"], ["sleep", "😴 Спи"],
-  ["wee", "🎢 Уиии (влачене)"], ["angry", "😠 Ядосан"]];
+  ["wee", "🎢 Уиии (влачене)"], ["angry", "😠 Ядосан"], ["swim", "🌊 Плува"]];
 const AGE_ICON = { egg: "🥚", baby: "🍼", kid: "🧒", teen: "🛹", adult: "🧑‍🔬", aging: "🧓", old: "👴" };
-let mode = "idle", age = "adult", modeAt = 0, style = "art";
+let mode = "idle", age = "adult", modeAt = 0, style = "sketch";
 const st = {};
 let lookAt = null, lookT = 0;
 function buttons(boxId, list, get, set) {
@@ -50,11 +50,11 @@ function buttons(boxId, list, get, set) {
   }
   paint();
 }
-buttons("styles", [["art", "🖌️ Твоят (очи)"], ["artanim", "🎞️ Твоите кадри"], ["cute", "🐙 Сладък"], ["goggles", "🥽 С очила"]], () => style, v => style = v);
+buttons("styles", [["sketch", "✏️ Скица"], ["art", "🖌️ Твоят (очи)"], ["artanim", "🎞️ Твоите кадри"], ["cute", "🐙 Сладък"], ["goggles", "🥽 С очила"]], () => style, v => style = v);
 buttons("ages", Octo.AGES.map(a => [a, AGE_ICON[a] + " " + Octo.AGE_NAMES[a]]), () => age, v => age = v);
 buttons("modes", MODES, () => mode, v => { mode = v; modeAt = performance.now() / 1000; });
 
-const PAGE_V = 9;
+const PAGE_V = 10;
 document.getElementById("ver").textContent = Octo.V === PAGE_V ? `версия ${PAGE_V} ✓` : `⚠️ рисунката е стара (v${Octo.V}), страницата е v${PAGE_V}. Презареди след минута.`;
 const cv = document.getElementById("c"), g = cv.getContext("2d");
 const LW = 600, LH = 560;
@@ -64,9 +64,15 @@ function frame() {
   requestAnimationFrame(frame);
   const t = performance.now() / 1000;
   g.setTransform(d, 0, 0, d, 0, 0);
-  g.fillStyle = "#f7f3ec"; g.fillRect(0, 0, LW, LH);
-  g.fillStyle = "#ece5f4"; g.beginPath(); g.ellipse(LW / 2, LH * 0.45, LW * 0.42, LH * 0.38, 0, 0, Math.PI * 2); g.fill();
-  Octo.draw(g, { x: LW / 2, y: 290, s: 0.95, age, mode, t, mt: t - modeAt, st, ground: LH - 70, style, lookAt });
+  if (style === "sketch") {
+    g.fillStyle = "#fbf7ee"; g.fillRect(0, 0, LW, LH);
+    g.strokeStyle = "rgba(90,140,220,.25)"; g.lineWidth = 1; for (let y = 30; y < LH; y += 26) { g.beginPath(); g.moveTo(0, y); g.lineTo(LW, y); g.stroke(); }
+    g.strokeStyle = "rgba(230,90,90,.35)"; g.beginPath(); g.moveTo(46, 0); g.lineTo(46, LH); g.stroke();
+  } else {
+    g.fillStyle = "#f7f3ec"; g.fillRect(0, 0, LW, LH);
+    g.fillStyle = "#ece5f4"; g.beginPath(); g.ellipse(LW / 2, LH * 0.45, LW * 0.42, LH * 0.38, 0, 0, Math.PI * 2); g.fill();
+  }
+  Octo.draw(g, { x: LW / 2, y: 290, s: 0.95, age, mode, t, mt: t - modeAt, st, ground: mode === "swim" ? null : LH - 70, style, lookAt, dir: Math.sin(t * 0.4) >= 0 ? 1 : -1 });
   if (mode === "sleep") { g.fillStyle = "rgba(40,30,90,.25)"; g.fillRect(0, 0, LW, LH); }
 }
 requestAnimationFrame(frame);
