@@ -3,362 +3,62 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Октонис: анимационен стил</title>
+<title>Октонис: проба на дизайна</title>
 <style>
-  :root { --bg: #2a2140; --card: #362c52; --line: #4a3f6b; --text: #f6efe6; --muted: #b3a8cf; --peach: #f4a07a; }
+  :root { --bg: #2a2140; --line: #4a3f6b; --text: #f6efe6; --muted: #b3a8cf; --peach: #f4a07a; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text); }
   body { font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; max-width: 560px; margin: 0 auto; }
   h1 { font-size: 20px; margin: 4px 0 2px; }
   p { color: var(--muted); margin: 0 0 12px; font-size: 14px; }
+  h2 { font-size: 14px; color: var(--muted); font-weight: 600; margin: 14px 0 6px; }
   .scene { border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
   canvas { display: block; width: 100%; height: auto; }
-  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
-  button { font: inherit; color: var(--text); background: #4a3f6b; border: 0; border-radius: 12px; padding: 10px 6px; cursor: pointer; }
+  .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .row.m { grid-template-columns: repeat(3, 1fr); }
+  button { font: inherit; font-size: 14px; color: var(--text); background: #4a3f6b; border: 0; border-radius: 12px; padding: 9px 4px; cursor: pointer; }
   button.on { background: var(--peach); color: #2a1730; font-weight: 700; }
 </style>
 </head>
 <body>
-<h1>🐙 Октонис с очила</h1>
-<p>Само проба. Натискай бутоните да видиш как изглежда в различно настроение.</p>
+<h1>🐙 Октонис: проба на дизайна</h1>
+<p>Избери възраст и настроение.</p>
 <div class="scene"><canvas id="c"></canvas></div>
-<div class="modes" id="modes"></div>
-
+<h2>Възраст</h2>
+<div class="row" id="ages"></div>
+<h2>Настроение</h2>
+<div class="row m" id="modes"></div>
+<script src="octo.js"></script>
 <script>
 const MODES = [["idle", "😐 Обикновен"], ["happy", "😊 Щастлив"], ["party", "🎉 Получи се!"],
   ["work", "🔧 Изобретява"], ["hurt", "🤕 Контузен"], ["sleep", "😴 Спи"]];
-let mode = "idle", modeAt = 0;
-const box = document.getElementById("modes");
-for (const [m, label] of MODES) {
-  const b = document.createElement("button");
-  b.textContent = label;
-  b.onclick = () => { mode = m; modeAt = performance.now() / 1000; parts = []; render(); };
-  b.dataset.m = m; box.appendChild(b);
+const AGE_ICON = { egg: "🥚", baby: "🍼", kid: "🧒", teen: "🛹", adult: "🧑‍🔬", aging: "🧓", old: "👴" };
+let mode = "idle", age = "adult", modeAt = 0;
+const st = {};
+function buttons(boxId, list, get, set) {
+  const box = document.getElementById(boxId);
+  const paint = () => { for (const b of box.children) b.classList.toggle("on", b.dataset.v === get()); };
+  for (const [v, label] of list) {
+    const b = document.createElement("button"); b.textContent = label; b.dataset.v = v;
+    b.onclick = () => { set(v); paint(); }; box.appendChild(b);
+  }
+  paint();
 }
-function render() { for (const b of box.children) b.classList.toggle("on", b.dataset.m === mode); }
-render();
+buttons("ages", Octo.AGES.map(a => [a, AGE_ICON[a] + " " + Octo.AGE_NAMES[a]]), () => age, v => age = v);
+buttons("modes", MODES, () => mode, v => { mode = v; modeAt = performance.now() / 1000; });
 
 const cv = document.getElementById("c"), g = cv.getContext("2d");
-const LW = 600, LH = 540;
-function resize() {
-  const d = Math.min(window.devicePixelRatio || 1, 2);
-  cv.width = LW * d; cv.height = LH * d; g.setTransform(d, 0, 0, d, 0, 0);
-}
-resize();
-
-
-const C = { body: "#ee7a43", shade: "#cf5b2a", back: "#c4562a", backShade: "#a9461f", line: "#2b2a33", spot: "#b9501f",
-  rim: "#3c4350", lens: "#c6ece6", lensHi: "#eefaf7", cheek: "rgba(255,120,120,.45)" };
-const rnd = (a, b) => a + Math.random() * (b - a);
-const pick = a => a[Math.floor(Math.random() * a.length)];
-const GROUND = LH - 78;
-let parts = [];
-
-// side: -1 ляво, 1 дясно; kind: leg (стъпва) или arm (вдигнат встрани)
-const TENT = [
-  { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
-  { dx: -48, side: -1, kind: "leg", back: true, L: 190, ph: 1.7, spread: 0.45 },
-  { dx: -24, side: -1, kind: "leg", back: false, L: 185, ph: 3.1, spread: 0.12 },
-  { dx: 24, side: 1, kind: "leg", back: false, L: 185, ph: 4.4, spread: 0.12 },
-  { dx: 48, side: 1, kind: "leg", back: true, L: 190, ph: 5.2, spread: 0.45 },
-  { dx: 70, side: 1, kind: "arm", back: false, L: 210, ph: 2.3 },
-];
-function tentPts(T, t, hx, hy) {
-  const s = T.side, N = 44, step = T.L / N;
-  const sp = { idle: 1.8, happy: 3, party: 7, work: 11, hurt: 1.3, sleep: 0.7 }[mode];
-  const amp = { idle: 0.012, happy: 0.02, party: 0.03, work: 0.03, hurt: 0.008, sleep: 0.006 }[mode];
-  let x = hx + T.dx, y = hy + 62;
-  const armA = mode === "work" ? 1.15 + Math.sin(t * 13 + T.ph) * 0.25 : 0.55;
-  let ang = T.kind === "arm" ? (s > 0 ? armA : Math.PI - armA) : Math.PI / 2 + -s * T.spread;
-  const pts = [];
-  for (let j = 0; j <= N; j++) {
-    const k = j / N;
-    pts.push([x, y, k]);
-    let d = Math.sin(t * sp + T.ph - j * 0.18) * amp * (1 + k * 2);
-    if (T.kind === "arm") {
-      let up = 0.045;
-      if (mode === "party") up = 0.075 + Math.sin(t * 9 + T.ph) * 0.03;
-      if (mode === "sleep") up = 0.012;
-      if (mode === "work") up = -0.004;
-      d += -s * up;
-      if (k > 0.72) d += -s * (mode === "sleep" ? 0.1 : 0.2);      // къдрица на върха
-    } else {
-      if (k > 0.7) d += -s * 0.22;                                   // ходилото се извива навън
-    }
-    ang += d;
-    x += Math.cos(ang) * step; y += Math.sin(ang) * step;
-    if (y > GROUND) y = GROUND;
-  }
-  return pts;
-}
-function tube(pts, w0, fill, outline) {
-  for (const pass of [0, 1]) {
-    g.fillStyle = pass ? fill : C.line;
-    for (const [x, y, k] of pts) {
-      const w = w0 * (1 - 0.6 * k) + (pass ? 0 : 4.5);
-      g.beginPath(); g.arc(x, y, w, 0, Math.PI * 2); g.fill();
-    }
-  }
-  // сянка отдолу по пипалото
-  g.fillStyle = outline;
-  for (let j = 0; j < pts.length; j++) {
-    const [x, y, k] = pts[j];
-    const w = w0 * (1 - 0.6 * k);
-    g.beginPath(); g.arc(x + w * 0.35, y + w * 0.35, w * 0.45, 0, Math.PI * 2); g.fill();
-  }
-}
-function ellipsePath(x, y, rx, ry, rot) { g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); }
-function goggles(hx, ey, t, look, up) {
-  const r = 46, gap = 56;
-  const y = up ? ey - 95 : ey;
-  // каишка
-  g.lineWidth = 15; g.strokeStyle = C.line; g.lineCap = "butt";
-  g.beginPath(); g.moveTo(hx - gap - r, y + 4); g.lineTo(hx - gap - r - 30, y + 2); g.stroke();
-  g.beginPath(); g.moveTo(hx + gap + r, y + 4); g.lineTo(hx + gap + r + 25, y + 2); g.stroke();
-  g.lineWidth = 9; g.strokeStyle = C.rim;
-  g.beginPath(); g.moveTo(hx - gap - r, y + 4); g.lineTo(hx - gap - r - 28, y + 2); g.stroke();
-  g.beginPath(); g.moveTo(hx + gap + r, y + 4); g.lineTo(hx + gap + r + 23, y + 2); g.stroke();
-  // мостче
-  g.fillStyle = C.rim; g.strokeStyle = C.line; g.lineWidth = 4;
-  g.beginPath(); g.roundRect(hx - 18, y - 2, 36, 16, 5); g.fill(); g.stroke();
-  for (const s of [-1, 1]) {
-    const x = hx + s * gap;
-    g.fillStyle = C.lens; ellipsePath(x, y, r, r, 0); g.fill();
-    if (!up) eyeIn(x, y, r, t, look, s);
-    // отблясък
-    g.strokeStyle = "rgba(255,255,255,.75)"; g.lineWidth = 5; g.lineCap = "round";
-    g.beginPath(); g.arc(x, y, r * 0.72, 1.1 * Math.PI, 1.35 * Math.PI); g.stroke();
-    // рамка
-    g.lineWidth = 16; g.strokeStyle = C.line; ellipsePath(x, y, r, r, 0); g.stroke();
-    g.lineWidth = 9; g.strokeStyle = C.rim; ellipsePath(x, y, r, r, 0); g.stroke();
-    g.lineWidth = 2; g.strokeStyle = "rgba(255,255,255,.25)"; g.beginPath(); g.arc(x, y, r + 1, 1.05 * Math.PI, 1.45 * Math.PI); g.stroke();
-  }
-}
-function eyeIn(x, y, r, t, look, s) {
-  const blink = (t % 4.1) < 0.13 || ((t + 0.3) % 8.7) < 0.12;
-  g.lineCap = "round"; g.strokeStyle = C.line; g.lineWidth = 5;
-  if (mode === "happy" || mode === "party") { g.beginPath(); g.arc(x, y + 10, 14, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke(); return; }
-  if (mode === "hurt") { const q = 11; g.beginPath(); g.moveTo(x + s * q, y - q); g.lineTo(x - s * q, y); g.lineTo(x + s * q, y + q); g.stroke(); return; }
-  if (mode === "work") {             // съсредоточен: присвити очи, гледа надолу към облака
-    const px = x - s * 7, py = y + 12;
-    g.fillStyle = "#15131c"; ellipsePath(px, py, 11, 12, 0); g.fill();
-    g.fillStyle = "#fff"; ellipsePath(px - 4, py - 4, 3.5, 3.5, 0); g.fill();
-    g.save(); ellipsePath(x, y, r, r, 0); g.clip();
-    const lid = y - 2 + s * 4;      // клепачът е наклонен към носа
-    g.fillStyle = C.body; g.beginPath(); g.moveTo(x - r, y - r); g.lineTo(x + r, y - r);
-    g.lineTo(x + r, lid - s * 8); g.lineTo(x - r, lid + s * 8); g.closePath(); g.fill();
-    g.lineWidth = 5; g.beginPath(); g.moveTo(x + r, lid - s * 8); g.lineTo(x - r, lid + s * 8); g.stroke();
-    g.restore();
-    return;
-  }
-  if (blink) { g.beginPath(); g.moveTo(x - 15, y + 2); g.quadraticCurveTo(x, y + 9, x + 15, y + 2); g.stroke(); return; }
-  const px = x + look[0] * 10 + s * 3, py = y + look[1] * 10 + 2;
-  g.fillStyle = "#15131c"; ellipsePath(px, py, 15, 17, 0); g.fill();
-  g.fillStyle = "#fff";
-  ellipsePath(px - 5, py - 6, 5.5, 5.5, 0); g.fill();
-  ellipsePath(px + 5, py + 6, 2.2, 2.2, 0); g.fill();
-}
-function gear(x, y, r, a) {
-  g.save(); g.translate(x, y); g.rotate(a);
-  g.beginPath();
-  for (let i = 0; i < 16; i++) {
-    const rr = i % 2 ? r : r * 1.3, a1 = i / 16 * Math.PI * 2, a2 = (i + 1) / 16 * Math.PI * 2;
-    g.lineTo(Math.cos(a1) * rr, Math.sin(a1) * rr); g.lineTo(Math.cos(a2) * rr, Math.sin(a2) * rr);
-  }
-  g.closePath(); g.fillStyle = "#c9cfdc"; g.fill(); g.lineWidth = 4.5; g.strokeStyle = C.line; g.lineJoin = "round"; g.stroke();
-  g.beginPath(); g.arc(0, 0, r * 0.38, 0, Math.PI * 2); g.fillStyle = "#7c8597"; g.fill(); g.stroke();
-  g.restore();
-}
-function wrench(x, y, a) {
-  g.save(); g.translate(x, y); g.rotate(a);
-  g.fillStyle = "#c9cfdc"; g.strokeStyle = C.line; g.lineWidth = 4.5; g.lineJoin = "round";
-  g.beginPath(); g.roundRect(-6, 0, 12, 56, 5); g.fill(); g.stroke();
-  g.beginPath(); g.arc(0, -6, 15, 0.38 * Math.PI, 2.62 * Math.PI); g.lineTo(0, -10); g.closePath(); g.fill(); g.stroke();
-  g.restore();
-}
-function star(x, y, r) {
-  g.beginPath();
-  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
-  g.closePath(); g.fillStyle = "#ffd166"; g.fill(); g.lineWidth = 3; g.strokeStyle = C.line; g.stroke();
-}
-
-const PUFFS = [[-125, 4, 36], [-82, -24, 40], [-30, -36, 42], [25, -34, 40], [80, -24, 40], [126, 2, 36],
-  [85, 16, 36], [30, 22, 38], [-30, 22, 38], [-85, 16, 36], [0, 0, 44]];
-function brawl(cx, cy, t) {
-  const pts = PUFFS.map(([x, y, r], i) => [cx + x + Math.sin(t * 17 + i * 2.1) * 6, cy + y + Math.cos(t * 15 + i * 1.3) * 6,
-    r + Math.sin(t * 21 + i) * 5]);
-  g.fillStyle = C.line;
-  for (const [x, y, r] of pts) { g.beginPath(); g.arc(x, y, r + 5, 0, Math.PI * 2); g.fill(); }
-  g.fillStyle = "#f4f0ea";
-  for (const [x, y, r] of pts) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
-  g.fillStyle = "#e7e1ec";
-  for (const [x, y, r] of pts) if (y > cy + 5) { g.beginPath(); g.arc(x + 4, y + 10, r * 0.6, 0, Math.PI * 2); g.fill(); }
-  // неща, които се мяркат в облака
-  const k = Math.floor(t * 3);
-  for (let i = 0; i < 3; i++) {
-    const seed = Math.sin((k + i * 7) * 12.9898) * 43758.5453, f = seed - Math.floor(seed);
-    const x = cx + (f - 0.5) * 200, y = cy - 8 + (Math.sin(seed) * 0.5) * 30;
-    const kind = ["star", "cog", "bolt", "tent"][Math.floor(f * 37) % 4];
-    if (kind === "star") star(x, y, 13);
-    else if (kind === "cog") gear(x, y, 12, t * 6);
-    else if (kind === "bolt") part({ x, y, a: t * 8, k: "bolt" });
-    else { g.save(); g.translate(x, y); g.rotate(f * 6);   // мярка се пипало
-      g.lineCap = "round"; g.strokeStyle = C.line; g.lineWidth = 22; g.beginPath(); g.moveTo(-22, 0); g.quadraticCurveTo(0, -16, 20, 0); g.stroke();
-      g.strokeStyle = C.body; g.lineWidth = 13; g.stroke(); g.restore(); }
-  }
-  // черти от движение
-  g.strokeStyle = C.line; g.lineWidth = 4; g.lineCap = "round";
-  for (let i = 0; i < 4; i++) {
-    const a = t * 4 + i * 1.7, r1 = 160 + Math.sin(t * 9 + i) * 8;
-    const x = cx + Math.cos(a) * r1, y = cy - 20 + Math.sin(a) * 50;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 18, y + Math.sin(a) * 8); g.stroke();
-  }
-}
-function part(p) {
-  g.save(); g.translate(p.x, p.y); g.rotate(p.a);
-  g.strokeStyle = C.line; g.lineWidth = 3.5; g.lineJoin = "round"; g.fillStyle = "#c9cfdc";
-  if (p.k === "bolt") {
-    g.beginPath(); g.roundRect(-3.5, -2, 7, 24, 2); g.fill(); g.stroke();
-    g.lineWidth = 2; for (let i = 4; i < 20; i += 5) { g.beginPath(); g.moveTo(-3.5, i); g.lineTo(3.5, i + 2); g.stroke(); }
-    g.lineWidth = 3.5; g.beginPath(); g.roundRect(-9, -8, 18, 8, 2); g.fill(); g.stroke();
-  } else if (p.k === "nut") {
-    g.beginPath(); for (let i = 0; i < 6; i++) g.lineTo(Math.cos(i * Math.PI / 3) * 11, Math.sin(i * Math.PI / 3) * 11);
-    g.closePath(); g.fill(); g.stroke();
-    g.beginPath(); g.arc(0, 0, 4.5, 0, Math.PI * 2); g.fillStyle = "#f7f3ec"; g.fill(); g.stroke();
-  } else if (p.k === "cog") { g.restore(); gear(p.x, p.y, 11, p.a); return; }
-  else if (p.k === "spring") {
-    g.strokeStyle = C.line; g.lineWidth = 6; g.beginPath();
-    for (let i = 0; i <= 8; i++) g.lineTo(i % 2 ? 7 : -7, -16 + i * 4);
-    g.stroke(); g.strokeStyle = "#c9cfdc"; g.lineWidth = 2.5; g.stroke();
-  }
-  g.restore();
-}
-
+const LW = 600, LH = 560;
+const d = Math.min(window.devicePixelRatio || 1, 2);
+cv.width = LW * d; cv.height = LH * d;
 function frame() {
   requestAnimationFrame(frame);
-  const t = performance.now() / 1000, mt = t - modeAt;
+  const t = performance.now() / 1000;
+  g.setTransform(d, 0, 0, d, 0, 0);
   g.fillStyle = "#f7f3ec"; g.fillRect(0, 0, LW, LH);
-  g.fillStyle = "#ece5f4"; ellipsePath(LW / 2, LH * 0.42, LW * 0.42, LH * 0.38, 0); g.fill();
-
-  let bob = Math.sin(t * 2) * 4, tilt = Math.sin(t * 0.8) * 0.03, squash = 1 + Math.sin(t * 2) * 0.015;
-  if (mode === "happy") { bob = Math.sin(t * 3.4) * 7; tilt = Math.sin(t * 1.7) * 0.07; }
-  if (mode === "party") { const j = Math.abs(Math.sin(t * 6)); bob = -j * 40; squash = 1 + (j - 0.4) * 0.08; }
-  if (mode === "sleep") { bob = 10 + Math.sin(t * 0.9) * 3; tilt = 0.12; squash = 1 + Math.sin(t * 0.9) * 0.03; }
-  if (mode === "hurt") { bob = 6; tilt = -0.08 + (mt < 0.6 ? Math.sin(mt * 50) * 0.1 * (1 - mt / 0.6) : Math.sin(t * 2.4) * 0.04); }
-  if (mode === "work") { bob = Math.sin(t * 8) * 2; tilt = 0.04; }
-  const hx = LW / 2, hy = 238 + bob;
-
-  // сянка
-  const sh = 1 - Math.min(0.45, -Math.min(0, bob) / 90);
-  g.fillStyle = "rgba(60,55,75,.22)"; ellipsePath(hx + 10, GROUND + 14, 200 * sh, 22 * sh, 0); g.fill();
-
-  // пипала
-  const all = TENT.map(T => [T, tentPts(T, t, hx, hy)]);
-  for (const [T, p] of all) if (T.back) tube(p, 19, C.back, C.backShade);
-  for (const [T, p] of all) if (!T.back) tube(p, 23, C.body, C.shade);
-
-  // глава
-  g.save(); g.translate(hx, hy + 70); g.rotate(tilt); g.scale(1 / squash, squash); g.translate(-hx, -(hy + 70));
-  const cx = hx + 8, cy = hy - 40, rx = 112, ry = 128, rot = -0.22;
-  g.lineWidth = 9; g.strokeStyle = C.line; ellipsePath(cx, cy, rx, ry, rot); g.stroke();
-  g.fillStyle = C.shade; ellipsePath(cx, cy, rx, ry, rot); g.fill();
-  g.save(); ellipsePath(cx, cy, rx, ry, rot); g.clip();
-  g.fillStyle = C.body; ellipsePath(cx - 16, cy - 12, rx * 0.95, ry * 0.95, rot); g.fill();
-  // петънца
-  g.strokeStyle = C.spot; g.lineWidth = 3.5;
-  for (const [x, y, r] of [[-80, -70, 9], [-95, -35, 5], [-60, -110, 6], [70, -120, 4], [92, 30, 6], [-30, -135, 4]]) {
-    g.beginPath(); g.arc(cx + x, cy + y, r, 0, Math.PI * 2); g.stroke();
-  }
-  // отблясък
-  g.strokeStyle = "rgba(255,240,225,.85)"; g.lineWidth = 7; g.lineCap = "round";
-  g.beginPath(); g.ellipse(cx - 10, cy - 10, rx * 0.78, ry * 0.8, rot, 1.08 * Math.PI, 1.22 * Math.PI); g.stroke();
-  g.beginPath(); g.arc(cx - 66, cy - 100, 4, 0, Math.PI * 2); g.fillStyle = "rgba(255,240,225,.85)"; g.fill();
-  g.restore();
-
-  // лице
-  const ey = hy + 6;
-  const look = mode === "work" ? [Math.sin(t * 3) * 0.5, 0.75] : [Math.sin(t * 0.5) * 0.7, Math.sin(t * 0.33) * 0.3];
-  // бузки
-  if (mode !== "hurt") { g.fillStyle = C.cheek; for (const s of [-1, 1]) { ellipsePath(hx + s * 98, ey + 48, 14, 8, 0); g.fill(); } }
-  // уста
-  const my = ey + 62;
-  g.lineWidth = 5; g.strokeStyle = C.line; g.lineCap = "round";
-  g.beginPath();
-  if (mode === "happy") g.arc(hx, my - 10, 16, 0.15 * Math.PI, 0.85 * Math.PI);
-  else if (mode === "party") { g.moveTo(hx - 20, my - 6); g.quadraticCurveTo(hx, my + 28, hx + 20, my - 6); g.closePath(); g.fillStyle = "#8a2f3a"; g.fill(); }
-  else if (mode === "hurt") { g.moveTo(hx - 14, my + 4); g.quadraticCurveTo(hx - 7, my - 5, hx, my + 2); g.quadraticCurveTo(hx + 7, my + 9, hx + 14, my); }
-  else if (mode === "sleep") { ellipsePath(hx, my, 6, 4 + Math.sin(t * 0.9) * 2, 0); }
-  else if (mode === "work") { g.moveTo(hx - 12, my + 1); g.quadraticCurveTo(hx, my - 3, hx + 12, my + 1); }
-  else { g.moveTo(hx - 13, my - 3); g.quadraticCurveTo(hx, my + 7, hx + 13, my - 3); }
-  g.stroke();
-  if (mode === "work") {             // от време на време се изплезва настрани
-    const tp = (t % 3.4), out = tp < 1.6 ? Math.min(1, tp / 0.25, (1.6 - tp) / 0.25) : 0;
-    if (out > 0) {
-      const wig = Math.sin(t * 14) * 0.18;
-      g.save(); g.translate(hx + 7, my); g.rotate(0.55 + wig);
-      g.fillStyle = "#ff7d92"; g.strokeStyle = C.line; g.lineWidth = 4;
-      g.beginPath(); g.moveTo(-9, 0); g.lineTo(-9, 10 + 18 * out); g.arc(0, 10 + 18 * out, 9, Math.PI, 0, true); g.lineTo(9, 0); g.fill(); g.stroke();
-      g.strokeStyle = "#d94f6a"; g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, 3); g.lineTo(0, 8 + 16 * out); g.stroke();
-      g.restore();
-    }
-    // бръчка от мислене над очилата
-    g.strokeStyle = C.line; g.lineWidth = 4; g.lineCap = "round";
-    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(hx + s * 26, ey - 60); g.quadraticCurveTo(hx + s * 55, ey - 64, hx + s * 84, ey - 78); g.stroke(); }
-  }
-  if (mode === "sleep") {     // затворени очи, очилата горе на челото
-    g.lineWidth = 5; g.strokeStyle = C.line;
-    for (const s of [-1, 1]) { g.beginPath(); g.arc(hx + s * 56, ey - 2, 16, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke(); }
-  }
-  goggles(hx, ey, t, look, mode === "sleep");
-  // лепенка
-  if (mode === "hurt") {
-    g.save(); g.translate(cx + 55, cy - 80);
-    for (const a of [0.75, -0.75]) {
-      g.save(); g.rotate(a);
-      g.fillStyle = "#f6dfb4"; g.strokeStyle = C.line; g.lineWidth = 4;
-      g.beginPath(); g.roundRect(-34, -11, 68, 22, 10); g.fill(); g.stroke();
-      g.restore();
-    }
-    g.fillStyle = "#e3c389"; g.fillRect(-9, -9, 18, 18);
-    g.restore();
-  }
-  g.restore();
-
-  // предмети и ефекти
-  if (mode === "work") {
-    brawl(hx, GROUND - 22, t);
-    if (Math.random() < 0.09) {
-      const side = pick([-1, 1]);
-      parts.push({ x: hx + side * rnd(40, 120), y: GROUND - rnd(50, 100), vx: side * rnd(2, 5.5), vy: rnd(-9, -5), l: 90,
-        k: pick(["bolt", "bolt", "nut", "cog", "cog", "spring"]), a: rnd(0, 6), va: rnd(-0.3, 0.3) });
-    }
-    if (Math.random() < 0.3) parts.push({ x: hx + rnd(-110, 110), y: GROUND - rnd(40, 110), vx: rnd(-3, 3), vy: rnd(-5, -1), l: 16, c: pick(["#ffb52e", "#ffd166"]), k: "spark" });
-  }
-  if (mode === "party" && Math.random() < 0.7)
-    for (let i = 0; i < 3; i++) parts.push({ x: rnd(40, LW - 40), y: -10, vx: rnd(-1, 1), vy: rnd(1, 3), l: 220, c: pick(["#ffd166", "#ff8fa3", "#7cc8f2", "#6fd3a0", "#b39ddb"]), k: "conf", a: rnd(0, 6) });
-  if (mode === "hurt") for (let i = 0; i < 3; i++) {
-    const a = t * 2.5 + i * Math.PI * 2 / 3;
-    star(hx + 10 + Math.cos(a) * 95, hy - 175 + Math.sin(a) * 14, 13);
-  }
-  if (mode === "sleep") {
-    g.fillStyle = "rgba(40,30,90,.28)"; g.fillRect(0, 0, LW, LH);
-    g.textAlign = "center"; g.lineWidth = 5; g.strokeStyle = C.line; g.fillStyle = "#fff";
-    for (let i = 0; i < 3; i++) {
-      const z = (t * 0.35 + i / 3) % 1;
-      g.globalAlpha = Math.sin(z * Math.PI);
-      g.font = `900 ${20 + z * 24}px sans-serif`;
-      const zx = hx + 125 + z * 50 + Math.sin(z * 8) * 6, zy = hy - 70 - z * 90;
-      g.strokeText("z", zx, zy); g.fillText("z", zx, zy);
-    }
-    g.globalAlpha = 1;
-  }
-  parts = parts.filter(p => {
-    p.x += p.vx; p.y += p.vy; p.vy += p.k === "spark" ? 0.28 : p.k === "conf" ? 0.02 : 0.32; p.l--;
-    if (p.k === "spark") { g.strokeStyle = p.c; g.lineWidth = 4; g.lineCap = "round"; g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * 2, p.y - p.vy * 2); g.stroke(); }
-    else if (p.k !== "conf") { p.a += p.va; part(p); }
-    else { p.a += 0.15; g.save(); g.translate(p.x + Math.sin(p.a) * 6, p.y); g.rotate(p.a); g.fillStyle = p.c; g.fillRect(-6, -3.5, 12, 7); g.restore(); }
-    return p.l > 0 && p.y < LH;
-  });
+  g.fillStyle = "#ece5f4"; g.beginPath(); g.ellipse(LW / 2, LH * 0.45, LW * 0.42, LH * 0.38, 0, 0, Math.PI * 2); g.fill();
+  Octo.draw(g, { x: LW / 2, y: 290, s: 0.95, age, mode, t, mt: t - modeAt, st, ground: LH - 70 });
+  if (mode === "sleep") { g.fillStyle = "rgba(40,30,90,.25)"; g.fillRect(0, 0, LW, LH); }
 }
 requestAnimationFrame(frame);
 </script>
