@@ -240,6 +240,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         if Date() < fertUntil { rate *= 2 }
         if stage >= 4 && overgrowth > 60 { rate *= 0.6 }
         if dormant { rate = 0 }
+        if d.bool(forKey: "pot_moss") { rate *= 0.7 }
         if hidePhase == 0 {
             let before = stage
             growth += rate * m
@@ -444,6 +445,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         if time < starUntil { caughtStar(); return }
         if wishReady { grantWish(); return }
         if midnightWhisper() { return }
+        if treeClicked() { return }
         if stage >= 4 {
             eyesUntil = time + 5
             say(["Хи! Видя ме!", "Здрасти!", "Гъдел!", "Аз съм храст с очи!"].randomElement()!, 2)

@@ -155,7 +155,12 @@ final class PotView: NSView {
             let c = NSColor(hex: hex)
             return sick ? (c.blended(withFraction: 0.45, of: NSColor(hex: 0x9c6644)) ?? c) : c
         }
-        let leaf = tint(0x52b788), leaf2 = tint(0x2d6a4f), stemC = tint(0x40916c)
+        var leaf = tint(0x52b788), leaf2 = tint(0x2d6a4f)
+        let stemC = tint(0x40916c)
+        // старото дърво живее по истинските сезони: есен в оранжево
+        let monthNow = Calendar.current.component(.month, from: Date())
+        let autumn = g.treeMature && [9, 10, 11].contains(monthNow)
+        if autumn { leaf = tint(0xf4a261); leaf2 = tint(0xe76f51) }
         let dancing = (t < g.trippyUntil || t < g.danceUntil) && g.hidePhase == 0
         let sway: CGFloat = dancing ? CGFloat(sin(t * 7)) * 6 : CGFloat(sin(t * 1.3)) * 1.5 + (g.water < 15 ? 5 : 0)
         let bounce: CGFloat = dancing ? abs(CGFloat(sin(t * 7))) * 4 : 0
@@ -299,6 +304,30 @@ final class PotView: NSView {
                 NSRect(x: mx - tw / 2 - 6, y: soil - 7, width: 6, height: 4).fill()
                 NSRect(x: mx + tw / 2, y: soil - 7, width: 6, height: 4).fill()
             }
+            // сърце с инициали
+            if g.hasAge("carved") {
+                let cy = soil - trunkH * 0.25
+                NSColor(hex: 0x3d2512).setFill()
+                NSRect(x: mx - 5, y: cy - 3, width: 4, height: 3).fill(); NSRect(x: mx + 1, y: cy - 3, width: 4, height: 3).fill()
+                NSRect(x: mx - 5, y: cy, width: 10, height: 2).fill(); NSRect(x: mx - 3, y: cy + 2, width: 6, height: 2).fill()
+                NSRect(x: mx - 1, y: cy + 4, width: 2, height: 2).fill()
+            }
+            // мъх
+            if g.d.bool(forKey: "pot_moss") {
+                NSColor(hex: 0x6a994e).setFill()
+                for k in 0..<6 { NSRect(x: mx - tw / 2 - 1 + CGFloat(k % 2) * 3, y: soil - trunkH * (0.15 + 0.12 * CGFloat(k)), width: 5, height: 4).fill() }
+            }
+            // счупеният клон (или новото клонче, след като зарасне)
+            if g.hasAge("scar") {
+                let by = soil - trunkH * 0.7
+                if g.hasAge("healed") {
+                    NSColor(hex: 0x8b5a2b).setFill(); NSRect(x: mx + tw / 2, y: by, width: 18, height: 4).fill()
+                    NSColor(hex: 0x52b788).setFill(); NSRect(x: mx + tw / 2 + 14, y: by - 6, width: 9, height: 7).fill()
+                } else {
+                    NSColor(hex: 0x8b5a2b).setFill(); NSRect(x: mx + tw / 2, y: by, width: 7, height: 5).fill()
+                    NSColor(hex: 0xe9c46a).setFill(); NSRect(x: mx + tw / 2 + 5, y: by, width: 2, height: 5).fill()
+                }
+            }
             // хралупа с бухал
             if g.hasAge("owl") {
                 let hy = soil - trunkH * 0.45
@@ -320,6 +349,21 @@ final class PotView: NSView {
             stemTopY = crownCenter.y - crown * 0.85
         }
 
+        // есен: падащи листа
+        if autumn && crownR > 0 {
+            for k in 0..<7 {
+                let ph = (t * 0.12 + Double(k) * 0.37).truncatingRemainder(dividingBy: 1)
+                let lx = crownCenter.x + CGFloat(sin(Double(k) * 2.3)) * crownR + CGFloat(sin(t * 2 + Double(k))) * 8
+                let ly = crownCenter.y + CGFloat(ph) * (soil - crownCenter.y)
+                NSColor(hex: k % 2 == 0 ? 0xf4a261 : 0xe76f51).setFill()
+                NSRect(x: lx, y: ly, width: 4, height: 3).fill()
+            }
+        }
+        // пролет: розов цвят по старото дърво
+        if g.treeMature && [3, 4, 5].contains(monthNow) && !spots.isEmpty {
+            NSColor(hex: 0xffafcc).setFill()
+            for k in 0..<12 { let s = spots[hash(k * 37 + 21) % spots.count]; NSRect(x: s.x - 2, y: s.y - 2, width: 4, height: 4).fill() }
+        }
         // годините на дървото
         if let tr = trunk {
             let crownBottom = crownCenter.y + crownR * 0.85
