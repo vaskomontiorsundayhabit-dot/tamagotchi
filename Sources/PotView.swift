@@ -133,6 +133,7 @@ final class PotView: NSView {
         if let i = weedRects.firstIndex(where: { $0.insetBy(dx: -3, dy: -3).contains(p) }) { game.pullWeed(i); return }
         if eggRect.insetBy(dx: -4, dy: -4).contains(p) { game.warmEgg(); return }
         if mushroomRect.insetBy(dx: -3, dy: -3).contains(p) { game.eatMushroom(); return }
+        if game.time < game.starUntil { game.caughtStar(); return }
         if creatureRect.insetBy(dx: -4, dy: -4).contains(p) { game.petCreature(); return }
         if creature2Rect.insetBy(dx: -4, dy: -4).contains(p) { game.petCreature2(); return }
         if potRect.contains(p) { game.openCard(); return }
@@ -310,6 +311,50 @@ final class PotView: NSView {
             }
         }
 
+        // дървото на желанията: панделки по клоните, звезда, когато има желание; златен цвят след седмото
+        if g.isWishTree && crownR > 0 {
+            let ribbons = [0xff4d6d, 0xffd166, 0x4cc9f0, 0xc77dff, 0xffffff]
+            for k in 0..<7 {
+                let a = CGFloat(k) / 7 * .pi + 0.25
+                let rx = crownCenter.x + cos(a) * crownR * 0.75, ry = crownCenter.y + sin(a) * crownR * 0.6
+                NSColor(hex: ribbons[k % ribbons.count]).setFill()
+                let wv = CGFloat(sin(t * 2 + Double(k))) * 2
+                NSRect(x: rx, y: ry, width: 3, height: 10).fill()
+                NSRect(x: rx + wv, y: ry + 9, width: 3, height: 6).fill()
+            }
+            if g.wishReady {
+                let tw = 0.6 + 0.4 * CGFloat(sin(t * 4))
+                NSColor(hex: 0xfff3b0, alpha: tw).setFill()
+                let sx = crownCenter.x, sy = crownCenter.y - crownR * 0.85 - 14
+                NSRect(x: sx - 2, y: sy - 8, width: 4, height: 16).fill()
+                NSRect(x: sx - 8, y: sy - 2, width: 16, height: 4).fill()
+                NSColor(hex: 0xffd166, alpha: tw * 0.25).setFill()
+                NSBezierPath(ovalIn: NSRect(x: crownCenter.x - crownR, y: crownCenter.y - crownR * 0.85, width: crownR * 2, height: crownR * 1.7)).fill()
+            }
+            if g.d.bool(forKey: "pot_goldBloom") && !spots.isEmpty {
+                for k in 0..<10 {
+                    let s = spots[hash(k * 53 + 9) % spots.count]
+                    NSColor(hex: 0xffc300).setFill(); NSRect(x: s.x - 3, y: s.y - 3, width: 6, height: 6).fill()
+                    NSColor(hex: 0xfff3b0).setFill(); NSRect(x: s.x - 1, y: s.y - 1, width: 2, height: 2).fill()
+                }
+            }
+        }
+        // медал на саксията
+        if g.d.bool(forKey: "pot_medal") {
+            let mx2 = mx - pw / 2 + 10, my2 = potTop + 9
+            NSColor(hex: 0x4cc9f0).setFill(); NSRect(x: mx2 + 1, y: my2, width: 3, height: 5).fill(); NSRect(x: mx2 + 5, y: my2, width: 3, height: 5).fill()
+            NSColor(hex: 0xffc300).setFill(); NSBezierPath(ovalIn: NSRect(x: mx2, y: my2 + 4, width: 9, height: 9)).fill()
+        }
+        // падаща звезда
+        if t < g.starUntil {
+            let k = CGFloat(1 - (g.starUntil - t) / 12)
+            let sx = bounds.width * k, sy = PotView.top + 10 + 30 * k
+            for j in 0..<6 {
+                NSColor(hex: 0xfff3b0, alpha: 1 - CGFloat(j) * 0.16).setFill()
+                NSRect(x: sx - CGFloat(j) * 6, y: sy - CGFloat(j) * 2, width: j == 0 ? 6 : 4, height: j == 0 ? 6 : 3).fill()
+            }
+        }
+
         // шапка, корона, сняг: преди създанието, за да е то отпред
         let topY = min(stemTopY, crownCenter.y - (crownR > 0 ? crownR * 0.85 : 0))
         let topX = crownR > 0 ? crownCenter.x : baseX + sway
@@ -393,12 +438,20 @@ final class PotView: NSView {
                 guard let c = cid.flatMap({ PotCreature.find($0) }) else { continue }
                 let ph = Double(ci) * 2.1
                 let hop: CGFloat = dancing ? abs(CGFloat(sin(t * 8 + ph))) * 6 : (Int(t / 3 + ph) % 5 == 0 ? abs(CGFloat(sin(t * 6))) * 4 : 0)
-                let wander = CGFloat(sin(t * 0.3 + ph)) * crownR * 0.1 + CGFloat(ci) * 26
+                // второто стои на свой клон от другата страна на короната, не зад първото
+                let at = ci == 0 ? n : NSPoint(x: crownCenter.x - max(30, crownR * 0.55), y: crownCenter.y - crownR * 0.3)
+                if ci == 1 {
+                    NSColor(hex: 0x7f5539).setFill()
+                    NSRect(x: at.x - 12, y: at.y, width: 30, height: 5).fill()
+                    NSColor(hex: 0x52b788).setFill()
+                    NSRect(x: at.x - 14, y: at.y - 3, width: 7, height: 4).fill()
+                }
+                let wander = CGFloat(sin(t * 0.3 + ph)) * (ci == 0 ? crownR * 0.1 : 4)
                 // расте: 3 → 4 → 5 → 6 точки на квадратче
                 if ci == 0 && (g.creatureHidden || g.creatureAway) { continue }
                 let cs: CGFloat = ci == 0 ? CGFloat(3 + min(5, g.creatureStage)) : CGFloat(3 + min(3, g.creature2Stage))
                 let cw = CGFloat(c.pic[0].count) * cs, chh = CGFloat(c.pic.count) * cs
-                let cx = n.x - cw / 2 + wander, cy = n.y - chh - hop
+                let cx = at.x - cw / 2 + wander, cy = at.y - chh - hop
                 if (ci == 0 ? g.creatureStage : g.creature2Stage) >= 3 {
                     NSColor(hex: 0xffd166, alpha: 0.25 + 0.1 * CGFloat(sin(t * 3))).setFill()
                     NSBezierPath(ovalIn: NSRect(x: cx - 8, y: cy - 8, width: cw + 16, height: chh + 16)).fill()
@@ -421,7 +474,7 @@ final class PotView: NSView {
                     let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 9, weight: .heavy), .foregroundColor: NSColor.white]
                     let str = say.uppercased() as NSString
                     let sz = str.size(withAttributes: a)
-                    let r = NSRect(x: n.x - 15 + wander, y: n.y - 42 - hop - CGFloat(ci) * 16, width: sz.width + 8, height: sz.height + 4)
+                    let r = NSRect(x: at.x - 15 + wander, y: at.y - 42 - hop - CGFloat(ci) * 16, width: sz.width + 8, height: sz.height + 4)
                     NSColor(hex: 0x2b2b3a, alpha: 0.9).setFill(); r.fill()
                     str.draw(at: NSPoint(x: r.minX + 4, y: r.minY + 2), withAttributes: a)
                 }

@@ -383,6 +383,7 @@ extension PotGame {
     func ringBell() {
         sfx("Glass")
         bellRungAgain()
+        bellAtNight()
         if hidePhase == 0 || hidePhase == 3 {
             closeCard()
             let sf = (NSScreen.screens.first { $0.frame.contains(NSPoint(x: panel.frame.midX, y: panel.frame.minY + 10)) } ?? NSScreen.main)?.frame ?? .zero

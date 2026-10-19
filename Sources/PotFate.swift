@@ -89,11 +89,7 @@ extension PotGame {
             discover("wish", "Стана Дърво на желанията")
             announce("Нещо се промени… аз съм ДЪРВО НА ЖЕЛАНИЯТА!", 4.5)
         }
-        if d.bool(forKey: "pot_wish") && d.string(forKey: "pot_wishDay") != dayKey() && Int.random(in: 0..<30) == 0 {
-            d.set(dayKey(), forKey: "pot_wishDay")
-            fruitsCollected += 10
-            announce("Желанието ми днес: 10 златни плода в кофата!", 4)
-        }
+        updateWishTree()
         // месоядно: ако мравките често си тръгват сами (никой не ги гони)
         if carnivore && !ants.isEmpty && Int.random(in: 0..<3) == 0 {
             ants.removeLast()

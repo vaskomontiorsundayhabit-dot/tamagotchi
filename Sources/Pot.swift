@@ -93,6 +93,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var creatureHidden = false
     var nextKingdomVisit: Double = 0
     var nextFlight: Double = 0
+    var starUntil: Double = 0
     var flightUntil: Double = 0
     var flightPanel: NSPanel?
     var flightFacingLeft = false
@@ -422,6 +423,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         fruitsCollected += lunar ? 2 : 1
         sfx("Pop")
         maybeTalkingFruit()
+        countHarvest()
         say(["Плодът е в кофата!", "Заповядай! В кофата е.", "Още ще родя!"].randomElement()!, 2)
     }
 
@@ -436,6 +438,9 @@ final class PotGame: NSObject, NSApplicationDelegate {
 
     func clickedPlant() {
         if creatureWish == "hide" { wishFulfilled("hide"); return }
+        if time < starUntil { caughtStar(); return }
+        if wishReady { grantWish(); return }
+        if midnightWhisper() { return }
         if stage >= 4 {
             eyesUntil = time + 5
             say(["Хи! Видя ме!", "Здрасти!", "Гъдел!", "Аз съм храст с очи!"].randomElement()!, 2)
