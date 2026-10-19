@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 10;
+const VER = 11;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK;
+let g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE;
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -474,7 +474,7 @@ function body(t, mt, st) {
     const a = t * 2.5 + i * Math.PI * 2 / 3;
     star(10 + Math.cos(a) * 95 * A.head, headTop - 12 + Math.sin(a) * 14, 13);
   }
-  if (mode === "sleep") zzz(t, 125 * A.head, headTop + 90);
+  if (mode === "sleep" && !LIE) zzz(t, 125 * A.head, headTop + 90);
   if (mode === "angry") {
     anger(95 * A.head, headTop + 40, 1 + Math.sin(t * 10) * 0.12);
     for (let i = 0; i < 2; i++) {                 // пара от главата
@@ -656,7 +656,7 @@ function drawArt(t, mt, st) {
   if (mode === "party" && Math.random() < 0.7)
     for (let i = 0; i < 3; i++) st.parts.push({ x: rnd(-300, 300), y: -380, vx: rnd(-1, 1), vy: rnd(1, 3), l: 260, c: pick(["#ffd166", "#ff8fa3", "#7cc8f2", "#6fd3a0", "#b39ddb"]), k: "conf", a: rnd(0, 6) });
   if (mode === "hurt") for (let i = 0; i < 3; i++) { const a = t * 2.5 + i * Math.PI * 2 / 3; star(Math.cos(a) * 100, top - 14 + Math.sin(a) * 14, 13); }
-  if (mode === "sleep") zzz(t, 110, top + 70);
+  if (mode === "sleep" && !LIE) zzz(t, 110, top + 70);
   if (mode === "angry") anger(100, top + 30, 1 + Math.sin(t * 10) * 0.12);
 }
 
@@ -868,7 +868,7 @@ function skBody(t, mt, st, age) {
     g.stroke();
     g.fillStyle = SK.red; g.font = "bold 15px 'Comic Sans MS', 'Chalkboard SE', cursive"; g.textAlign = "center"; g.fillText("#@!", 42, headTop);
   }
-  if (mode === "sleep") {
+  if (mode === "sleep" && !LIE) {
     g.fillStyle = SK.ink; g.textAlign = "center";
     for (let i = 0; i < 3; i++) { const z = (t * 0.35 + i / 3) % 1; g.globalAlpha = Math.sin(z * Math.PI);
       g.font = `bold ${10 + z * 12}px 'Comic Sans MS', 'Chalkboard SE', cursive`; g.fillText("z", 40 + z * 22, headTop + 20 - z * 40); }
@@ -947,12 +947,14 @@ function draw(ctx, o) {
   COL = A.col || BASE;
   SP = A.speed || 1;
   const k = sc * (age === "egg" ? 0.9 : A.k);
-  GROUND = o.ground == null ? null : (o.ground - o.y) / k;
+  LIE = !!o.lie && mode === "sleep" && age !== "egg";       // спи легнал на дъното
+  GROUND = o.ground == null || LIE ? null : (o.ground - o.y) / k;
   DROP = o.drop !== false;
-  g.save(); g.translate(o.x, o.y); g.scale(k, k);
+  g.save(); g.translate(o.x, o.y); if (LIE) g.rotate(-1.45); g.scale(k, k);
   g.lineJoin = "round";
   const sketch = o.style === "sketch";
-  if (sketch) { g.scale(2.3, 2.3); if (GROUND != null) GROUND /= 2.3; DIR = o.dir || 1; }
+  const skk = age === "egg" ? 1.5 : 2.3;
+  if (sketch) { g.scale(skk, skk); if (GROUND != null) GROUND /= skk; DIR = o.dir || 1; }
   if (sketch) { if (age === "egg") skEgg(o.t); else skBody(o.t, o.mt || 9, st, age); }
   else if (age === "egg") egg(o.t, st);
   else if ((o.style === "art" || o.style === "artanim") && artReady()) drawArt(o.t, o.mt || 9, st);
@@ -965,11 +967,12 @@ function draw(ctx, o) {
     return p.l > 0;
   });
   g.restore();
+  if (LIE) { g.save(); g.translate(o.x, o.y); g.scale(k, k); zzz(o.t, -40, -110); g.restore(); }
   // къде е върхът на главата и колко е голям (за балончето и докосването)
   const top = o.style === "sketch" ? (age === "egg" ? -80 : (14 - 59 * A.head) * 2.3 - 10) : age === "egg" ? -150 : (o.style === "art" || o.style === "artanim") ? -150 : 70 - 238 * A.head;
   return { top: o.y + top * k, r: 260 * k, cy: o.y + (top + 200) * k / 2 };
 }
 
-window.Octo = { V: 10, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
+window.Octo = { V: 11, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
   AGE_NAMES: { egg: "Яйце", baby: "Бебе", kid: "Малък", teen: "Тийнейджър", adult: "Голям", aging: "Застаряващ", old: "Много стар" } };
 })();
