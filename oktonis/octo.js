@@ -24,7 +24,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let g, mode, A, COL, GROUND, SP;
+let g, mode, A, COL, GROUND, SP, DROP;
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -36,8 +36,8 @@ const TENT = [
 ];
 function tentPts(T, t) {
   const s = T.side, N = 44, step = T.L * A.tL / N;
-  const sp = { idle: 1.8, happy: 3, party: 7, work: 11, hurt: 1.3, sleep: 0.7 }[mode] * SP;
-  let amp = { idle: 0.012, happy: 0.02, party: 0.03, work: 0.03, hurt: 0.008, sleep: 0.006 }[mode];
+  const sp = { idle: 1.8, happy: 3, party: 7, work: 11, hurt: 1.3, sleep: 0.7, wee: 6, angry: 10 }[mode] * SP;
+  let amp = { idle: 0.012, happy: 0.02, party: 0.03, work: 0.03, hurt: 0.008, sleep: 0.006, wee: 0.03, angry: 0.035 }[mode];
   if (GROUND == null) amp *= 1.5;                       // във вода се полюшват повече
   let x = T.dx, y = 62;
   const armA = mode === "work" ? 1.15 + Math.sin(t * 13 + T.ph) * 0.25 : 0.55 + (A.cane ? 0.3 : 0);
@@ -49,7 +49,8 @@ function tentPts(T, t) {
     let d = Math.sin(t * sp + T.ph - j * 0.18) * amp * (1 + k * 2);
     if (T.kind === "arm") {
       let up = A.cane ? 0.02 : 0.045;
-      if (mode === "party") up = 0.075 + Math.sin(t * 9 + T.ph) * 0.03;
+      if (mode === "party" || mode === "wee") up = 0.075 + Math.sin(t * 9 + T.ph) * 0.03;
+      if (mode === "angry") up = 0.06 + Math.sin(t * 14 + T.ph) * 0.04;
       if (mode === "sleep") up = 0.012;
       if (mode === "work") up = -0.004;
       d += -s * up;
@@ -112,7 +113,15 @@ function eyeIn(x, y, r, t, look, s, bare) {
   const blink = (t % 4.1) < 0.13 || ((t + 0.3) % 8.7) < 0.12;
   const big = bare && A.eye > 34 ? 1.25 : 1;
   g.lineCap = "round"; g.strokeStyle = C.line; g.lineWidth = 5;
-  if (mode === "happy" || mode === "party") { g.beginPath(); g.arc(x, y + 10, 14, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke(); return; }
+  if (mode === "angry") {           // ядосан: зениците гледат право, клепачите са наклонени надолу към носа
+    g.fillStyle = "#15131c"; ell(x - s * 2, y + 8, 12, 13); g.fill();
+    g.save(); ell(x, y, r, r * (bare ? 1.08 : 1)); g.clip();
+    g.fillStyle = COL.body; g.beginPath(); g.moveTo(x - r, y - r * 1.2); g.lineTo(x + r, y - r * 1.2);
+    g.lineTo(x + r, y - 4 - s * 16); g.lineTo(x - r, y - 4 + s * 16); g.closePath(); g.fill();
+    g.lineWidth = 5; g.beginPath(); g.moveTo(x + r, y - 4 - s * 16); g.lineTo(x - r, y - 4 + s * 16); g.stroke();
+    g.restore(); return;
+  }
+  if (mode === "happy" || mode === "party" || mode === "wee") { g.beginPath(); g.arc(x, y + 10, 14, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke(); return; }
   if (mode === "hurt") { const q = 11; g.beginPath(); g.moveTo(x + s * q, y - q); g.lineTo(x - s * q, y); g.lineTo(x + s * q, y + q); g.stroke(); return; }
   if (mode === "work") {             // съсредоточен: присвити очи, гледа надолу
     const px = x - s * 7, py = y + 12;
@@ -237,6 +246,16 @@ function egg(t, st) {
     star(Math.cos(a) * 140, cy - 40 + Math.sin(a) * 30, 9);
   }
 }
+function anger(x, y, k) {                 // 💢
+  g.save(); g.translate(x, y); g.scale(k, k);
+  g.strokeStyle = "#e5383b"; g.lineWidth = 7; g.lineCap = "round";
+  for (let i = 0; i < 4; i++) {
+    g.save(); g.rotate(i * Math.PI / 2);
+    g.beginPath(); g.moveTo(6, -18); g.quadraticCurveTo(6, -6, 18, -6); g.stroke();
+    g.restore();
+  }
+  g.restore();
+}
 function zzz(t, x0, y0) {
   g.textAlign = "center"; g.lineWidth = 5; g.strokeStyle = C.line; g.fillStyle = "#fff";
   for (let i = 0; i < 3; i++) {
@@ -257,6 +276,8 @@ function body(t, mt, st) {
   if (mode === "sleep") { bob = 10 + Math.sin(t * 0.9) * 3; tilt = 0.12; squash = 1 + Math.sin(t * 0.9) * 0.03; }
   if (mode === "hurt") { bob = 6; tilt = -0.08 + (mt < 0.6 ? Math.sin(mt * 50) * 0.1 * (1 - mt / 0.6) : Math.sin(t * 2.4) * 0.04); }
   if (mode === "work") { bob = Math.sin(t * 8) * 2; tilt = 0.04; }
+  if (mode === "wee") { tilt = Math.sin(t * 5) * 0.12; }
+  if (mode === "angry") { tilt = Math.sin(t * 30) * 0.03; bob = Math.sin(t * 25) * 2; }
   tilt += A.hunch || 0;
 
   if (GROUND != null) {
@@ -264,7 +285,7 @@ function body(t, mt, st) {
     g.fillStyle = "rgba(60,55,75,.22)"; ell(10, GROUND + 14, 200 * sh * A.tW, 22 * sh); g.fill();
   }
   g.save();
-  if (GROUND != null) {               // малките стъпват на пода, не висят
+  if (GROUND != null && DROP) {       // малките стъпват на пода, не висят
     const drop = Math.max(0, GROUND - (62 + 185 * A.tL));
     g.translate(0, drop); GROUND -= drop;
   }
@@ -296,6 +317,7 @@ function body(t, mt, st) {
   g.strokeStyle = "rgba(255,240,225,.85)"; g.lineWidth = 7; g.lineCap = "round";
   g.beginPath(); g.ellipse(cx - 10, cy - 10, rx * 0.78, ry * 0.8, rot, 1.08 * Math.PI, 1.22 * Math.PI); g.stroke();
   g.beginPath(); g.arc(cx - 66, cy - 100, 4, 0, Math.PI * 2); g.fillStyle = "rgba(255,240,225,.85)"; g.fill();
+  if (mode === "angry") { g.fillStyle = `rgba(230,40,40,${0.18 + Math.sin(t * 6) * 0.06})`; ell(cx, cy, rx, ry, rot); g.fill(); }
   // бръчки
   g.strokeStyle = COL.spot; g.lineWidth = 4;
   for (let i = 0; i < (A.wrinkles || 0); i++) {
@@ -320,7 +342,8 @@ function body(t, mt, st) {
   g.lineWidth = 5; g.strokeStyle = C.line; g.lineCap = "round";
   g.beginPath();
   if (mode === "happy") g.arc(hx, my - 10, 16, 0.15 * Math.PI, 0.85 * Math.PI);
-  else if (mode === "party") { g.moveTo(hx - 20, my - 6); g.quadraticCurveTo(hx, my + 28, hx + 20, my - 6); g.closePath(); g.fillStyle = "#8a2f3a"; g.fill(); }
+  else if (mode === "angry") { g.moveTo(hx - 16, my + 4); for (let i = 1; i <= 4; i++) g.lineTo(hx - 16 + i * 8, my + (i % 2 ? -3 : 4)); }
+  else if (mode === "party" || mode === "wee") { g.moveTo(hx - 20, my - 6); g.quadraticCurveTo(hx, my + 28, hx + 20, my - 6); g.closePath(); g.fillStyle = "#8a2f3a"; g.fill(); }
   else if (mode === "hurt") { g.moveTo(hx - 14, my + 4); g.quadraticCurveTo(hx - 7, my - 5, hx, my + 2); g.quadraticCurveTo(hx + 7, my + 9, hx + 14, my); }
   else if (mode === "sleep") ell(hx, my, 6, 4 + Math.sin(t * 0.9) * 2);
   else if (mode === "work") { g.moveTo(hx - 12, my + 1); g.quadraticCurveTo(hx, my - 3, hx + 12, my + 1); }
@@ -330,6 +353,10 @@ function body(t, mt, st) {
     g.fillStyle = "#7cc8f2"; g.strokeStyle = C.line; g.lineWidth = 4;
     g.beginPath(); g.ellipse(hx, my + 4, 22, 12, 0, 0, Math.PI * 2); g.fill(); g.stroke();
     g.beginPath(); g.arc(hx, my + 4, 6, 0, Math.PI * 2); g.fillStyle = "#ffd166"; g.fill(); g.stroke();
+  }
+  if (mode === "angry" && !A.brows) {
+    g.strokeStyle = C.line; g.lineWidth = 9; g.lineCap = "round";
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(hx + s * 24, ey - 54); g.lineTo(hx + s * 86, ey - 82); g.stroke(); }
   }
   if (mode === "work") {
     const tp = (t % 3.4), out = tp < 1.6 ? Math.min(1, tp / 0.25, (1.6 - tp) / 0.25) : 0;
@@ -402,6 +429,15 @@ function body(t, mt, st) {
     star(10 + Math.cos(a) * 95 * A.head, headTop - 12 + Math.sin(a) * 14, 13);
   }
   if (mode === "sleep") zzz(t, 125 * A.head, headTop + 90);
+  if (mode === "angry") {
+    anger(95 * A.head, headTop + 40, 1 + Math.sin(t * 10) * 0.12);
+    for (let i = 0; i < 2; i++) {                 // пара от главата
+      const z = (t * 1.2 + i * 0.5) % 1, sx = (i ? 1 : -1) * (40 + z * 30);
+      g.globalAlpha = 1 - z; g.fillStyle = "#fff"; g.strokeStyle = C.line; g.lineWidth = 3;
+      g.beginPath(); g.arc(sx, headTop + 10 - z * 60, 10 + z * 14, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.globalAlpha = 1;
+    }
+  }
   g.restore();
 }
 
@@ -417,6 +453,7 @@ function draw(ctx, o) {
   SP = A.speed || 1;
   const k = sc * (age === "egg" ? 0.9 : A.k);
   GROUND = o.ground == null ? null : (o.ground - o.y) / k;
+  DROP = o.drop !== false;
   g.save(); g.translate(o.x, o.y); g.scale(k, k);
   g.lineJoin = "round";
   if (age === "egg") egg(o.t, st); else body(o.t, o.mt || 9, st);

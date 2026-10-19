@@ -19,7 +19,7 @@
     font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-user-select: none; user-select: none; touch-action: manipulation; }
   .hidden { display: none !important; }
-  #sea { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #sea { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
   /* балонче с говор */
   #bubble { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); pointer-events: none;
@@ -28,7 +28,13 @@
   #bubble::after { content: ""; position: absolute; left: 50%; bottom: -12px; margin-left: -9px; width: 16px; height: 16px;
     background: #fffaf2; border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: rotate(45deg); }
   #bubble .e { font-size: 26px; line-height: 1.15; }
-  #bubble .t { font-size: 13px; line-height: 1.25; }
+  #bubble .t { font-size: 13px; line-height: 1.3; white-space: pre-line; }
+  #handle { position: fixed; left: 50%; bottom: max(8px, env(safe-area-inset-bottom)); width: 120px; margin-left: -60px; height: 26px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; }
+  #handle::before { content: ""; width: 54px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.75); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .todo { list-style: none; margin: 4px 0 12px; padding: 0; }
+  .todo li { padding: 3px 0; font-size: 14px; }
+  .todo li.done { color: var(--muted); text-decoration: line-through; }
   #bubble.want { background: #fff3c4; animation: pulse 1.2s infinite; }
   #bubble.want::after { background: #fff3c4; }
   @keyframes pulse { 50% { transform: translate(-50%, -100%) scale(1.06); } }
@@ -47,7 +53,7 @@
 
   #top { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 0; right: 0; text-align: center; font-size: 13px;
     color: #eaf6ff; text-shadow: 0 1px 3px rgba(0,0,0,.6); pointer-events: none; z-index: 2; }
-  #hint { position: fixed; bottom: max(22px, env(safe-area-inset-bottom)); left: 0; right: 0; text-align: center; font-size: 14px;
+  #hint { position: fixed; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 36px); left: 0; right: 0; text-align: center; font-size: 14px;
     color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); pointer-events: none; animation: fade 2.4s infinite; z-index: 2; }
   @keyframes fade { 50% { opacity: .45; } }
 
@@ -103,6 +109,7 @@
 <canvas id="sea"></canvas>
 <div id="top"></div>
 <div id="hint" class="hidden">Докосни Октонис 🐙</div>
+<div id="handle" class="hidden" title="Как е"></div>
 <div id="bubble" class="hidden"><div class="e" id="bubbleE"></div><div class="t" id="bubbleT"></div></div>
 <div id="ring"></div>
 
@@ -194,7 +201,7 @@ function fresh(now) {
   return {
     v: 1, t: now, born: now, hunger: 20, energy: 85, mood: 70, health: 100, mess: 0, skill: 0,
     asleep: false, hurt: 0, known: [...BASE], fresh: [], want: null, nextWant: now + 2 * MIN,
-    lastHint: 0, lastWin: 0, lastCare: now, journal: [{ t: now, x: "🥚 Октонис се излюпи! Обича технологиите." }],
+    lastHint: 0, lastWin: 0, lastCare: now, meals: [], lastMeal: now, lastGrumble: 0, todo: null, journal: [{ t: now, x: "🥚 Октонис се излюпи! Обича технологиите." }],
   };
 }
 function log(x, t = Date.now()) {
@@ -222,6 +229,12 @@ function minute(t, offline, ev) {
     if (S.energy <= 8) { S.asleep = true; log("😴 Заспа от умора.", t); }
   }
   S.hunger = clamp(S.hunger + (S.asleep ? 1 / 14 : 1 / 8));
+  if (!S.asleep) S.mess = clamp(S.mess + 1 / 90);            // прашинки се трупат
+  if (!S.asleep && S.mess > 65 && S.energy > 30 && Math.random() < 1 / 30) {   // Дева: не издържа на бъркотия
+    S.mess = clamp(S.mess - 45); S.energy = clamp(S.energy - 4); S.mood = clamp(S.mood + 3);
+    log("🧹 Не издържа на бъркотията и подреди сам. Дева си е Дева.", t);
+    if (!offline) selfCleaned = true;
+  }
   if (S.hunger >= 95) S.health = clamp(S.health - 0.1);
   else if (S.hunger < 70) S.health = clamp(S.health + (S.hurt ? 0.03 : 0.1));
   if (S.hurt && S.health >= 95) S.hurt = 0;
@@ -240,6 +253,7 @@ function minute(t, offline, ev) {
     }
   }
 }
+let selfCleaned = false;
 function catchUp(now) {
   const offline = role === "keeper" && now - S.t > 3 * MIN;
   const ev = { n: 0 };
@@ -275,7 +289,7 @@ function wants(now) {
   if (S.want || now < S.nextWant) return;
   let w;
   if (S.hurt) w = { e: "🩹", k: "heal" };
-  else if (S.hunger > 60) w = { e: "🍕", k: "food" };
+  else if (S.hunger > 60) w = { e: pick(["🍕", "🥦", "🥦", "🦐"]), k: "food" };
   else if (S.mess > 60) w = { e: "🧹", k: "tidy" };
   else if (S.mood < 40) w = { e: "🤗", k: "hug" };
   else if (Math.random() < 0.6) { const id = pick(S.known); w = { e: E[id][0], k: "item", id }; }
@@ -307,15 +321,13 @@ function sendEmoji(e) {
 function act(e, now, wanted) {
   if (S.asleep && e !== "☀️" && e !== "❤️") return say("💤", "Шшш… спи.");
   switch (e) {
-    case "🍕":
-      if (S.hunger < 15) { S.mood = clamp(S.mood - 2); return say("🤢", "Пълен съм!"); }
-      S.hunger = clamp(S.hunger - 45); S.mood = clamp(S.mood + 3); return say("😋", "Ммм, пица!");
+    case "🍕": case "🥦": case "🦐": return eat(e, now, wanted);
     case "🩹":
       if (!S.hurt && S.health >= 80) return say("🤔", "Нищо ми няма.");
       S.hurt = 0; S.health = clamp(S.health + 20); S.mood = clamp(S.mood + 5); return say("🥹", "Така е много по-добре.");
     case "🧹":
       if (S.mess < 10) return say("👌", "Вече е подредено.");
-      S.mess = 0; S.mood = clamp(S.mood + 8); return say("✨", "Подредено! Обичам ред.");
+      S.mess = 0; S.mood = clamp(S.mood + 8); tick("tidy"); return say("✨", "Подредено! Обичам ред.");
     case "😴":
       if (S.energy > 60) return say("😤", "Не съм уморен, работя!");
       S.asleep = true; S.want = null; log("😴 Легна да спи."); return say("😴", "Лека нощ…");
@@ -323,10 +335,10 @@ function act(e, now, wanted) {
       if (!S.asleep) return say("😎", "Буден съм!");
       if (S.energy < 30) return say("😪", "Още малко…");
       S.asleep = false; log("☀️ Събуди го."); return say("🥱", "Добро утро!");
-    case "❤️": S.mood = clamp(S.mood + 6); return say(S.asleep ? "💤💗" : "🥰", "");
+    case "❤️": S.mood = clamp(S.mood + 6); tick("love"); return say(S.asleep ? "💤💗" : "🥰", "");
     case "👍": S.mood = clamp(S.mood + 3); return say("😊", "");
     case "😂": S.mood = clamp(S.mood + 4); return say("🤣", "");
-    case "🤗": S.mood = clamp(S.mood + 8); return say("🤗", "");
+    case "🤗": S.mood = clamp(S.mood + 8); tick("love"); return say("🤗", "");
     case "👋": S.mood = clamp(S.mood + 2); return say("👋🐙", "Здрасти!");
     case "🎉":
       if (now - S.lastWin < 3 * MIN) { S.mood = clamp(S.mood + 10); fx.party = performance.now(); return say("🥳", "Нали е страхотно!"); }
@@ -335,10 +347,69 @@ function act(e, now, wanted) {
       if (now - S.lastHint < 90000) return say("🧐", "Още мисля над предната идея.");
       const c = candidates();
       if (!c.length) return say("🤔", "Нямам идея сега.");
-      const [a, b] = pick(c); S.lastHint = now;
+      const [a, b] = pick(c); S.lastHint = now; tick("hint");
       return say(`${E[a][0]} + ${E[b][0]} ?`, "Мисля, че от тези двете ще стане нещо!", 7000);
     }
   }
+}
+
+// ---------- Дева: храна по режим ----------
+function eat(e, now, wanted) {
+  if (S.hunger < 25) { S.mood = clamp(S.mood - 2); return say("🙅", "Не съм гладен. Режимът си е режим! 📋"); }
+  const h = new Date(now).getHours() + new Date(now).getMinutes() / 60, day = new Date(now).toDateString();
+  const usual = S.meals.filter(m => m.d !== day && Math.abs(m.h - h) < 0.75).length >= 2;
+  S.meals = [...S.meals, { h, d: day }].slice(-14);
+  S.lastMeal = now; tick("feed");
+  if (e === "🥦") { S.hunger = clamp(S.hunger - 30); S.health = clamp(S.health + 6); S.mood = clamp(S.mood + 2); tick("veg"); }
+  else if (e === "🦐") { S.hunger = clamp(S.hunger - 40); S.mood = clamp(S.mood + 5); }
+  else { S.hunger = clamp(S.hunger - 45); S.mood = clamp(S.mood + 3); }
+  if (usual) { S.mood = clamp(S.mood + 6); return say("⏰😌", "Точно навреме! Обичам режим."); }
+  if (e === "🥦") return say("🥦✅", "Здравословно! Одобрявам.");
+  if (e === "🦐") return say("😋", "Скариди! Свежи са, проверих.");
+  if (!wanted && Math.random() < 0.35) return say("😋🧐", "Вкусно… но малко мазно. Следващия път нещо здравословно? 🥦");
+  return say("😋", "Ммм, пица!");
+}
+function grumble(now) {              // мърмори, ако закъснееш с храната
+  if (role !== "keeper" || S.asleep || S.hunger < 50 || now - S.lastMeal < 2 * 60 * MIN || now - S.lastGrumble < 60 * MIN) return;
+  const h = new Date(now).getHours() + new Date(now).getMinutes() / 60, day = new Date(now).toDateString();
+  const late = S.meals.some(m => m.d !== day && h - m.h > 1 && h - m.h < 3 &&
+    S.meals.filter(n => n.d !== day && Math.abs(n.h - m.h) < 0.75).length >= 2);
+  if (!late) return;
+  S.lastGrumble = now; S.mood = clamp(S.mood - 3); dirty = true;
+  say("⏰😤", "Закъсня с храната! Режимът е свещен.", 6000);
+}
+
+// ---------- Дева: списък за деня ----------
+const TODO = [["feed", "🍕", "Да хапна"], ["tidy", "🧹", "Да е подредено"], ["invent", "🔧", "Да пробвам изобретение"],
+  ["love", "❤️", "Малко обич"], ["hint", "💡", "Да помисля над идея"], ["veg", "🥦", "Нещо здравословно"]];
+function ensureTodo(now) {
+  const day = new Date(now).toDateString();
+  if (S.todo && S.todo.day === day) return;
+  const pool = [...TODO].sort(() => Math.random() - 0.5).slice(0, 3);
+  S.todo = { day, items: pool.map(([k, e, x]) => ({ k, e, x, done: false })), all: false };
+  dirty = true;
+}
+function tick(k) {
+  if (!S.todo) return;
+  const it = S.todo.items.find(i => i.k === k && !i.done);
+  if (!it) return;
+  it.done = true; dirty = true;
+  setTimeout(() => say("✅", "Отметнах: " + it.x), 4600);
+  if (!S.todo.all && S.todo.items.every(i => i.done)) {
+    S.todo.all = true; S.mood = clamp(S.mood + 15); S.skill += 0.3;
+    log("📋✅ Изпълни целия списък за деня!");
+    setTimeout(() => { fx.party = performance.now(); say("📋✅", "Целият списък е отметнат! Обожавам това!", 6000); }, 9300);
+  }
+}
+function worries() {                  // какво не е наред, докато те е нямало
+  const w = [];
+  if (S.hunger > 60) w.push("🍕 гладен съм");
+  if (S.mess > 50) w.push("🧹 разхвърляно е");
+  if (S.hurt) w.push("🩹 боли ме");
+  if (S.energy < 25) w.push("😴 уморен съм");
+  if (S.mood < 40) w.push("😞 тъжно ми е");
+  if (S.todo && !S.todo.all) w.push("📋 списъкът не е готов");
+  return w;
 }
 
 // ---------- Изобретяване ----------
@@ -379,6 +450,10 @@ function finish(a, b) {
       fx.party = performance.now();
       log(`🎉 Изобрети ${name(r)}!`);
       say(E[r][0] + "!!", pick(["Работи! Работи!", "Получи се! Точно по план!", "УРА! Перфектно е!", "Виж какво направих!"]), 6000);
+      if (Math.random() < 0.35) {      // Дева: никога не е съвсем доволен
+        setTimeout(() => say("🧐", "Хм… може и по-добре. Полирам го още малко ✨"), 6500);
+        setTimeout(() => say("✨" + E[r][0], "Ето. Сега е съвършено."), 11000);
+      }
     } else if (Math.random() < 0.6) {
       const hit = pick([["🤕", "Ох! Ощипах си пипалото."], ["🔥", "Ай! Опарих се."], ["⚡", "Бзззт! Токов удар!"],
         ["🤕", "Падна ми на главата."], ["😣", "Винтчето ми отхвърча в окото."]]);
@@ -396,6 +471,7 @@ function finish(a, b) {
     else say("🤷", "От това нищо не става.");
   }
   slots = [null, null];
+  tick("invent");
   save(); render();
 }
 
@@ -439,12 +515,15 @@ function catchUpView() {
 }
 let viewBase = null;
 function afterLoad() {
+  S.meals = S.meals || []; S.lastMeal = S.lastMeal || Date.now(); S.lastGrumble = S.lastGrumble || 0;
   if (role === "viewer") viewBase = JSON.stringify(S);
   const before = S.journal.length ? S.journal[0].t : 0;
   const steps = catchUp(Date.now());
   if (role === "keeper" && steps > 60) {
     const missed = S.journal.filter(j => j.t > before && j.t > Date.now() - steps * MIN).length;
-    say("👋🐙", missed ? "Липсваше ми! Виж дневника." : "Липсваше ми!", 5000);
+    const w = worries();
+    if (w.length) say("📋", "Докато те нямаше, записах:\n" + w.join("\n"), 9000);
+    else say("👋🐙", missed ? "Липсваше ми! Виж дневника." : "Липсваше ми! Всичко е наред, проверих.", 5000);
     S.lastCare = Date.now();
   }
   save();
@@ -458,6 +537,7 @@ function show(v) {
   $("loginView").classList.toggle("hidden", v !== "loginView");
   $("loadView").classList.toggle("hidden", v !== "loadView");
   inGame = v === "gameView";
+  $("handle").classList.toggle("hidden", !inGame);
   if (!inGame) { closeRing(); closeSheet(); $("bubble").classList.add("hidden"); $("top").textContent = ""; $("hint").classList.add("hidden"); }
 }
 let inGame = false;
@@ -496,6 +576,7 @@ function closeSheet() {
   $("scrim").classList.add("hidden");
 }
 $("scrim").onclick = closeSheet;
+$("handle").onclick = () => openSheet("stats");
 function fillSheet(kind) {
   const sh = $("sheet");
   const head = (title, extra = "") => `<h2>${title} <span>${extra}<button class="x" id="sx">✕</button></span></h2>`;
@@ -521,6 +602,8 @@ function fillSheet(kind) {
     if (!st.length) st.push(S.mood > 70 ? "Щастлив и изобретява" : "Добре е");
     const days = Math.floor((Date.now() - S.born) / (24 * 60 * MIN));
     sh.innerHTML = head("📊 Как е Октонис", "ниво " + (1 + Math.floor(S.skill)) + " ") + `
+      ${S.todo ? `<div class="sub" style="margin:0">📋 Списъкът за днес:</div><ul class="todo">${S.todo.items.map(i =>
+        `<li class="${i.done ? "done" : ""}">${i.done ? "✅" : "⬜"} ${i.e} ${esc(i.x)}</li>`).join("")}</ul>` : ""}
       <div class="bars">${bars.map(([i, v, c]) => `<div class="bar"><span class="ic">${i}</span><div class="track"><div class="fill" style="width:${v.toFixed(0)}%;background:${c}"></div></div><b>${v.toFixed(0)}</b></div>`).join("")}</div>
       <div class="sub">${st.join(" · ")} · ${days ? `на ${days} ${days === 1 ? "ден" : "дни"}` : "роден днес"}<br>
       ${role === "viewer" ? "toshik беше при него " + ago(S.lastCare) + "." : ""}</div>
@@ -574,6 +657,7 @@ function toggleFull() {
 function ringItems() {
   const extra = [fullItem(), ["logout", "🚪", "Изход"]].filter(Boolean);
   if (role !== "keeper") return [["stats", "📊", "Как е"], ["journal", "📖", "Дневник"], ...extra];
+  if (ringPage === "food") return [["back", "↩️", "Назад"], ["e🍕", "🍕", "Пица"], ["e🥦", "🥦", "Броколи"], ["e🦐", "🦐", "Скариди"]];
   if (ringPage === "talk") return [["back", "↩️", "Назад"], ...["❤️", "🤗", "👍", "😂", "🎉", "💡", "👋"].map(e => ["e" + e, e, ""])];
   return [["food", "🍕", "Храна"], ["heal", "🩹", "Лепенка"], ["tidy", "🧹", "Чистене"],
     S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Сън"],
@@ -608,22 +692,22 @@ function paintRing() {
     const b = document.createElement("button");
     b.className = "rb"; b.style.left = x + "px"; b.style.top = y + "px";
     b.innerHTML = ic + (label ? `<small>${label}</small>` : "");
-    if (want === id && ringPage === "main") b.classList.add("want");
+    if ((want === id && ringPage === "main") || (ringPage === "food" && S.want && S.want.k === "food" && id === "e" + S.want.e)) b.classList.add("want");
     b.onclick = ev => { ev.stopPropagation(); ringAction(id); };
     box.appendChild(b);
     setTimeout(() => b.classList.add("open"), 20 + i * 25);
   });
 }
 function ringAction(id) {
-  if (id === "talk") { ringPage = "talk"; return paintRing(); }
+  if (id === "talk" || id === "food") { ringPage = id; return paintRing(); }
   if (id === "back") { ringPage = "main"; return paintRing(); }
   if (id === "work" || id === "stats" || id === "journal") return openSheet(id);
   if (id === "full") { closeRing(); return toggleFull(); }
   if (id === "logout") { closeRing(); return logout(); }
-  const map = { food: "🍕", heal: "🩹", tidy: "🧹", sleep: "😴", wake: "☀️" };
+  const map = { heal: "🩹", tidy: "🧹", sleep: "😴", wake: "☀️" };
   const e = map[id] || id.slice(1);
   sendEmoji(e);
-  if (ringPage === "main") closeRing(); else paintRing();
+  if (ringPage === "talk") paintRing(); else closeRing();
 }
 
 // ---------- Говорене (балончето следва Октонис) ----------
@@ -671,6 +755,7 @@ const oct = { x: 0, y: 0, cy: 0, top: 0, r: 100, px: null, py: null };
 let lastMode = "", modeAt = 0;
 function octoMode() {
   const p = performance.now();
+  if (drag && drag.moved) return drag.mood;
   if (working) return "work";
   if (p - fx.party < 4000) return "party";
   if (S.asleep) return "sleep";
@@ -732,13 +817,15 @@ function loop() {
   let tx = W / 2 + Math.sin(t * 0.11) * W * 0.16 + Math.sin(t * 0.29) * W * 0.04;
   let ty = H * 0.46 + Math.sin(t * 0.17) * H * 0.05;
   const mode = S ? octoMode() : "idle";
-  if (mode === "sleep") ty = H * 0.56;
-  if (mode === "work") { tx = W / 2; ty = H * 0.44; }
+  const ground = H * 0.88 + 6;
+  if (mode === "sleep" || mode === "work") { tx = oct.px ?? tx; ty = ground - 201 * s; }   // слиза на дъното
   if (ringOpen || sheetKind) { tx = oct.px; ty = oct.py; }
   if (oct.px == null) { oct.px = tx; oct.py = ty; }
-  oct.px += (tx - oct.px) * 0.02; oct.py += (ty - oct.py) * 0.02;
+  if (!(drag && drag.moved)) { const k = mode === "sleep" || mode === "work" ? 0.035 : 0.02; oct.px += (tx - oct.px) * k; oct.py += (ty - oct.py) * k; }
   if (mode !== lastMode) { lastMode = mode; modeAt = t; }
-  const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * s, s, age: S ? AGE : "egg", mode, t, mt: t - modeAt, st });
+  const near = oct.py > ground - 260 * s && !(drag && drag.moved);
+  const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * s, s, age: S ? AGE : "egg", mode, t, mt: t - modeAt, st,
+    ground: near ? ground : null, drop: false });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
   if (Math.random() < 0.02) bubbles[Math.floor(Math.random() * bubbles.length)] = { x: (oct.x + rnd(-20, 20)) / W, y: info.top / H, r: rnd(2, 5), s: 0.05, p: rnd(0, 6) };
   if (night) { g.fillStyle = "rgba(10,10,40,.25)"; g.fillRect(0, 0, W, H); }
@@ -746,23 +833,76 @@ function loop() {
 }
 requestAnimationFrame(loop);
 
-// ---------- Докосване и мишка ----------
+// ---------- Докосване, влачене и мишка ----------
 const canHover = matchMedia("(hover: hover) and (pointer: fine)").matches;
 const onOcto = (x, y) => Math.hypot(x - oct.x, y - oct.cy) < oct.r * 0.6;
-cv.addEventListener("click", ev => {
-  if (!inGame) return;
-  if (ringOpen) { if (!canHover || !onOcto(ev.clientX, ev.clientY)) closeRing(); return; }
-  if (onOcto(ev.clientX, ev.clientY)) openRing();
+let drag = null, noHover = false;
+cv.addEventListener("pointerdown", ev => {
+  if (!inGame || !S || sheetKind || !onOcto(ev.clientX, ev.clientY)) return;
+  drag = { id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, dx: oct.px - ev.clientX, dy: oct.py - ev.clientY, moved: false };
+  try { cv.setPointerCapture(ev.pointerId); } catch {}
 });
+cv.addEventListener("pointermove", ev => {
+  if (!drag || ev.pointerId !== drag.id) return;
+  if (!drag.moved && Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) > 10) {
+    drag.moved = true; closeRing(); startDrag();
+  }
+  if (drag.moved) { oct.px = ev.clientX + drag.dx; oct.py = ev.clientY + drag.dy; }
+});
+cv.addEventListener("pointerup", ev => {
+  if (drag && ev.pointerId === drag.id) {
+    const d = drag; drag = null;
+    if (d.moved) return endDrag(d);
+    if (ringOpen) { if (!canHover) closeRing(); } else openRing();
+    return;
+  }
+  if (inGame && ringOpen) closeRing();
+});
+cv.addEventListener("pointercancel", () => { if (drag && drag.moved) endDrag(drag); drag = null; });
+function startDrag() {
+  const happy = S.mood >= 50 && !S.hurt && !S.asleep && S.hunger < 75;
+  drag.mood = happy ? "wee" : "angry";
+  noHover = true;
+  if (S.asleep) {
+    if (role === "keeper") { S.asleep = false; S.mood = clamp(S.mood - 5); dirty = true; log("😠 Събуди го, като го повлече."); }
+    return say("😠💢", "Спях! Защо ме будиш?!");
+  }
+  if (happy) say("🎢", pick(["Уииии!", "Летяяя! 🚀", "Още, още! 😆", "Като влакче в увеселителен парк!"]));
+  else say("😠💢", pick(["Пусни ме!", "Не сега!", "Не съм в настроение!", "Остави ме на мира!"]));
+}
+function endDrag(d) {
+  if (role === "keeper") {
+    S.mood = clamp(S.mood + (d.mood === "wee" ? 3 : -3)); S.lastCare = Date.now(); dirty = true;
+    if (d.mood === "wee") tick("love");
+    save();
+  }
+  if (d.mood === "wee") say("😆", pick(["Пак!", "Беше страхотно!", "Хи-хи!"]));
+  else say("😤", "Хмпф.");
+}
 let leaveTimer = 0;
 if (canHover) addEventListener("mousemove", ev => {
-  if (!inGame || sheetKind) return;
+  if (!inGame || sheetKind || drag) return;
+  const over = onOcto(ev.clientX, ev.clientY);
+  cv.style.cursor = over ? "grab" : "";
+  if (!over && !ringOpen) noHover = false;
   const d = Math.hypot(ev.clientX - (ringOpen ? ringCenter[0] : oct.x), ev.clientY - (ringOpen ? ringCenter[1] : oct.cy));
-  cv.style.cursor = onOcto(ev.clientX, ev.clientY) ? "pointer" : "";
-  if (!ringOpen && onOcto(ev.clientX, ev.clientY)) openRing();
+  if (!ringOpen && over && !noHover) openRing();
   else if (ringOpen && d > ringR + 70) { if (!leaveTimer) leaveTimer = setTimeout(() => { leaveTimer = 0; closeRing(); }, 450); }
   else if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = 0; }
 });
+// плъзгане отдолу нагоре на телефона: „Как е“; отгоре надолу по панела: затваря
+let swipe = null;
+addEventListener("touchstart", ev => {
+  const t0 = ev.touches[0];
+  swipe = { x: t0.clientX, y: t0.clientY, onSheet: $("sheet").contains(ev.target), top: $("sheet").scrollTop };
+}, { passive: true });
+addEventListener("touchend", ev => {
+  if (!swipe || !inGame) return;
+  const t1 = ev.changedTouches[0], dx = t1.clientX - swipe.x, dy = t1.clientY - swipe.y;
+  if (!sheetKind && !drag && dy < -60 && Math.abs(dx) < 90 && swipe.y > H * 0.55 && !onOcto(swipe.x, swipe.y)) openSheet("stats");
+  else if (sheetKind && swipe.onSheet && swipe.top <= 0 && dy > 70) closeSheet();
+  swipe = null;
+}, { passive: true });
 
 // ---------- Таймер ----------
 let lastMinuteCheck = 0, chatTick = 1;
@@ -771,6 +911,9 @@ setInterval(() => {
   const now = Date.now();
   if (role === "keeper") {
     if (catchUp(now)) render();
+    ensureTodo(now);
+    if (selfCleaned) { selfCleaned = false; say("🧹😤", "Не мога така! Подредих сам."); }
+    grumble(now);
     wants(now);
     if (chatTick++ % 45 === 0) chatter();
     if (dirty && now - lastSave > 60000) save();
@@ -807,6 +950,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
+if (DEMO) window.__okt = { get S() { return S; }, oct, fx, work: v => { working = v ? performance.now() : 0; } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
