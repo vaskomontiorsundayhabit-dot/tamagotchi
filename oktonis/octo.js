@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 14;
+const VER = 15;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -37,8 +37,8 @@ const TENT = [
 ];
 function tentPts(T, t) {
   const s = T.side, N = 44, step = T.L * A.tL * (CUTE ? 0.78 : 1) / N;
-  const sp = { idle: 1.8, happy: 3, party: 7, work: 11, hurt: 1.3, sleep: 0.7, wee: 6, angry: 10 }[mode] * SP;
-  let amp = { idle: 0.012, happy: 0.02, party: 0.03, work: 0.03, hurt: 0.008, sleep: 0.006, wee: 0.03, angry: 0.035 }[mode];
+  const sp = { idle: 1.8, happy: 3, party: 7, work: 11, hurt: 1.3, sleep: 0.7, wee: 6, angry: 10, read: 1.2 }[mode] * SP;
+  let amp = { idle: 0.012, happy: 0.02, party: 0.03, work: 0.03, hurt: 0.008, sleep: 0.006, wee: 0.03, angry: 0.035, read: 0.008 }[mode];
   if (GROUND == null) amp *= 1.5;                       // във вода се полюшват повече
   let x = T.dx, y = 62;
   const armA = mode === "work" ? 1.15 + Math.sin(t * 13 + T.ph) * 0.25 : 0.55 + (A.cane ? 0.3 : 0);
@@ -381,7 +381,7 @@ function body(t, mt, st) {
   }
 
   const ey = CUTE ? hy - 6 : hy + 6;
-  const look = mode === "work" ? [Math.sin(t * 3) * 0.5, 0.75] : [Math.sin(t * 0.5) * 0.7, Math.sin(t * 0.33) * 0.3];
+  const look = mode === "read" ? [Math.sin(t * 1.3) * 0.6, 0.8] : mode === "work" ? [Math.sin(t * 3) * 0.5, 0.75] : [Math.sin(t * 0.5) * 0.7, Math.sin(t * 0.33) * 0.3];
   if (mode !== "hurt") { g.fillStyle = C.cheek; for (const s of [-1, 1]) { ell(hx + s * (CUTE ? 86 : 80), ey + (CUTE ? 34 : 46), 13, 7.5); g.fill(); } }
   if (A.freckles) { g.fillStyle = COL.spot; for (const s of [-1, 1]) for (const [dx, dy] of [[-8, 0], [6, -4], [4, 8]]) { ell(hx + s * (80 + dx), ey + 44 + dy, 2.5, 2.5); g.fill(); } }
   const my = ey + (CUTE ? 46 : 62);
@@ -444,6 +444,17 @@ function body(t, mt, st) {
     }
   }
   // какъв е станал: цилиндър (търговец), кърпа (авантюрист), листенце (здравеняк)
+  if (mode === "read") {                // чете книга
+    g.save(); g.translate(hx, ey + 108 + Math.sin(t * 1.2) * 2);
+    g.fillStyle = "#3a6ea5"; g.strokeStyle = C.line; g.lineWidth = 5;
+    g.beginPath(); g.moveTo(-72, -6); g.lineTo(0, 6); g.lineTo(72, -6); g.lineTo(72, 50); g.lineTo(0, 62); g.lineTo(-72, 50); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = "#fffaf0"; g.lineWidth = 3;
+    for (const sg of [-1, 1]) { g.beginPath(); g.moveTo(0, 6); g.lineTo(sg * 64, -2); g.lineTo(sg * 64, 44); g.lineTo(0, 54); g.closePath(); g.fill(); g.stroke(); }
+    g.strokeStyle = "rgba(43,42,51,.45)"; g.lineWidth = 2.5;
+    for (let i = 0; i < 4; i++) for (const sg of [-1, 1]) { g.beginPath(); g.moveTo(sg * 10, 16 + i * 9); g.lineTo(sg * 52, 10 + i * 9); g.stroke(); }
+    if (((t * 0.4) % 1) < 0.12) { g.fillStyle = "#fffaf0"; g.strokeStyle = C.line; g.beginPath(); g.moveTo(0, 6); g.quadraticCurveTo(30, -30, 50, -10); g.lineTo(0, 54); g.closePath(); g.fill(); g.stroke(); }
+    g.restore();
+  }
   if (TR.includes("adventure") && !TR.includes("trader")) {
     g.fillStyle = "#e5383b"; g.strokeStyle = C.line; g.lineWidth = 5;
     g.beginPath(); g.ellipse(cx, cy - 62, rx * 0.98, 20, rot, Math.PI * 1.02, Math.PI * 1.98); g.lineTo(cx + rx * 0.9, cy - 40); g.ellipse(cx, cy - 40, rx * 0.95, 18, rot, 0, Math.PI, true); g.closePath(); g.fill(); g.stroke();
@@ -961,6 +972,7 @@ function draw(ctx, o) {
     const dx = o.lookAt.x - o.x, dy = o.lookAt.y - (o.y - 90 * (o.s || 1)), d = Math.hypot(dx, dy) || 1, m = Math.min(1, d / (220 * (o.s || 1)));
     LOOK = [dx / d * m, dy / d * m * 0.8];
   }
+  if (o.glasses === false && A.gog === "on") A = { ...A, gog: "none", eye: 30 };   // очилата още не са пристигнали
   if (CUTE) {                          // сладкият стил: без очила (само маска при работа), кръгла глава
     const old = age === "old", aging = age === "aging";
     A = { ...A, gog: mode === "work" ? "on" : "none", brows: null, mustache: false, paci: false, freckles: false, tuft: false,
@@ -998,6 +1010,6 @@ function draw(ctx, o) {
   return { top: o.y + top * k, r: 260 * k, cy: o.y + (top + 200) * k / 2 };
 }
 
-window.Octo = { V: 14, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
+window.Octo = { V: 15, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
   AGE_NAMES: { egg: "Яйце", baby: "Бебе", kid: "Малък", teen: "Тийнейджър", adult: "Голям", aging: "Застаряващ", old: "Много стар" } };
 })();
