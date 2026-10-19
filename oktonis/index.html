@@ -532,10 +532,11 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 7;
+const PAGE_V = 8;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
+const STYLE = new URLSearchParams(location.search).get("style") || "goggles";   // goggles | cute | art
 function show(v) {
   $("loginView").classList.toggle("hidden", v !== "loginView");
   $("loadView").classList.toggle("hidden", v !== "loadView");
@@ -828,7 +829,7 @@ function loop() {
   if (mode !== lastMode) { lastMode = mode; modeAt = t; }
   const near = oct.py > ground - 260 * s && !(drag && drag.moved);
   const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * s, s, age: S ? AGE : "egg", mode, t, mt: t - modeAt, st,
-    ground: near ? ground : null, drop: false });
+    ground: near ? ground : null, drop: false, style: STYLE });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
   if (Math.random() < 0.02) bubbles[Math.floor(Math.random() * bubbles.length)] = { x: (oct.x + rnd(-20, 20)) / W, y: info.top / H, r: rnd(2, 5), s: 0.05, p: rnd(0, 6) };
   if (night) { g.fillStyle = "rgba(10,10,40,.25)"; g.fillRect(0, 0, W, H); }

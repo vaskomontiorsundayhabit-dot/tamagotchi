@@ -7,6 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
+const VER = 8;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -481,6 +482,79 @@ function body(t, mt, st) {
   g.restore();
 }
 
+// ---------- Нарисуваните кадри (art/*.png) ----------
+const ART = { idle: 6 };              // поза: брой кадри
+const IMG = {};
+let tint = null;
+function artFrames(pose) {
+  if (!IMG[pose]) {
+    IMG[pose] = [];
+    for (let i = 1; i <= ART[pose]; i++) { const im = new Image(); im.src = `art/${pose}_${i}.png?v=${VER}`; IMG[pose].push(im); }
+  }
+  const list = IMG[pose];
+  return list.every(im => im.complete && im.naturalWidth) ? list : null;
+}
+function artReady() { return !!artFrames("idle"); }
+function drawArt(t, mt, st) {
+  const frames = artFrames("idle");
+  const fps = { idle: 7, happy: 10, party: 14, work: 14, hurt: 5, sleep: 3, wee: 12, angry: 16 }[mode] || 7;
+  const n = frames.length, cyc = Math.floor(t * fps) % (2 * n - 2);
+  const im = frames[cyc < n ? cyc : 2 * n - 2 - cyc];          // напред-назад
+  let bob = Math.sin(t * 2 * SP) * 6, tilt = Math.sin(t * 0.8) * 0.03, sq = 1 + Math.sin(t * 2 * SP) * 0.02, shx = 0;
+  if (mode === "happy") { bob = Math.sin(t * 3.4) * 9; tilt = Math.sin(t * 1.7) * 0.06; }
+  if (mode === "party") { const j = Math.abs(Math.sin(t * 6)); bob = -j * 45; sq = 1 + (j - 0.4) * 0.1; }
+  if (mode === "wee") { tilt = Math.sin(t * 5) * 0.15; }
+  if (mode === "angry") { shx = Math.sin(t * 40) * 3; tilt = Math.sin(t * 30) * 0.03; }
+  if (mode === "sleep") { bob = 8 + Math.sin(t * 0.9) * 3; tilt = 0.1; sq = 1 + Math.sin(t * 0.9) * 0.03; }
+  if (mode === "hurt") { tilt = -0.06 + (mt < 0.6 ? Math.sin(mt * 50) * 0.1 * (1 - mt / 0.6) : Math.sin(t * 2.4) * 0.04); }
+  if (mode === "work") { bob = Math.sin(t * 9) * 2; shx = Math.sin(t * 23) * 2; }
+  const f = 1.12, S = 512 * f, top = -138, bottom = top + (365 - 41) * f;
+  if (GROUND != null) {
+    if (DROP) { const drop = Math.max(0, GROUND - bottom); g.translate(0, drop); GROUND -= drop; }
+    const sh = 1 - Math.min(0.45, -Math.min(0, bob) / 90);
+    g.fillStyle = "rgba(60,55,75,.22)"; ell(0, GROUND + 10, 190 * sh, 20 * sh); g.fill();
+  }
+  g.save();
+  g.translate(shx, bob + bottom); g.rotate(tilt); g.scale(1 / sq, sq); g.translate(0, -bottom);
+  let src = im;
+  if (mode === "angry" || mode === "sleep") {     // оцветяване: червено при яд, синкаво в съня
+    tint = tint || document.createElement("canvas");
+    tint.width = im.naturalWidth; tint.height = im.naturalHeight;
+    const c = tint.getContext("2d");
+    c.clearRect(0, 0, tint.width, tint.height); c.drawImage(im, 0, 0);
+    c.globalCompositeOperation = "source-atop";
+    c.fillStyle = mode === "angry" ? `rgba(230,30,30,${0.22 + Math.sin(t * 6) * 0.07})` : "rgba(40,30,110,.25)";
+    c.fillRect(0, 0, tint.width, tint.height); c.globalCompositeOperation = "source-over";
+    src = tint;
+  }
+  g.drawImage(src, -S / 2, top - 41 * f, S, S);
+  if (mode === "hurt") {                          // лепенка
+    g.save(); g.translate(60, top + 40);
+    for (const a of [0.75, -0.75]) {
+      g.save(); g.rotate(a); g.fillStyle = "#f6dfb4"; g.strokeStyle = C.line; g.lineWidth = 4;
+      g.beginPath(); g.roundRect(-30, -10, 60, 20, 9); g.fill(); g.stroke(); g.restore();
+    }
+    g.fillStyle = "#e3c389"; g.fillRect(-8, -8, 16, 16); g.restore();
+  }
+  g.restore();
+  // ефекти около него
+  const cloudY = bottom - 30;
+  if (mode === "work") {
+    brawl(0, cloudY, t);
+    if (Math.random() < 0.09) {
+      const side = pick([-1, 1]);
+      st.parts.push({ x: side * rnd(40, 120), y: cloudY - rnd(20, 70), vx: side * rnd(2, 5.5), vy: rnd(-9, -5), l: 90,
+        k: pick(["bolt", "bolt", "nut", "cog", "cog", "spring"]), a: rnd(0, 6), va: rnd(-0.3, 0.3) });
+    }
+    if (Math.random() < 0.3) st.parts.push({ x: rnd(-110, 110), y: cloudY - rnd(10, 80), vx: rnd(-3, 3), vy: rnd(-5, -1), l: 16, c: pick(["#ffb52e", "#ffd166"]), k: "spark" });
+  }
+  if (mode === "party" && Math.random() < 0.7)
+    for (let i = 0; i < 3; i++) st.parts.push({ x: rnd(-300, 300), y: -380, vx: rnd(-1, 1), vy: rnd(1, 3), l: 260, c: pick(["#ffd166", "#ff8fa3", "#7cc8f2", "#6fd3a0", "#b39ddb"]), k: "conf", a: rnd(0, 6) });
+  if (mode === "hurt") for (let i = 0; i < 3; i++) { const a = t * 2.5 + i * Math.PI * 2 / 3; star(Math.cos(a) * 100, top - 14 + Math.sin(a) * 14, 13); }
+  if (mode === "sleep") zzz(t, 110, top + 70);
+  if (mode === "angry") anger(100, top + 30, 1 + Math.sin(t * 10) * 0.12);
+}
+
 function draw(ctx, o) {
   g = ctx; mode = o.mode || "idle";
   const st = o.st || (o.st = {});
@@ -489,7 +563,7 @@ function draw(ctx, o) {
   const sc = o.s || 1;
   const age = o.age || "adult";
   A = AGES[age] || AGES.adult;
-  CUTE = o.style === "cute";
+  CUTE = o.style === "cute" || o.style === "art";
   if (CUTE) {                          // сладкият стил: без очила (само маска при работа), кръгла глава
     const old = age === "old", aging = age === "aging";
     A = { ...A, gog: mode === "work" ? "on" : "none", brows: null, mustache: false, paci: false, freckles: false, tuft: false,
@@ -505,7 +579,9 @@ function draw(ctx, o) {
   DROP = o.drop !== false;
   g.save(); g.translate(o.x, o.y); g.scale(k, k);
   g.lineJoin = "round";
-  if (age === "egg") egg(o.t, st); else body(o.t, o.mt || 9, st);
+  if (age === "egg") egg(o.t, st);
+  else if (o.style === "art" && artReady()) drawArt(o.t, o.mt || 9, st);
+  else body(o.t, o.mt || 9, st);
   st.parts = st.parts.filter(p => {
     p.x += p.vx; p.y += p.vy; p.vy += p.k === "spark" ? 0.28 : p.k === "conf" ? 0.02 : 0.32; p.l--;
     if (p.k === "spark") { g.strokeStyle = p.c; g.lineWidth = 4; g.lineCap = "round"; g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * 2, p.y - p.vy * 2); g.stroke(); }
@@ -515,10 +591,10 @@ function draw(ctx, o) {
   });
   g.restore();
   // къде е върхът на главата и колко е голям (за балончето и докосването)
-  const top = age === "egg" ? -150 : 70 - 238 * A.head;
+  const top = age === "egg" ? -150 : o.style === "art" ? -150 : 70 - 238 * A.head;
   return { top: o.y + top * k, r: 260 * k, cy: o.y + (top + 200) * k / 2 };
 }
 
-window.Octo = { V: 7, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
+window.Octo = { V: 8, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
   AGE_NAMES: { egg: "Яйце", baby: "Бебе", kid: "Малък", teen: "Тийнейджър", adult: "Голям", aging: "Застаряващ", old: "Много стар" } };
 })();
