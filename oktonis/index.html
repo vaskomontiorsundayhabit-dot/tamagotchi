@@ -148,6 +148,7 @@ if (!DEMO) {
   const [appM, authM, fsM] = mods;
   const app = appM.initializeApp(firebaseConfig);
   fb = { auth: authM.getAuth(app), db: fsM.getFirestore(app), A: authM, F: fsM };
+  authM.setPersistence(fb.auth, authM.browserLocalPersistence).catch(() => {});   // помни входа
 }
 
 // ---------- Изобретения ----------
@@ -559,12 +560,24 @@ function renderBench() {
 // ---------- Менюто около него ----------
 let ringOpen = false, ringPage = "main", ringCenter = [0, 0], ringR = 120, ringClosing = 0;
 const WANT_ICON = { food: "food", heal: "heal", tidy: "tidy", hug: "talk", love: "talk", item: "work" };
+// цял екран (на iPhone няма такова нещо в Safari: там се добавя към началния екран)
+const docEl = document.documentElement;
+const canFull = !!(docEl.requestFullscreen || docEl.webkitRequestFullscreen);
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+function fullItem() { return canFull ? (isFull() ? ["full", "🪟", "Малък екран"] : ["full", "🖥️", "Цял екран"]) : null; }
+function toggleFull() {
+  try {
+    if (isFull()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else (docEl.requestFullscreen || docEl.webkitRequestFullscreen).call(docEl);
+  } catch {}
+}
 function ringItems() {
-  if (role !== "keeper") return [["stats", "📊", "Как е"], ["journal", "📖", "Дневник"]];
+  const extra = [fullItem(), ["logout", "🚪", "Изход"]].filter(Boolean);
+  if (role !== "keeper") return [["stats", "📊", "Как е"], ["journal", "📖", "Дневник"], ...extra];
   if (ringPage === "talk") return [["back", "↩️", "Назад"], ...["❤️", "🤗", "👍", "😂", "🎉", "💡", "👋"].map(e => ["e" + e, e, ""])];
   return [["food", "🍕", "Храна"], ["heal", "🩹", "Лепенка"], ["tidy", "🧹", "Чистене"],
     S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Сън"],
-    ["talk", "💬", "Кажи"], ["work", "🔧", "Работилница"], ["stats", "📊", "Как е"], ["journal", "📖", "Дневник"]];
+    ["talk", "💬", "Кажи"], ["work", "🔧", "Работилница"], ["stats", "📊", "Как е"], ["journal", "📖", "Дневник"], ...extra];
 }
 function openRing() {
   if (!inGame || sheetKind) return;
@@ -605,6 +618,8 @@ function ringAction(id) {
   if (id === "talk") { ringPage = "talk"; return paintRing(); }
   if (id === "back") { ringPage = "main"; return paintRing(); }
   if (id === "work" || id === "stats" || id === "journal") return openSheet(id);
+  if (id === "full") { closeRing(); return toggleFull(); }
+  if (id === "logout") { closeRing(); return logout(); }
   const map = { food: "🍕", heal: "🩹", tidy: "🧹", sleep: "😴", wake: "☀️" };
   const e = map[id] || id.slice(1);
   sendEmoji(e);
@@ -716,14 +731,14 @@ function loop() {
   const s = Math.min(H * 0.46 / 430, W * 0.8 / 560);
   let tx = W / 2 + Math.sin(t * 0.11) * W * 0.16 + Math.sin(t * 0.29) * W * 0.04;
   let ty = H * 0.46 + Math.sin(t * 0.17) * H * 0.05;
-  const mode = S ? octoMode() : "happy";
+  const mode = S ? octoMode() : "idle";
   if (mode === "sleep") ty = H * 0.56;
   if (mode === "work") { tx = W / 2; ty = H * 0.44; }
   if (ringOpen || sheetKind) { tx = oct.px; ty = oct.py; }
   if (oct.px == null) { oct.px = tx; oct.py = ty; }
   oct.px += (tx - oct.px) * 0.02; oct.py += (ty - oct.py) * 0.02;
   if (mode !== lastMode) { lastMode = mode; modeAt = t; }
-  const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * s, s, age: S ? AGE : "adult", mode, t, mt: t - modeAt, st });
+  const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * s, s, age: S ? AGE : "egg", mode, t, mt: t - modeAt, st });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
   if (Math.random() < 0.02) bubbles[Math.floor(Math.random() * bubbles.length)] = { x: (oct.x + rnd(-20, 20)) / W, y: info.top / H, r: rnd(2, 5), s: 0.05, p: rnd(0, 6) };
   if (night) { g.fillStyle = "rgba(10,10,40,.25)"; g.fillRect(0, 0, W, H); }

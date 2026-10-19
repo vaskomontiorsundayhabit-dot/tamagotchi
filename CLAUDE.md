@@ -45,4 +45,5 @@
 * `?demo` (или `?demo=vasko`) пуска без Firebase, с localStorage, за проби с Playwright.
 * Изобретенията са в `E` и `RECIPES`. Брой не се показва (само „изобретения: N“ открити).
 * Изглед: цял екран под вода, Октонис плува; без кутии. Менюто е кръг от иконки около него (докосване на телефон, мишка отгоре на компютър). Работилница/„Как е“/дневник са панел отдолу.
-* `octo.js`: `Octo.draw(ctx, {x, y, s, age, mode, t, mt, st, ground})`. Възрасти: egg, baby, kid, teen, adult, aging, old (засега в играта е винаги `adult`, `AGE` в index.html).
+* `octo.js`: `Octo.draw(ctx, {x, y, s, age, mode, t, mt, st, ground})`. Възрасти: egg, baby, kid, teen, adult, aging, old (засега в играта е винаги `adult`, `AGE` в index.html). На входа се вижда само яйцето.
+* Входът се помни (Firebase local persistence). В кръга има и „Цял екран“ (без iPhone Safari) и „Изход“.

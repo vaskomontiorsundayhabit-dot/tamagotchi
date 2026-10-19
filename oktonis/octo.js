@@ -8,10 +8,10 @@
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
 const AGES = {
-  baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, speed: 1.2,
+  baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
-  kid:   { k: 0.66, head: 1.18, tL: 0.68, tW: 1.05, gog: "up", eye: 32, speed: 1.15 },
-  teen:  { k: 0.83, head: 1.05, tL: 0.9,  tW: 1,    gog: "on", tuft: true, freckles: true },
+  kid:   { k: 0.66, head: 1.18, tL: 0.68, tW: 1.05, gog: "none", eye: 32, speed: 1.15 },
+  teen:  { k: 0.83, head: 1.05, tL: 0.9,  tW: 1,    gog: "on", freckles: true },
   adult: { k: 1,    head: 1,    tL: 1,    tW: 1,    gog: "on" },
   aging: { k: 1,    head: 1,    tL: 0.97, tW: 1,    gog: "on", wrinkles: 2, brows: "#cfc8bd", speed: 0.8,
            col: { body: "#e3804f", shade: "#c2643a", back: "#b9603a", backShade: "#9c4f2e", spot: "#a8582f" } },
@@ -314,8 +314,8 @@ function body(t, mt, st) {
 
   const ey = hy + 6;
   const look = mode === "work" ? [Math.sin(t * 3) * 0.5, 0.75] : [Math.sin(t * 0.5) * 0.7, Math.sin(t * 0.33) * 0.3];
-  if (mode !== "hurt") { g.fillStyle = C.cheek; for (const s of [-1, 1]) { ell(hx + s * 98, ey + 48, 14, 8); g.fill(); } }
-  if (A.freckles) { g.fillStyle = COL.spot; for (const s of [-1, 1]) for (const [dx, dy] of [[-8, 0], [6, -4], [4, 8]]) { ell(hx + s * (98 + dx), ey + 46 + dy, 2.5, 2.5); g.fill(); } }
+  if (mode !== "hurt") { g.fillStyle = C.cheek; for (const s of [-1, 1]) { ell(hx + s * 80, ey + 46, 13, 7.5); g.fill(); } }
+  if (A.freckles) { g.fillStyle = COL.spot; for (const s of [-1, 1]) for (const [dx, dy] of [[-8, 0], [6, -4], [4, 8]]) { ell(hx + s * (80 + dx), ey + 44 + dy, 2.5, 2.5); g.fill(); } }
   const my = ey + 62;
   g.lineWidth = 5; g.strokeStyle = C.line; g.lineCap = "round";
   g.beginPath();
@@ -326,7 +326,7 @@ function body(t, mt, st) {
   else if (mode === "work") { g.moveTo(hx - 12, my + 1); g.quadraticCurveTo(hx, my - 3, hx + 12, my + 1); }
   else { g.moveTo(hx - 13, my - 3); g.quadraticCurveTo(hx, my + 7, hx + 13, my - 3); }
   g.stroke();
-  if (A.gog === "none" && mode !== "party") {   // биберонче за бебето
+  if (A.paci && mode !== "party") {   // биберонче за бебето
     g.fillStyle = "#7cc8f2"; g.strokeStyle = C.line; g.lineWidth = 4;
     g.beginPath(); g.ellipse(hx, my + 4, 22, 12, 0, 0, Math.PI * 2); g.fill(); g.stroke();
     g.beginPath(); g.arc(hx, my + 4, 6, 0, Math.PI * 2); g.fillStyle = "#ffd166"; g.fill(); g.stroke();
