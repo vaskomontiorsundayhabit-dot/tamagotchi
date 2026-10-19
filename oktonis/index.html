@@ -108,6 +108,7 @@
 <body>
 <canvas id="sea"></canvas>
 <div id="top"></div>
+<div id="ver" style="position:fixed;right:8px;bottom:max(6px,env(safe-area-inset-bottom));font-size:10px;color:rgba(255,255,255,.55);z-index:2;pointer-events:none"></div>
 <div id="hint" class="hidden">Докосни Октонис 🐙</div>
 <div id="handle" class="hidden" title="Как е"></div>
 <div id="bubble" class="hidden"><div class="e" id="bubbleE"></div><div class="t" id="bubbleT"></div></div>
@@ -128,7 +129,7 @@
 </div>
 <div id="loadView" class="center"><p>Зареждане… 🫧</p></div>
 
-<script src="octo.js?v=6"></script>
+<script>document.write('<script src="octo.js?t=' + Date.now() + '"><\/script>')</script>
 <script type="module">
 // ---------- Firebase ----------
 const firebaseConfig = {
@@ -531,6 +532,8 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
+const PAGE_V = 7;
+document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
 function show(v) {
