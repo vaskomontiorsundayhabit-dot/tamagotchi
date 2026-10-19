@@ -165,9 +165,14 @@ const DEMO = new URLSearchParams(location.search).has("demo");
 let fb = null;
 if (!DEMO) {
   const V = "10.12.2", G = `https://www.gstatic.com/firebasejs/${V}/`;
-  const [appM, authM, fsM] = await Promise.all([
-    import(G + "firebase-app.js"), import(G + "firebase-auth.js"), import(G + "firebase-firestore.js")
-  ]);
+  let mods;
+  try {
+    mods = await Promise.all([import(G + "firebase-app.js"), import(G + "firebase-auth.js"), import(G + "firebase-firestore.js")]);
+  } catch (e) {
+    document.getElementById("loadView").innerHTML = "<p>Няма връзка с интернет 📡<br>Опитай пак след малко.</p>";
+    throw e;
+  }
+  const [appM, authM, fsM] = mods;
   const app = appM.initializeApp(firebaseConfig);
   fb = { auth: authM.getAuth(app), db: fsM.getFirestore(app), A: authM, F: fsM };
 }
@@ -528,7 +533,7 @@ function render() {
   if (S.mess > 70) st.push("Бъркотия!");
   if (!st.length) st.push(S.mood > 70 ? "Щастлив и изобретява" : "Добре е");
   const days = Math.floor((Date.now() - S.born) / (24 * 60 * MIN));
-  $("status").textContent = st.join(" · ") + ` · на ${days} ${days === 1 ? "ден" : "дни"}`;
+  $("status").textContent = st.join(" · ") + (days ? ` · на ${days} ${days === 1 ? "ден" : "дни"}` : " · роден днес");
   $("lastCare").textContent = "toshik беше при него " + ago(S.lastCare) + ".";
   $("count").textContent = "изобретения: " + (S.known.length - BASE.length);
   renderInv(); renderBench();
