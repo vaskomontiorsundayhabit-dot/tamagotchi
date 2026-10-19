@@ -67,12 +67,14 @@ extension PotGame {
                 announce("\(creatureName.capitalizedFirst) си събра багажа и отлетя… Остави бележка: „Сбогом“.", 5)
                 creature = creature2
                 creature2 = nil
-                creatureXP = 0
+                creatureXP = creature2XP
+                creature2XP = 0
                 lastCreatureLove = Date()
             } else if creatureStage >= 2 && !creatureSulking {
                 useCreaturePower()
             }
         }
+        updateSecond()
         // --- пътищата на растението ---
         // сухо дълго време, а после полято: става издръжливо като кактус
         if water <= 1 { d.set(d.double(forKey: "pot_dryMin") + mins, forKey: "pot_dryMin") }
@@ -129,6 +131,11 @@ extension PotGame {
         guard let c = creature else { return }
         let legend = creatureStage >= 3
         guard Int.random(in: 0..<(legend ? 5 : 10)) == 0 else { return }
+        if let line = creaturePower(c, legend: legend) { creatureSay = line; creatureSayUntil = time + 3 }
+    }
+
+    /// Какво прави силата на дадено създание; връща репликата му (или nil, ако няма нужда).
+    func creaturePower(_ c: String, legend: Bool) -> String? {
         var line: String?
         switch c {
         case "dragon":
@@ -152,6 +159,6 @@ extension PotGame {
             else if !weedPanels.isEmpty, let w = weedPanels.last { pullFloorWeed(w); line = "Блуп! (бурен от пода)" }
         default: break
         }
-        if let line { creatureSay = line; creatureSayUntil = time + 3 }
+        return line
     }
 }

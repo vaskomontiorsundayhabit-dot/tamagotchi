@@ -85,6 +85,7 @@ final class PotBucketView: NSView {
             let fp = NSPoint(x: f.frame.midX, y: f.frame.midY)
             let golden = (f.contentView as? PotFruitView)?.golden ?? false
             if g.overCreature(fp) { if golden { g.talkingFruitGiven(toCreature: true) } else { g.feedCreature() } }
+            else if g.overCreature2(fp) { g.feedCreature2() }
             else if g.overPlant(fp) { if golden { g.talkingFruitGiven(toCreature: false) } else { g.feedFruit() } }
             else { g.fruitsCollected += 1 }
             return

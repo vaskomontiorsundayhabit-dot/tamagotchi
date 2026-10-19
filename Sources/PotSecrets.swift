@@ -2,7 +2,6 @@
 
 import AppKit
 
-let potSecretCount = 17
 
 /// Съперничката: друга саксия в другия край на екрана.
 final class PotRivalView: NSView {
@@ -95,7 +94,7 @@ extension PotGame {
     func discover(_ id: String, _ text: String) {
         guard !secrets.contains(id) else { return }
         secrets = secrets + [id]
-        journal("★ Тайна \(secrets.count) от \(potSecretCount): \(text)")
+        journal("★ Тайна \(secrets.count): \(text)")
         sfx("Hero")
     }
 

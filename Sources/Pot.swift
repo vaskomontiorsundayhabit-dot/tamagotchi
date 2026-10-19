@@ -105,6 +105,10 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var nextFateCheck: Double = 30
     var creatureHeartsUntil: Double = 0
     var lastCreaturePet: Double = -100
+    var creature2HeartsUntil: Double = 0
+    var lastCreature2Pet: Double = -100
+    var creature2Say: String?
+    var creature2SayUntil: Double = 0
     // тайните
     var nextSecretCheck: Double = 20
     var creatureSay: String?
@@ -358,7 +362,12 @@ final class PotGame: NSObject, NSApplicationDelegate {
         hasEgg = false
         let kinds = PotCreature.all.map { $0.id }
         let k = kinds.randomElement()!
-        if creature == nil { creature = k } else { creature2 = k }
+        if creature == nil {
+            creature = k; creatureXP = 0; lastCreatureLove = Date()
+        } else {
+            creature2 = k; creature2XP = 0; lastCreature2Love = Date()
+            d.set(Date(), forKey: "pot_togetherSince")
+        }
         d.set(Date(), forKey: "pot_hatchedAt")
         sfx("Hero")
         let name = PotCreature.find(k)?.name ?? "нещо"
@@ -581,7 +590,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         f.dateFormat = "d.MM HH:mm"
         let j = d.array(forKey: "pot_journal") as? [[String: Any]] ?? []
         let lines = j.reversed().prefix(25).map { e in
-            "\(f.string(from: Date(timeIntervalSince1970: e["t"] as? Double ?? 0))) · \(e["text"] as? String ?? "")"
+            "\(f.string(from: Date(timeIntervalSince1970: e["t"] as? Double ?? 0))) · \((e["text"] as? String ?? "").replacingOccurrences(of: #" от \d+:"#, with: ":", options: .regularExpression))"
         }
         let a = NSAlert()
         a.messageText = "Дневник на саксията"

@@ -95,6 +95,7 @@ final class PotView: NSView {
     var potRect = NSRect.zero
     var mushroomRect = NSRect.zero
     var creatureRect = NSRect.zero
+    var creature2Rect = NSRect.zero
     var plantTop: CGFloat = 0       // най-горната точка на растението (отгоре на прозорчето)
 
     override var isFlipped: Bool { true }
@@ -133,6 +134,7 @@ final class PotView: NSView {
         if eggRect.insetBy(dx: -4, dy: -4).contains(p) { game.warmEgg(); return }
         if mushroomRect.insetBy(dx: -3, dy: -3).contains(p) { game.eatMushroom(); return }
         if creatureRect.insetBy(dx: -4, dy: -4).contains(p) { game.petCreature(); return }
+        if creature2Rect.insetBy(dx: -4, dy: -4).contains(p) { game.petCreature2(); return }
         if potRect.contains(p) { game.openCard(); return }
         game.clickedPlant()
     }
@@ -192,6 +194,7 @@ final class PotView: NSView {
         potRect = NSRect(x: mx - pw / 2 - 3, y: potTop, width: pw + 6, height: ph)
         mushroomRect = .zero
         creatureRect = .zero
+        creature2Rect = .zero
         // пълнолуние: сребърно сияние
         if g.fullMoon && g.isNight && st >= 2 {
             NSColor(hex: 0xe0e1dd, alpha: 0.12 + 0.05 * CGFloat(sin(t * 2))).setFill()
@@ -393,10 +396,10 @@ final class PotView: NSView {
                 let wander = CGFloat(sin(t * 0.3 + ph)) * crownR * 0.1 + CGFloat(ci) * 26
                 // расте: 3 → 4 → 5 → 6 точки на квадратче
                 if ci == 0 && (g.creatureHidden || g.creatureAway) { continue }
-                let cs: CGFloat = ci == 0 ? CGFloat(3 + min(5, g.creatureStage)) : 3
+                let cs: CGFloat = ci == 0 ? CGFloat(3 + min(5, g.creatureStage)) : CGFloat(3 + min(3, g.creature2Stage))
                 let cw = CGFloat(c.pic[0].count) * cs, chh = CGFloat(c.pic.count) * cs
                 let cx = n.x - cw / 2 + wander, cy = n.y - chh - hop
-                if ci == 0 && g.creatureStage >= 3 {
+                if (ci == 0 ? g.creatureStage : g.creature2Stage) >= 3 {
                     NSColor(hex: 0xffd166, alpha: 0.25 + 0.1 * CGFloat(sin(t * 3))).setFill()
                     NSBezierPath(ovalIn: NSRect(x: cx - 8, y: cy - 8, width: cw + 16, height: chh + 16)).fill()
                 }
@@ -404,20 +407,21 @@ final class PotView: NSView {
                     if ci == 0 && g.creatureSulking, let base = potColor(col) { return base.blended(withFraction: 0.4, of: NSColor(hex: 0x6c757d)) }
                     return potColor(col)
                 })
-                if ci == 0 {
-                    creatureRect = NSRect(x: cx, y: cy, width: cw, height: chh)
-                    if t < g.creatureHeartsUntil {
+                if ci == 0 { creatureRect = NSRect(x: cx, y: cy, width: cw, height: chh) } else { creature2Rect = NSRect(x: cx, y: cy, width: cw, height: chh) }
+                let hearts = ci == 0 ? g.creatureHeartsUntil : g.creature2HeartsUntil
+                do {
+                    if t < hearts {
                         NSColor(hex: 0xff4d6d).setFill()
-                        let hy = cy - 8 - CGFloat((g.creatureHeartsUntil - t).truncatingRemainder(dividingBy: 1)) * 6
+                        let hy = cy - 8 - CGFloat((hearts - t).truncatingRemainder(dividingBy: 1)) * 6
                         NSRect(x: cx + cw / 2 - 4, y: hy, width: 3, height: 3).fill(); NSRect(x: cx + cw / 2, y: hy, width: 3, height: 3).fill()
                         NSRect(x: cx + cw / 2 - 3, y: hy + 2, width: 5, height: 3).fill()
                     }
                 }
-                if ci == 0, let say = g.creatureSay, t < g.creatureSayUntil {
+                if let say = ci == 0 ? g.creatureSay : g.creature2Say, t < (ci == 0 ? g.creatureSayUntil : g.creature2SayUntil) {
                     let a: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 9, weight: .heavy), .foregroundColor: NSColor.white]
                     let str = say.uppercased() as NSString
                     let sz = str.size(withAttributes: a)
-                    let r = NSRect(x: n.x - 15 + wander, y: n.y - 42 - hop, width: sz.width + 8, height: sz.height + 4)
+                    let r = NSRect(x: n.x - 15 + wander, y: n.y - 42 - hop - CGFloat(ci) * 16, width: sz.width + 8, height: sz.height + 4)
                     NSColor(hex: 0x2b2b3a, alpha: 0.9).setFill(); r.fill()
                     str.draw(at: NSPoint(x: r.minX + 4, y: r.minY + 2), withAttributes: a)
                 }

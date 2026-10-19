@@ -439,7 +439,9 @@ extension PotGame {
                 d.set(Date(), forKey: "pot_formerVisit")
                 creature = creature2
                 creature2 = nil
-                creatureXP = 0
+                creatureXP = creature2XP
+                creature2XP = 0
+                lastCreatureLove = Date()
                 d.removeObject(forKey: "pot_ancientAt")
                 d.set(0, forKey: "pot_cAnn")
                 hasNest = false
