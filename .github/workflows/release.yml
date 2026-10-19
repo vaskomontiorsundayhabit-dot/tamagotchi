@@ -8,6 +8,7 @@ on:
     paths-ignore:
       - "**.md"
       - "remote/**"
+      - "oktonis/**"
   workflow_dispatch:
 
 permissions:

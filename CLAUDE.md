@@ -36,3 +36,11 @@
 
 ## Отворени идеи
 * Дистанционното да мине на GitHub Pages (иска потребителят да включи Settings → Pages → Source: GitHub Actions) и евентуално собствен домейн.
+
+## Октонис (`oktonis/`)
+* Отделно уеб приложение (един файл `oktonis/index.html`), работи на Mac/Windows/телефон, PWA (`manifest.json`, иконки). Отваря се през raw.githack.com. Промени в `oktonis/**` не пускат Mac сглобяването.
+* Firebase проект `oktonis` (в друг Google акаунт на потребителя): Auth с Email/Password (ник → `ник@oktonis.app`, регистрацията е изключена), Firestore документ `world/oktonis` с поле `s` (JSON на състоянието).
+* Правила: пише само toshik (uid `0qtrOcQT7yfhPO5dLJSoGV29dZA3`), чете и vasko (`cneUBvxULaRIsuyiIK09R8TGLvA2`). Паролите НЕ са в кода.
+* Само клиентът на toshik смята и записва; vasko само гледа и смята напред локално.
+* `?demo` (или `?demo=vasko`) пуска без Firebase, с localStorage, за проби с Playwright.
+* Изобретенията са в `E` и `RECIPES`. Брой не се показва (само „изобретения: N“ открити).
