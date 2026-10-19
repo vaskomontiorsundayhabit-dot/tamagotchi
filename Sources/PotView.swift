@@ -231,6 +231,7 @@ final class PotView: NSView {
         var crownR: CGFloat = 0
         var stemTopY = soil
         var spots: [NSPoint] = []         // места за плодове, пчели, мравки
+        var trunk: (x: CGFloat, h: CGFloat, w: CGFloat)?
         var stemH: CGFloat = 0, stemHalf: CGFloat = 1.5, stemSway: CGFloat = 0, stemX = baseX   // за бодлите
         switch st {
         case 0:
@@ -289,6 +290,26 @@ final class PotView: NSView {
             NSColor(hex: 0x5c3a1e).setFill()
             NSRect(x: mx - tw / 2, y: soil - trunkH - crown * 0.3, width: 3, height: trunkH + crown * 0.3).fill()
             stemH = trunkH; stemHalf = tw / 2; stemX = mx
+            trunk = (mx, trunkH, tw)
+            // вековно: корени по пръстта
+            if g.hasAge("ancient") {
+                NSColor(hex: 0x5c3a1e).setFill()
+                NSRect(x: mx - tw / 2 - 14, y: soil - 3, width: 14, height: 3).fill()
+                NSRect(x: mx + tw / 2, y: soil - 3, width: 16, height: 3).fill()
+                NSRect(x: mx - tw / 2 - 6, y: soil - 7, width: 6, height: 4).fill()
+                NSRect(x: mx + tw / 2, y: soil - 7, width: 6, height: 4).fill()
+            }
+            // хралупа с бухал
+            if g.hasAge("owl") {
+                let hy = soil - trunkH * 0.45
+                NSColor(hex: 0x2b1a0e).setFill()
+                NSBezierPath(ovalIn: NSRect(x: mx - tw * 0.38, y: hy - 7, width: tw * 0.76, height: 14)).fill()
+                if Int(t * 10) % 41 != 0 {
+                    NSColor(hex: 0xffd166).setFill()
+                    NSRect(x: mx - 4, y: hy - 2, width: 3, height: 3).fill()
+                    NSRect(x: mx + 1, y: hy - 2, width: 3, height: 3).fill()
+                }
+            }
             crownCenter = NSPoint(x: mx + sway, y: soil - trunkH - crown)
             crownR = crown
             spots = blob(center: crownCenter, rx: crown, ry: crown * 0.85, leaf: leaf, leaf2: leaf2, seed: 2)
@@ -297,6 +318,48 @@ final class PotView: NSView {
                 flower(s, i, s: 2)
             }
             stemTopY = crownCenter.y - crown * 0.85
+        }
+
+        // годините на дървото
+        if let tr = trunk {
+            let crownBottom = crownCenter.y + crownR * 0.85
+            if g.hasAge("ancient") && !spots.isEmpty {
+                NSColor(hex: 0xfefae0).setFill()
+                for k in 0..<16 { let s = spots[hash(k * 71 + 13) % spots.count]; NSRect(x: s.x - 2, y: s.y - 2, width: 4, height: 4).fill() }
+            }
+            if g.hasAge("swing") {
+                let sx = crownCenter.x + crownR * 0.5, top = crownBottom - crownR * 0.1
+                let sw = CGFloat(sin(t * (t < g.swingUntil ? 3.5 : 1.2))) * (t < g.swingUntil ? 10 : 2)
+                NSColor(hex: 0xd4a373).setFill()
+                for k in 0..<12 {
+                    let f = CGFloat(k) / 12
+                    NSRect(x: sx - 9 + sw * f, y: top + f * 44, width: 1.5, height: 4).fill()
+                    NSRect(x: sx + 9 + sw * f, y: top + f * 44, width: 1.5, height: 4).fill()
+                }
+                NSColor(hex: 0x7f5539).setFill()
+                NSRect(x: sx - 12 + sw, y: top + 44, width: 24, height: 4).fill()
+            }
+            if g.hasAge("treehouse") {
+                let hx = tr.x - 17, hy = crownBottom - 14
+                NSColor(hex: 0xb08968).setFill(); NSRect(x: hx, y: hy, width: 34, height: 20).fill()
+                NSColor(hex: 0x9d0208).setFill()
+                let roof = NSBezierPath()
+                roof.move(to: NSPoint(x: hx - 4, y: hy)); roof.line(to: NSPoint(x: hx + 38, y: hy)); roof.line(to: NSPoint(x: hx + 17, y: hy - 13)); roof.close(); roof.fill()
+                NSColor(hex: g.isNight ? 0xffd166 : 0x48cae4).setFill(); NSRect(x: hx + 6, y: hy + 5, width: 8, height: 7).fill()
+                NSColor(hex: 0x5c3a1e).setFill(); NSRect(x: hx + 21, y: hy + 7, width: 7, height: 13).fill()
+            }
+            if g.hasAge("fireflies") && g.isNight {
+                for k in 0..<9 {
+                    let a = t * 0.4 + Double(k) * 0.7
+                    let fx = crownCenter.x + CGFloat(cos(a * 1.3 + Double(k))) * crownR * 1.05
+                    let fy = crownCenter.y + CGFloat(sin(a + Double(k) * 2)) * crownR * 0.8
+                    let on = sin(t * 3 + Double(k)) > -0.2
+                    if on {
+                        NSColor(hex: 0xfff3b0, alpha: 0.35).setFill(); NSRect(x: fx - 3, y: fy - 3, width: 7, height: 7).fill()
+                        NSColor(hex: 0xfff3b0).setFill(); NSRect(x: fx - 1, y: fy - 1, width: 3, height: 3).fill()
+                    }
+                }
+            }
         }
 
         // плодове

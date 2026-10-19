@@ -425,7 +425,7 @@ extension PotGame {
         }
         _ = c
         // лети из екрана (огромно и нагоре)
-        if creatureStage >= 4 && !creatureAway && userActive && time > nextFlight && creatureWish == nil {
+        if creatureStage >= 4 && !creatureAway && hidePhase == 0 && userActive && time > nextFlight && creatureWish == nil {
             nextFlight = time + Double.random(in: 20 * 60...45 * 60)
             flightUntil = time + 18
             announce("\(creatureName.capitalizedFirst) излетя да обиколи екрана!", 2.5)
@@ -480,6 +480,21 @@ extension PotGame {
             }
             guard let p = flightPanel else { return }
             let vf = screenFloor()
+            // тревога: лети и то зад ръба, на същата страна като саксията; връща се с нея
+            if flightFleeing {
+                if hidePhase == 1 || hidePhase == 2 {
+                    flightUntil = max(flightUntil, time + 1)
+                    let goalX = hideGoal < vf.midX ? vf.minX - 120 : vf.maxX + 60
+                    let x = p.frame.minX + (goalX > p.frame.minX ? 1 : -1) * min(abs(goalX - p.frame.minX), 9)
+                    flightFacingLeft = goalX < p.frame.minX
+                    p.setFrameOrigin(NSPoint(x: x, y: min(vf.maxY - 70, p.frame.minY + 2)))
+                    p.contentView?.needsDisplay = true
+                    return
+                }
+                flightFleeing = false
+                flightUntil = time       // долита обратно в гнездото заедно със саксията
+                return
+            }
             let k = (18 - (flightUntil - time)) / 18          // 0…1
             let a = k * .pi * 2
             let cx = vf.midX, cy = vf.minY + vf.height * 0.55

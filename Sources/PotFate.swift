@@ -90,6 +90,7 @@ extension PotGame {
             announce("Нещо се промени… аз съм ДЪРВО НА ЖЕЛАНИЯТА!", 4.5)
         }
         updateWishTree()
+        updateTreeAge()
         updateRemote()
         // месоядно: ако мравките често си тръгват сами (никой не ги гони)
         if carnivore && !ants.isEmpty && Int.random(in: 0..<3) == 0 {

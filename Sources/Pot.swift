@@ -97,6 +97,8 @@ final class PotGame: NSObject, NSApplicationDelegate {
     var flightUntil: Double = 0
     var flightPanel: NSPanel?
     var flightFacingLeft = false
+    var flightFleeing = false
+    var swingUntil: Double = 0
     var nextGardenTick: Double = 30
     var danceUntil: Double = 0
     var pendingAnnounce: [(String, Double)] = []

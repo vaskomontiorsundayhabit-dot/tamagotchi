@@ -59,11 +59,12 @@ final class PotCardView: NSView {
         let big: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .heavy), .foregroundColor: NSColor.white]
         let small: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedSystemFont(ofSize: 8, weight: .heavy), .foregroundColor: NSColor(hex: 0xb7e4c7)]
         let st = g.stage
-        let title = potStageNames[st].uppercased() + (st < 5 ? "" : " · ВИСОЧИНА \(Int(g.stageProgress * 100))%")
+        let title = g.treeMature ? "ДЪРВО · НА \(g.treeYears) " + (g.treeYears == 1 ? "ГОДИНА" : "ГОДИНИ")
+            : potStageNames[st].uppercased() + (st < 5 ? "" : " · ВИСОЧИНА \(Int(g.stageProgress * 100))%")
         (title as NSString).draw(at: NSPoint(x: 12, y: 11), withAttributes: big)
-        let next = st < potThresholds.count - 1 ? "ДО „\(potStageNames[st + 1].uppercased())“" : "РАСТЕ НА ВИСОЧИНА"
+        let next = st < potThresholds.count - 1 ? "ДО „\(potStageNames[st + 1].uppercased())“" : (g.treeMature ? "ДО ГОДИНА \(g.treeYears + 1)" : "РАСТЕ НА ВИСОЧИНА")
         let bars: [(String, Double, Int)] = [("ВОДА", g.water / 100, 0x48cae4), ("ЗДРАВЕ", g.health / 100, 0xff8fab),
-                                             (next, g.stageProgress, 0x52b788)] + (st >= 4 ? [("РАЗРОШЕН", g.overgrowth / 100, 0xf4a261)] : [])
+                                             (next, g.treeMature ? g.treeYearProgress : g.stageProgress, 0x52b788)] + (st >= 4 ? [("РАЗРОШЕН", g.overgrowth / 100, 0xf4a261)] : [])
         for (i, bar) in bars.enumerated() {
             let y = 32 + CGFloat(i) * 15
             (bar.0 as NSString).draw(at: NSPoint(x: 12, y: y), withAttributes: small)
@@ -401,6 +402,7 @@ extension PotGame {
             hideGoal = left ? vf.minX - panel.frame.width - 10 : vf.maxX + 10
             hidePhase = 1
             hideUntil = time + 3 * 60
+            if creatureAway { flightFleeing = true }
             say(["АААА! Бягам!", "Тревога! Крия се!", "Крачета, бягайте!"].randomElement()!, 1.5)
         } else {
             hidePhase = 3
