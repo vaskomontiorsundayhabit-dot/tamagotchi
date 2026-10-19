@@ -161,6 +161,18 @@ final class PotView: NSView {
         let monthNow = Calendar.current.component(.month, from: Date())
         let autumn = g.treeMature && [9, 10, 11].contains(monthNow)
         if autumn { leaf = tint(0xf4a261); leaf2 = tint(0xe76f51) }
+        // зимата е гола; през ноември окапва, през март се разлиства постепенно
+        let dayNow = Calendar.current.component(.day, from: Date())
+        var leafDensity: CGFloat = 1
+        if g.treeMature {
+            switch monthNow {
+            case 12, 1, 2: leafDensity = 0
+            case 3: leafDensity = 0.15 + 0.85 * CGFloat(dayNow) / 31
+            case 11: leafDensity = 1 - 0.85 * CGFloat(dayNow) / 30
+            default: break
+            }
+        }
+        let bare = leafDensity == 0
         let dancing = (t < g.trippyUntil || t < g.danceUntil) && g.hidePhase == 0
         let sway: CGFloat = dancing ? CGFloat(sin(t * 7)) * 6 : CGFloat(sin(t * 1.3)) * 1.5 + (g.water < 15 ? 5 : 0)
         let bounce: CGFloat = dancing ? abs(CGFloat(sin(t * 7))) * 4 : 0
@@ -341,8 +353,14 @@ final class PotView: NSView {
             }
             crownCenter = NSPoint(x: mx + sway, y: soil - trunkH - crown)
             crownR = crown
-            spots = blob(center: crownCenter, rx: crown, ry: crown * 0.85, leaf: leaf, leaf2: leaf2, seed: 2)
-            for i in 0..<(6 + Int(p * 14)) where !spots.isEmpty {
+            if leafDensity < 1 {
+                spots = bareBranches(from: NSPoint(x: mx, y: soil - trunkH), r: crown, snow: bare && g.snowyDay, sway: sway)
+            }
+            if leafDensity > 0 {
+                let leafy = blob(center: crownCenter, rx: crown, ry: crown * 0.85, leaf: leaf, leaf2: leaf2, seed: 2, density: leafDensity)
+                spots = leafDensity > 0.5 ? leafy : spots + leafy
+            }
+            for i in 0..<(6 + Int(p * 14)) where !spots.isEmpty && leafDensity >= 1 {
                 let s = spots[hash(i * 17 + 3) % spots.count]
                 flower(s, i, s: 2)
             }
@@ -465,13 +483,20 @@ final class PotView: NSView {
         // шапка, корона, сняг: преди създанието, за да е то отпред
         let topY = min(stemTopY, crownCenter.y - (crownR > 0 ? crownR * 0.85 : 0))
         let topX = crownR > 0 ? crownCenter.x : baseX + sway
-        // сняг в зимна нощ
-        let month = Calendar.current.component(.month, from: Date())
-        if [12, 1, 2].contains(month) && g.isNight && st >= 2 {
+        // сняг: само в снежните зимни дни, не всеки ден
+        if g.snowyDay && st >= 2 {
             NSColor.white.setFill()
-            let w = crownR > 0 ? crownR * 1.4 : 24
-            NSRect(x: topX - w / 2, y: topY - 2, width: w, height: 5).fill()
+            if !bare {
+                let w = crownR > 0 ? crownR * 1.4 : 24
+                NSRect(x: topX - w / 2, y: topY - 2, width: w, height: 5).fill()
+            }
             NSRect(x: mx - pw / 2 - 2, y: potTop - 3, width: pw + 4, height: 3).fill()
+            for k in 0..<16 {
+                let ph = (t * 0.07 + Double(k) * 0.29).truncatingRemainder(dividingBy: 1)
+                let fx = CGFloat(hash(k * 13 + 5) % 1000) / 1000 * bounds.width + CGFloat(sin(t + Double(k))) * 6
+                NSColor(white: 1, alpha: 0.85).setFill()
+                NSRect(x: fx, y: PotView.top - 20 + CGFloat(ph) * (bottom - PotView.top + 20), width: 2.5, height: 2.5).fill()
+            }
         }
         // рожден ден: шапка; говорещият плод: корона
         let ageDays = Int(Date().timeIntervalSince(g.born) / 86400)
@@ -737,7 +762,39 @@ final class PotView: NSView {
     }
 
     /// Кълбо от пикселни листа; връща местата по него.
-    private func blob(center: NSPoint, rx: CGFloat, ry: CGFloat, leaf: NSColor, leaf2: NSColor, seed: Int) -> [NSPoint] {
+    /// Голи клони (зима, есенно окапване, пролетно разлистване); връща местата по тях.
+    private func bareBranches(from o: NSPoint, r: CGFloat, snow: Bool, sway: CGFloat) -> [NSPoint] {
+        var pts: [NSPoint] = []
+        let n = 7
+        for k in 0..<n {
+            let a = CGFloat.pi * (1.12 + 0.76 * CGFloat(k) / CGFloat(n - 1))
+            let len = r * (1.25 + 0.4 * CGFloat(hash(k * 7 + 3) % 10) / 10)
+            let ex = o.x + cos(a) * len + sway * 0.6, ey = o.y + sin(a) * len
+            func line(_ x0: CGFloat, _ y0: CGFloat, _ x1: CGFloat, _ y1: CGFloat, _ w0: CGFloat, _ w1: CGFloat, snowy: Bool) {
+                let steps = max(2, Int(hypot(x1 - x0, y1 - y0) / 3))
+                for i in 0...steps {
+                    let f = CGFloat(i) / CGFloat(steps)
+                    let w = w0 + (w1 - w0) * f
+                    let x = x0 + (x1 - x0) * f, y = y0 + (y1 - y0) * f
+                    NSColor(hex: 0x6f4518).setFill(); NSRect(x: x - w / 2, y: y - w / 2, width: w, height: w).fill()
+                    if snowy && i % 3 == 1 { NSColor(hex: 0xf8f9fa).setFill(); NSRect(x: x - w / 2 - 1, y: y - w / 2 - 2, width: w + 2, height: 2).fill() }
+                }
+            }
+            line(o.x, o.y, ex, ey, 6, 2, snowy: snow)
+            let mx = o.x + (ex - o.x) * 0.6, my = o.y + (ey - o.y) * 0.6
+            for side in [-1.0, 1.0] as [CGFloat] {
+                let b = a + side * 0.45
+                let tx = mx + cos(b) * len * 0.32, ty = my + sin(b) * len * 0.32
+                line(mx, my, tx, ty, 3, 1.5, snowy: snow)
+                pts.append(NSPoint(x: tx, y: ty + 3))
+            }
+            pts.append(NSPoint(x: ex, y: ey + 3))
+            pts.append(NSPoint(x: mx, y: my + 3))
+        }
+        return pts
+    }
+
+    private func blob(center: NSPoint, rx: CGFloat, ry: CGFloat, leaf: NSColor, leaf2: NSColor, seed: Int, density: CGFloat = 1) -> [NSPoint] {
         let cell: CGFloat = 6
         var spots: [NSPoint] = []
         var i = seed * 1000
@@ -746,7 +803,7 @@ final class PotView: NSView {
             var x = center.x - rx
             while x < center.x + rx {
                 let dx = (x + cell / 2 - center.x) / rx, dy = (y + cell / 2 - center.y) / ry
-                if dx * dx + dy * dy <= 1 {
+                if dx * dx + dy * dy <= 1 && (density >= 1 || CGFloat(hash(i * 3 + 1) % 100) < density * 100) {
                     let base = hash(i) % 3 == 0 ? leaf2 : leaf
                     (game?.secretLeafColor(base, i) ?? base).setFill()
                     NSRect(x: x, y: y, width: cell, height: cell).fill()

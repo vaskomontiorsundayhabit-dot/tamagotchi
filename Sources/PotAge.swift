@@ -11,6 +11,14 @@ extension PotGame {
     var treeMature: Bool { stage >= potThresholds.count - 1 && stageProgress >= 1 }
     func hasAge(_ k: String) -> Bool { d.bool(forKey: "pot_age_" + k) }
 
+    /// Около 4 от 10 зимни дни валят сняг (един и същ отговор през целия ден).
+    var snowyDay: Bool {
+        let m = Calendar.current.component(.month, from: Date())
+        guard [12, 1, 2].contains(m) else { return false }
+        let h = dayKey().unicodeScalars.reduce(7) { ($0 &* 31 &+ Int($1.value)) & 0xffff }
+        return h % 10 < 4
+    }
+
     /// Всяка минута (от updateFate).
     func updateTreeAge() {
         guard treeMature else { return }
