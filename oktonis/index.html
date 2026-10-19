@@ -109,6 +109,13 @@
   .grp { margin: 12px 0 2px; font-weight: 700; color: #ffe7a8; }
   .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
   #bubble .t { font-size: 15px !important; }
+  .life { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
+  .life small { color: var(--muted); }
+  .stages { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+  .stages span { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: rgba(0,0,0,.25); color: var(--muted); }
+  .stages span.past { color: #cfe9d9; } .stages span.cur { background: #b39ddb; color: #1d1830; font-weight: 700; }
+  .fam { border-left: 3px solid #b39ddb; padding: 6px 10px; margin: 8px 0; background: rgba(255,255,255,.05); border-radius: 0 10px 10px 0; }
+  .fam.now { border-color: #ffd166; } .fam small { color: var(--muted); }
   /* вход */
   .center { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
     padding-bottom: max(8vh, env(safe-area-inset-bottom)); z-index: 7; text-align: center; }
@@ -218,6 +225,7 @@ const uid = () => Math.random().toString(36).slice(2, 8);
 function fresh(now) {
   return {
     v: 2, t: now, born: now, hatched: false, taps: 0,
+    gen: 1, name: "Октонис", stage: "egg", stageT: now, grow: 0, track: newTrack(), family: [], inherit: null,
     hunger: 15, energy: 90, mood: 70, health: 100, hurt: 0, asleep: false,
     trash: [], parts: [], bag: {}, junk: {}, gadgets: {}, pearls: 0, idea: null, nextIdea: now + 3 * MIN, made: [], fails: 0,
     meals: [], lastMeal: now, lastGrumble: 0, lastCare: now,
@@ -236,40 +244,126 @@ function missing() {
   return m;
 }
 
+// ---------- Животът: етапи, пътища, наследници ----------
+const STAGES = ["egg", "baby", "kid", "teen", "adult", "aging", "old"];
+const STAGE_MIN = { egg: 60, baby: 2 * 1440, kid: 4 * 1440, teen: 7 * 1440, adult: 21 * 1440, aging: 14 * 1440, old: 7 * 1440 };
+const STAGE_NAME = { egg: "Яйце", baby: "Бебе", kid: "Малък", teen: "Тийнейджър", adult: "Голям", aging: "Застаряващ", old: "Много стар" };
+const TRAITS = {
+  healthy:   { n: "Здравеняк", d: "Яде здравословно, рядко се контузва и живее по-дълго." },
+  chubby:    { n: "Пухкав", d: "Обича пица. По-закръглен, по-весел и по-бавен." },
+  perfect:   { n: "Перфекционист", d: "Всичко му е подредено. Изобретенията му стават по-често, но всеки боклук го изнервя." },
+  recycler:  { n: "Рециклатор", d: "Свикна с боклуците и прави пари от тях. Понякога намира части в тях." },
+  trader:    { n: "Търговец", d: "Продава с усмивка и цилиндър. Взима повече перлинги." },
+  collector: { n: "Колекционер", d: "Пази изобретенията си в музей на дъното." },
+  adventure: { n: "Авантюрист", d: "Обича да го разнасят насам-натам. Понякога отплава и носи находки." },
+  hermit:    { n: "Отшелник", d: "Обича тишината и камъка си. Идеите му идват по-често." },
+  grumpy:    { n: "Мрънкало", d: "Беше занемарен и сега мърмори. С грижа може да се оправи." },
+};
+const ROMAN = ["", "", " II", " III", " IV", " V", " VI", " VII", " VIII", " IX", " X"];
+const genName = gen => "Октонис" + (ROMAN[gen] || " " + gen);
+function newTrack() { return { veg: 0, pizza: 0, clean: 0, dirty: 0, sold: 0, play: 0, alone: 0, neglect: 0, lived: 0 }; }
+function traitsOf(s = S) {
+  const k = s.track || newTrack(), out = [];
+  if (k.lived < 120) return s.inherit ? [] : [];
+  if (k.neglect > k.lived * 0.25) out.push("grumpy");
+  if (k.veg >= 4 && k.veg >= k.pizza) out.push("healthy"); else if (k.pizza >= 4 && k.pizza > k.veg * 1.5) out.push("chubby");
+  if (k.dirty / 40 > k.clean + 2) out.push("recycler"); else if (k.clean >= 8) out.push("perfect");
+  const kept = Object.values(s.gadgets || {}).reduce((a, n) => a + n, 0);
+  if (k.sold >= 2 && k.sold > kept) out.push("trader"); else if (kept >= 2) out.push("collector");
+  if (k.play >= 15) out.push("adventure"); else if (k.alone > k.lived * 0.6 && k.lived > 3000) out.push("hermit");
+  return out;
+}
+const has = t => S && (traitsOf().includes(t) || S.inherit === t);
+function stageIdx() { return STAGES.indexOf(S.stage); }
+function ageKey() { return S.stage || "adult"; }
+// всяка минута: расте според грижата
+function grow(t) {
+  const k = S.track;
+  k.lived++;
+  if (t - S.lastCare > 3 * 60 * MIN) k.alone++;
+  if (S.trash.length >= 3) k.dirty++;
+  const bad = S.hunger > 85 || S.trash.length >= 6 || (S.hurt && S.health < 40);
+  if (bad) k.neglect++;
+  if (S.stage === "egg") return;
+  const good = S.hunger < 75 && S.trash.length < 5 && !(S.hurt && S.health < 50) && (S.energy > 10 || S.asleep);
+  S.grow += good ? 1 : 0.3;
+  if (S.grow >= STAGE_MIN[S.stage]) nextStage(t);
+}
+function nextStage(t) {
+  const i = stageIdx();
+  if (S.stage === "old") return farewell(t);
+  S.stage = STAGES[i + 1]; S.stageT = t; S.grow = 0; dirty = true;
+  const msg = { kid: "Порасна! Вече е малък и почва да събира части.", teen: "Стана тийнейджър! Малко е капризен.",
+    adult: "Порасна напълно! Сега е истински изобретател.", aging: "Почва да остарява. Мъдър е, но се уморява по-бързо.",
+    old: "Стана много стар. Разказва спомени и почива." }[S.stage];
+  log(`🎂 ${S.name}: ${msg}`, t);
+  stageFlash = { at: performance.now(), stage: S.stage };
+}
+// краят: отплава и оставя яйце
+function farewell(t) {
+  const tr = traitsOf();
+  const main = tr.find(x => x !== "grumpy") || tr[0] || null;
+  const end = { collector: "отвори музей на изобретенията си и остана да го пази в дълбокото",
+    adventure: "отплава към непознатото, за да види какво има отвъд камъка",
+    trader: "отвори магазин в далечен риф", hermit: "се оттегли в тиха пещера да мисли",
+    perfect: "подреди всичко за последен път и отплава доволен", recycler: "отиде да чисти целия океан",
+    healthy: "отплава бодър към топлите води", chubby: "отплава бавничко към сладкарницата на рифа",
+    grumpy: "отплава мърморейки, но тайно доволен" }[main] || "отплава към дълбокото";
+  S.family = S.family || [];
+  S.family.push({ gen: S.gen, name: S.name, born: S.born, died: t, traits: tr, made: S.made.length, end });
+  log(`🌊 ${S.name} ${end}. На дъното остави яйце.`, t);
+  const keep = { gen: S.gen + 1, family: S.family, pearls: S.pearls, gadgets: S.gadgets, made: S.made, journal: S.journal, inherit: main, parent: S.name };
+  const nx = fresh(t);
+  Object.assign(nx, keep, { name: genName(keep.gen), track: newTrack() });
+  nx.journal.unshift({ t, x: `🥚 ${nx.name} е в яйцето. Наследник на ${keep.parent}${main ? ", от когото взе „" + TRAITS[main].n + "“" : ""}.` });
+  departing = { at: performance.now(), name: S.name, end };
+  S = nx; dirty = true;
+}
+let stageFlash = null, departing = null;
+
 // Една минута от живота му. offline = докато никой не гледа.
 function minute(t, offline, ev) {
   if (!S.hatched) return;
+  grow(t);
+  if (!S.hatched) return;                      // току-що се е родило ново яйце
+  const st = S.stage, drain = (st === "baby" ? 1.4 : st === "aging" ? 1.3 : st === "old" ? 1.5 : 1) * (has("chubby") ? 1.15 : 1);
   if (S.asleep) {
     S.energy = clamp(S.energy + 1.2);
     if (S.energy >= 100 && (!night(t) || Math.random() < 0.02)) { S.asleep = false; log("☀️ Събуди се бодър.", t); }
   } else {
-    S.energy = clamp(S.energy - (night(t) ? 0.25 : 1 / 6));
+    S.energy = clamp(S.energy - (night(t) ? 0.25 : 1 / 6) * drain);
     if (S.energy <= 8) { S.asleep = true; log("😴 Легна на дъното и заспа от умора.", t); }
   }
-  S.hunger = clamp(S.hunger + (S.asleep ? 1 / 14 : 1 / 8));
+  S.hunger = clamp(S.hunger + (S.asleep ? 1 / 14 : 1 / 8) * (st === "baby" ? 1.5 : 1));
   if (S.hunger >= 95) S.health = clamp(S.health - 0.1);
   else if (S.hunger < 70) S.health = clamp(S.health + (S.hurt ? 0.03 : 0.1));
   if (S.hurt && S.health >= 95) S.hurt = 0;
   // боклуци падат отгоре
-  if (S.trash.length < 7 && Math.random() < 1 / 7) {
+  if (S.trash.length < 7 && Math.random() < 1 / 40) {
     const [e, n] = pick(TRASH);
     S.trash.push({ id: uid(), e, n, x: rnd(0.08, 0.92), t });
     if (S.trash.length === 4) log("🗑️ Около него се събраха боклуци. Не може да ги гледа.", t);
   }
   // части по дъното (по-често тези, които му трябват)
-  if (S.parts.length < 4 && Math.random() < 1 / 9) {
+  if (S.parts.length < 4 && Math.random() < 1 / 25) {
     const m = Object.keys(missing());
     const k = m.length && Math.random() < 0.7 ? pick(m) : pick(Object.keys(PARTS));
     S.parts.push({ id: uid(), k, x: rnd(0.08, 0.92), t });
   }
   // идея за ново изобретение
-  if (!S.asleep && !S.idea && t > S.nextIdea && Math.random() < 1 / 6) newIdea(t, true);
-  const target = 70 - (S.hunger > 70 ? 20 : 0) - Math.min(30, S.trash.length * 6) - (S.hurt ? 12 : 0) - (S.energy < 20 ? 10 : 0);
+  if (!S.asleep && !S.idea && stageIdx() >= 2 && t > S.nextIdea && Math.random() < (has("hermit") ? 1 / 3 : 1 / 6)) newIdea(t, true);
+  if (has("adventure") && !S.asleep && Math.random() < 1 / 240) {      // експедиция
+    const k = pick(Object.keys(PARTS)); S.bag[k] = (S.bag[k] || 0) + 1; S.pearls += 5;
+    log(`🧭 Отплава на експедиция и донесе ${PARTS[k][1].toLowerCase()} и 5 перлинга.`, t); if (!offline) expedition = true;
+  }
+  const target = (has("chubby") ? 75 : 70) - (has("grumpy") ? 10 : 0) - (S.hunger > 70 ? 20 : 0) - Math.min(30, S.trash.length * (has("perfect") ? 9 : has("recycler") ? 3 : 6)) - (S.hurt ? 12 : 0) - (S.energy < 20 ? 10 : 0);
   S.mood = clamp(S.mood + Math.sign(target - S.mood) * 0.15);
 }
 function newIdea(t, quiet) {
-  const left = Object.keys(INV).filter(k => !S.made.includes(k));
-  const id = pick(left.length ? left : Object.keys(INV));
+  const size = k => Object.values(INV[k].need).reduce((a, n) => a + n, 0);
+  const pool = Object.keys(INV).filter(k => S.stage !== "kid" || size(k) <= 3);
+  const left = pool.filter(k => !S.made.includes(k));
+  const id = pick(left.length ? left : pool);
   S.idea = id; S.ideaT = t;
   log(`💡 Хрумна му: ${INV[id].e} ${INV[id].n}! Трябват: ${partList(INV[id].need)}`, t);
   if (!quiet) { ideaFlash = performance.now(); say("", `Идея! ${INV[id].n}!\nТрябват ми ${partNames(INV[id].need)}.`, 9000); }
@@ -293,6 +387,11 @@ const CHATTER = [
 let lastChat = 0, ideaFlash = 0;
 function chatter() {
   if (role !== "keeper" || !S.hatched || S.asleep || performance.now() < bubbleUntil + 25000 || performance.now() - lastChat < 40000) return;
+  if ((S.stage === "old" || S.stage === "aging") && S.journal.length > 5 && Math.random() < 0.15) {
+    lastChat = performance.now(); const j = pick(S.journal.slice(5));
+    return say("", "Помня, когато… " + j.x.replace(NO_EMO, "").trim().toLowerCase());
+  }
+  if (S.stage === "baby" && Math.random() < 0.3) { lastChat = performance.now(); return say("", pick(["Гу-гу!", "Мехурче! Мехурче!", "Ам-ам?", "Какво е това? А това?"])); }
   if (Math.random() > 0.35) return;
   lastChat = performance.now();
   if (S.trash.length >= 3) return say("😖🗑️", pick(["Боклуци! Навсякъде боклуци!", "Не мога да мисля в тази бъркотия.", "Някой да махне това, моля!"]));
@@ -317,8 +416,8 @@ function careAct(e) {
       if (!S.asleep) { say("😎", "Буден съм!"); break; }
       if (S.energy < 30) { say("😪", "Още малко…"); break; }
       S.asleep = false; log("☀️ Събуди го."); say("🥱", "Добро утро!"); break;
-    case "❤️": S.mood = clamp(S.mood + 6); say(S.asleep ? "💤💗" : pick(["☺️", "🥰"]), S.asleep ? "" : pick(["О, не беше нужно…", "", "И аз те обичам. Точно 100%."])); break;
-    case "🤗": S.mood = clamp(S.mood + 8); say("🤗", ""); break;
+    case "❤️": S.track.play++; S.mood = clamp(S.mood + 6); say(S.asleep ? "💤💗" : pick(["☺️", "🥰"]), S.asleep ? "" : pick(["О, не беше нужно…", "", "И аз те обичам. Точно 100%."])); break;
+    case "🤗": S.track.play++; S.mood = clamp(S.mood + 8); say("🤗", ""); break;
     case "👍": S.mood = clamp(S.mood + 3); say("☺️", pick(["О, не беше нищо особено…", "Може и по-добре, но благодаря."])); break;
     case "😂": S.mood = clamp(S.mood + 4); say("🤣", ""); break;
     case "👋": S.mood = clamp(S.mood + 2); say("👋🐙", "Здрасти!"); break;
@@ -331,6 +430,7 @@ function eat(e, now) {
   const usual = S.meals.filter(m => m.d !== day && Math.abs(m.h - h) < 0.75).length >= 2;
   S.meals = [...S.meals, { h, d: day }].slice(-14);
   S.lastMeal = now;
+  if (e === "🥦") S.track.veg++; else if (e === "🍕") S.track.pizza++;
   if (e === "🥦") { S.hunger = clamp(S.hunger - 30); S.health = clamp(S.health + 6); S.mood = clamp(S.mood + 2); }
   else if (e === "🦐") { S.hunger = clamp(S.hunger - 40); S.mood = clamp(S.mood + 5); }
   else { S.hunger = clamp(S.hunger - 45); S.mood = clamp(S.mood + 3); }
@@ -354,7 +454,8 @@ function pickTrash(id) {
   if (role !== "keeper") return;
   const i = S.trash.findIndex(x => x.id === id); if (i < 0) return;
   const [tr] = S.trash.splice(i, 1);
-  S.junk[tr.e] = (S.junk[tr.e] || 0) + 1;
+  S.junk[tr.e] = (S.junk[tr.e] || 0) + 1; S.track.clean++;
+  if (has("recycler") && Math.random() < 0.3) { const k = pick(Object.keys(PARTS)); S.bag[k] = (S.bag[k] || 0) + 1; setTimeout(() => say("", `В боклука намерих ${PARTS[k][1].toLowerCase()}! Рециклиране!`), 4700); }
   S.mood = clamp(S.mood + 4); S.lastCare = Date.now(); dirty = true;
   poof(tr.x);
   if (!S.trash.length) { log("✨ Всичко е чисто."); say("✨😌", "Чисто! Най-сетне мога да дишам."); }
@@ -382,6 +483,9 @@ function sell(kind, key, quiet) {
   else if (kind === "p" && S.bag[key] > (need()[key] || 0)) { S.bag[key]--; price = PART_PRICE[key]; name = PARTS[key][1].toLowerCase(); }
   else if (kind === "g" && S.gadgets[key] > 0) { S.gadgets[key]--; price = invPrice(key); name = INV[key].n; }
   else return;
+  if (kind === "j" && has("recycler")) price *= 2;
+  if (has("trader")) price = Math.ceil(price * 1.25);
+  if (kind === "g") S.track.sold++;
   S.pearls = (S.pearls || 0) + price; dirty = true;
   if (!quiet) {
     log(`◉ Продаде ${name} за ${price} ${CUR}.`);
@@ -406,7 +510,7 @@ function finish() {
   working = 0;
   const now = Date.now(), id = S.idea, inv = INV[id];
   S.energy = clamp(S.energy - 10); dirty = true;
-  const p = clamp(0.45 + S.fails * 0.12 + (S.mood - 50) / 200 + (S.energy - 50) / 400, 0.2, 0.92);
+  const p = clamp(0.45 + S.fails * 0.12 + (S.mood - 50) / 200 + (S.energy - 50) / 400 + (S.stage === "teen" ? -0.1 : S.stage === "aging" || S.stage === "old" ? 0.1 : 0) + (has("perfect") ? 0.1 : 0), 0.2, 0.92);
   if (Math.random() < p) {
     for (const [k, n] of Object.entries(inv.need)) S.bag[k] -= n;
     if (!S.made.includes(id)) S.made.push(id);
@@ -422,7 +526,7 @@ function finish() {
   } else {
     const lost = pick(Object.keys(inv.need)); S.bag[lost] -= 1; S.fails++;
     const hit = pick([["🤕", "Ох! Ощипах си пипалото."], ["⚡", "Бзззт! Токов удар!"], ["😣", "Винтчето ми отхвърча в окото."], ["🤕", "Падна ми на главата."]]);
-    S.hurt = 1; S.health = clamp(S.health - rnd(8, 16)); S.mood = clamp(S.mood - 8);
+    S.hurt = 1; S.health = clamp(S.health - rnd(8, 16) * (has("healthy") ? 0.5 : 1)); S.mood = clamp(S.mood - 8);
     fx.hurt = performance.now();
     log(`${hit[0]} Опита ${inv.e} ${inv.n}, но не стана. Счупи ${PARTS[lost][0]}.`);
     say(hit[0] + "📋", `${hit[1]}\nСчупих ${PARTS[lost][1].toLowerCase()}. Записвам грешката.`, 7000);
@@ -440,16 +544,19 @@ function worries() {
 }
 function tapEgg() {
   if (role !== "keeper" || S.hatched) return;
-  S.taps = (S.taps || 0) + 1; eggShake = performance.now(); dirty = true;
+  eggShake = performance.now();
+  const left = Math.ceil((STAGE_MIN.egg * MIN - (S.t - S.stageT)) / MIN);
+  if (left > 0) return say("", left > 30 ? "Яйцето е топло… още не е готово." : left > 5 ? "Мърда! Скоро ще се излюпи." : "Пука се! Само още малко…");
+  S.taps = (S.taps || 0) + 1; dirty = true;
   if (S.taps >= 3) {
-    S.hatched = true; S.born = Date.now(); S.t = Date.now();
-    log("🐣 Октонис се излюпи! Веднага провери дали всичко наоколо е подредено.");
+    S.hatched = true; S.born = S.t; S.stage = "baby"; S.stageT = S.t; S.grow = 0;
+    log(`🐣 ${S.name} се излюпи!${S.inherit ? " Прилича на " + (S.parent || "родителя си") + ": " + TRAITS[S.inherit].n.toLowerCase() + "." : " Веднага провери дали всичко наоколо е подредено."}`);
     fx.party = performance.now(); hatchAt = performance.now(); buildStatic();
-    setTimeout(() => say("🐙✨", "Здравей! Аз съм Октонис.\nОбичам технологиите и реда.", 7000), 600);
+    setTimeout(() => say("", `Здравей! Аз съм ${S.name}.\nОбичам технологиите и реда.`, 7000), 600);
   }
   save();
 }
-let eggShake = -1e9, hatchAt = -1e9;
+let eggShake = -1e9, hatchAt = -1e9, expedition = false;
 
 // ---------- Запазване ----------
 let docRef = null, unsub = null;
@@ -493,6 +600,7 @@ let viewBase = null;
 function afterLoad() {
   if (!S.v || S.v < 2) { S = fresh(Date.now()); dirty = true; }    // нов свят: започва отначало с яйце
   S.junk = S.junk || {}; S.gadgets = S.gadgets || {}; S.pearls = S.pearls || 0;
+  if (!S.stage) Object.assign(S, { gen: 1, name: "Октонис", stage: S.hatched ? "baby" : "egg", stageT: S.hatched ? S.t : S.born, grow: 0, track: newTrack(), family: [], inherit: null });
   for (const k of S.made || []) if (S.gadgets[k] == null) S.gadgets[k] = 1;
   if (role === "viewer") viewBase = JSON.stringify(S);
   const before = S.journal.length ? S.journal[0].t : 0;
@@ -508,11 +616,14 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 12;
+const PAGE_V = 13;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
-const STYLE = new URLSearchParams(location.search).get("style") || "goggles";   // goggles | sketch | cute | art
+const STYLE = new URLSearchParams(location.search).get("style") || "goggles";
+// тестов режим само в пробата: ?demo&speed=60 (времето тече 60 пъти по-бързо)
+const SPEED = DEMO ? +(new URLSearchParams(location.search).get("speed") || 1) : 1, T0 = Date.now();
+const clock = () => T0 + (Date.now() - T0) * SPEED;   // goggles | sketch | cute | art
 function show(v) {
   $("loginView").classList.toggle("hidden", v !== "loginView");
   $("loadView").classList.toggle("hidden", v !== "loadView");
@@ -603,13 +714,24 @@ function fillSheet(kind) {
     if (S.hunger > 70) stt.push("Гладен");
     if (S.trash.length >= 3) stt.push("Бъркотия!");
     if (!stt.length) stt.push(S.mood > 70 ? "Щастлив" : "Добре е");
-    const days = Math.floor((Date.now() - S.born) / (24 * 60 * MIN));
+    const days = Math.max(0, Math.floor((S.t - S.born) / (24 * 60 * MIN)));
     sh.innerHTML = head("📊 Как е Октонис") + `
       <div class="bars">${bars.map(([i, v, c]) => `<div class="bar"><span class="ic">${i}</span><div class="track"><div class="fill" style="width:${v.toFixed(0)}%;background:${c}"></div></div><b>${v.toFixed(0)}</b></div>`).join("")}</div>
+      ${lifeBox()}
       <div class="sub">${stt.join(" · ")}${S.hatched ? " · " + (days ? `на ${days} ${days === 1 ? "ден" : "дни"}` : "роден днес") : ""}<br>
       ${role === "viewer" ? "toshik беше при него " + ago(S.lastCare) + "." : ""}</div>
       <button id="logoutBtn">🚪 Изход (${esc(myNick)})</button>`;
     $("logoutBtn").onclick = logout;
+  } else if (kind === "family") {
+    const fam = (S.family || []).slice().reverse();
+    sh.innerHTML = head("🌳 Родът на Октонис") +
+      `<div class="fam now"><b>${esc(S.name)}</b> <small>сега · ${STAGE_NAME[S.stage]}${S.inherit ? " · наследил „" + TRAITS[S.inherit].n + "“" : ""}</small>
+        <div class="sub" style="margin:2px 0">${traitsOf().map(k => TRAITS[k].n).join(", ") || "Още се оформя какъв ще стане."}</div></div>` +
+      (fam.length ? fam.map(f => `<div class="fam"><b>${esc(f.name)}</b> <small>${new Date(f.born).toLocaleDateString("bg-BG")} – ${new Date(f.died).toLocaleDateString("bg-BG")}</small>
+        <div class="sub" style="margin:2px 0">${f.traits.map(k => TRAITS[k].n).join(", ") || "Обикновен и мил"} · изобретения: ${f.made}</div>
+        <div class="sub" style="margin:0">Накрая ${esc(f.end)}.</div></div>`).join("")
+        : `<div class="sub">Това е първият Октонис. Когато остарее, ще остави яйце и родът ще продължи.</div>`) +
+      `<div class="sub" style="margin-top:10px">Перлингите, изобретенията и знанията се предават на наследника.</div>`;
   } else if (kind === "journal") {
     sh.innerHTML = head("📖 Дневник") + `<ul class="journal">${S.journal.slice(0, 60).map(j => {
       const d = new Date(j.t);
@@ -618,6 +740,20 @@ function fillSheet(kind) {
     }).join("")}</ul>`;
   }
   $("sx").onclick = closeSheet;
+}
+
+function lifeBox() {
+  const i = stageIdx(), dur = STAGE_MIN[S.stage];
+  const done = S.stage === "egg" ? Math.min(1, (S.t - S.stageT) / (dur * MIN)) : Math.min(1, S.grow / dur);
+  const leftMin = S.stage === "egg" ? Math.max(0, dur - (S.t - S.stageT) / MIN) : Math.max(0, dur - S.grow);
+  const leftTxt = leftMin < 60 ? `${Math.ceil(leftMin)} мин` : leftMin < 1440 ? `${Math.round(leftMin / 60)} ч` : `${Math.round(leftMin / 1440)} дни`;
+  const next = S.stage === "old" ? "до края на пътя си" : "до " + STAGE_NAME[STAGES[i + 1]].toLowerCase();
+  const tr = traitsOf();
+  return `<div class="life"><div><b>${esc(S.name)}</b> · ${STAGE_NAME[S.stage]} <small>(${S.gen}-во поколение)</small></div>
+    <div class="stages">${STAGES.map((k, j) => `<span class="${j < i ? "past" : j === i ? "cur" : ""}">${STAGE_NAME[k]}</span>`).join("")}</div>
+    <div class="track"><div class="fill" style="width:${(done * 100).toFixed(0)}%;background:#b39ddb"></div></div>
+    <div class="sub" style="margin:4px 0 0">Още около ${leftTxt} ${next}${S.stage !== "egg" ? ", ако е гледан добре" : ""}.</div>
+    <div class="sub" style="margin:6px 0 0">Какъв става: ${tr.length ? tr.map(k => `<b>${TRAITS[k].n}</b>`).join(", ") : "още се оформя"}${S.inherit ? ` · от родителя: <b>${TRAITS[S.inherit].n}</b>` : ""}</div></div>`;
 }
 
 // ---------- Менюто около него (без горната част, където говори) ----------
@@ -634,11 +770,11 @@ function toggleFull() {
 }
 function ringItems() {
   const extra = [fullItem(), ["logout", "🚪", "Изход"]].filter(Boolean);
-  if (role !== "keeper") return [["inv", "💡", "Изобретения"], ["bag", "🎒", "Торба"], ["stats", "📊", "Как е"], ["journal", "📖", "Дневник"], ...extra];
+  if (role !== "keeper") return [["inv", "💡", "Изобретения"], ["bag", "🎒", "Торба"], ["stats", "📊", "Как е"], ["family", "🌳", "Род"], ["journal", "📖", "Дневник"], ...extra];
   if (ringPage === "food") return [["back", "↩️", "Назад"], ["e🍕", "🍕", "Пица"], ["e🥦", "🥦", "Броколи"], ["e🦐", "🦐", "Скариди"]];
   if (ringPage === "talk") return [["back", "↩️", "Назад"], ...["❤️", "🤗", "👍", "😂", "👋"].map(e => ["e" + e, e, ""])];
   return [["food", "🍕", "Храна"], S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Сън"], ["talk", "💬", "Кажи"],
-    ["inv", "💡", "Изобретения"], ["bag", "🎒", "Торба"], ["stats", "📊", "Как е"], ["journal", "📖", "Дневник"], ...extra];
+    ["inv", "💡", "Изобретения"], ["bag", "🎒", "Торба"], ["stats", "📊", "Как е"], ["family", "🌳", "Род"], ["journal", "📖", "Дневник"], ...extra];
 }
 function openRing() {
   if (!inGame || sheetKind || !S.hatched) return;
@@ -679,7 +815,7 @@ function paintRing() {
 function ringAction(id) {
   if (id === "talk" || id === "food") { ringPage = id; return paintRing(); }
   if (id === "back") { ringPage = "main"; return paintRing(); }
-  if (id === "inv" || id === "bag" || id === "stats" || id === "journal") return openSheet(id);
+  if (["inv", "bag", "stats", "family", "journal"].includes(id)) return openSheet(id);
   if (id === "full") { closeRing(); return toggleFull(); }
   if (id === "logout") { closeRing(); return logout(); }
   const e = { sleep: "😴", wake: "☀️" }[id] || id.slice(1);
@@ -831,6 +967,12 @@ function drawRock(t) {
   }
   rockBox = { x: R.cx, y: R.base - R.rh / 2, rx: R.rw / 2, ry: R.rh / 2 };
 }
+function drawMuseum(t, s) {                // колекционерът си прави музей на камъка
+  if (!has("collector")) return;
+  const R = rockGeom(), list = Object.entries(S.gadgets).filter(([, n]) => n > 0).slice(0, 5);
+  g.textAlign = "center"; g.textBaseline = "middle"; g.font = `${Math.max(20, 44 * s)}px system-ui, "Apple Color Emoji", sans-serif`;
+  list.forEach(([k], i) => g.fillText(INV[k].e, R.cx - R.rw * 0.32 + i * R.rw * 0.16, R.top - 12 * s + Math.sin(t * 2 + i) * 2));
+}
 function drawFloor(t, s) {
   floorHits = [];
   const now = performance.now(), sandY = H * 0.88 + 4, sz = Math.max(26, 64 * s);
@@ -876,7 +1018,7 @@ function loop() {
   const s = Math.min(H * 0.46 / 430, W * 0.8 / 560);
   const ground = H * 0.88 + 6, R = rockGeom();
   let mode = S ? octoMode() : "idle";
-  let age = S && S.hatched ? AGE : "egg", lie = false, scale = s;
+  let age = S && S.hatched ? ageKey() : "egg", lie = false, scale = s;
   // къде отива
   if (!oct.wp || t > oct.wpT) { oct.wp = [rnd(0.2, 0.6) * W, H * rnd(0.3, 0.6)]; oct.wpT = t + rnd(5, 10); }
   let tx = oct.wp[0], ty = oct.wp[1], k = 0.02;
@@ -898,12 +1040,19 @@ function loop() {
   if (S && S.hatched && (mode === "idle" || mode === "happy") && !hidden() && Math.hypot(tx - oct.px, ty - oct.py) > 60 && !ringOpen && !sheetKind) mode = "swim";
   if (mode !== lastMode) { lastMode = mode; modeAt = t; }
   const near = oct.py > ground - 260 * oct.sc && !(drag && drag.moved) && mode !== "swim" && !lie;
-  const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * oct.sc, s: oct.sc, age, mode, t, mt: t - modeAt, st, lie,
+  const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * oct.sc, s: oct.sc, age, mode, t, mt: t - modeAt, st, lie, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
     ground: near || age === "egg" ? ground : null, drop: age === "egg", style: STYLE, dir: oct.dir,
     lookAt: performance.now() - ptr.t < 3000 ? ptr : null });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
   if (age === "egg") eggBox = { x: oct.px, y: ground - 60 * s, r: 80 * s };
+  if (departing && performance.now() - departing.at < 9000) {     // старият Октонис отплава нагоре
+    const a = (performance.now() - departing.at) / 9000;
+    g.globalAlpha = 1 - a;
+    Octo.draw(g, { x: W * 0.5 + Math.sin(a * 6) * 30, y: H * 0.45 - a * H * 0.7, s: s * 0.9, age: "old", mode: "swim", t, st: {}, style: STYLE, dir: 1 });
+    g.globalAlpha = 1;
+  }
   drawRock(t);
+  if (S) drawMuseum(t, s);
   if (S) drawFloor(t, s);
   if (night) { g.fillStyle = "rgba(10,10,40,.25)"; g.fillRect(0, 0, W, H); }
   if (inGame) placeBubble();
@@ -947,7 +1096,7 @@ cv.addEventListener("pointerup", ev => {
 cv.addEventListener("pointercancel", () => { if (drag && drag.moved) endDrag(drag); drag = null; });
 function startDrag() {
   hideUntil = 0;
-  const happy = S.mood >= 50 && !S.hurt && !S.asleep && S.hunger < 75;
+  const happy = S.mood >= (S.stage === "teen" ? 65 : 50) && !S.hurt && !S.asleep && S.hunger < 75;
   drag.mood = happy ? "wee" : "angry";
   noHover = true;
   if (S.asleep) {
@@ -958,7 +1107,7 @@ function startDrag() {
   else say("😠💢", pick(["Пусни ме!", "Не сега!", "Не съм в настроение!", "Остави ме на мира!"]));
 }
 function endDrag(d) {
-  if (role === "keeper") { S.mood = clamp(S.mood + (d.mood === "wee" ? 3 : -3)); S.lastCare = Date.now(); dirty = true; save(); }
+  if (role === "keeper") { S.mood = clamp(S.mood + (d.mood === "wee" ? 3 : -3)); if (d.mood === "wee") S.track.play++; S.lastCare = Date.now(); dirty = true; save(); }
   if (d.mood === "wee") say("😆", pick(["Пак!", "Беше страхотно!", "Хи-хи!"]));
   else { say("😤", "Хмпф! Отивам да се скрия."); setTimeout(() => { hideUntil = performance.now() + 20000; }, 900); }
 }
@@ -995,14 +1144,19 @@ setInterval(() => {
   const now = Date.now(), p = performance.now();
   if (role === "keeper") {
     const hadIdea = S.idea;
-    if (catchUp(now)) render();
+    if (catchUp(clock())) render();
+    if (stageFlash && performance.now() - stageFlash.at < 3000) { fx.party = performance.now();
+      say("", { kid: "Порастнах! Вече мога да събирам части.", teen: "Вече съм тийнейджър. Не ме командвай!", adult: "Пораснах напълно! Време е за големи изобретения.",
+        aging: "Хм, май почвам да остарявам. Но съм по-мъдър.", old: "Вече съм стар… Седни да ти разкажа нещо." }[stageFlash.stage] || "", 7000); stageFlash = null; }
+    if (expedition) { expedition = false; say("", "Бях на експедиция! Виж какво донесох."); }
+    if (departing && performance.now() - departing.at < 3000) say("", `Сбогом! Грижи се за яйцето.\nТо е моят наследник.`, 6000);
     if (!hadIdea && S.idea) { ideaFlash = p; say("", `Идея! ${INV[S.idea].n}!\nТрябват ми ${partNames(INV[S.idea].need)}.`, 9000); }
     grumble(now);
     chatter();
     if (S.idea && !Object.keys(missing()).length && !working && !S.asleep && p - (window.__lastAuto || 0) > 60000) { window.__lastAuto = p; build(); }
     if (S.hatched && !S.asleep && !working && !hidden() && p > nextHide && !ringOpen && !sheetKind) {   // понякога се крие (Дева е малко срамежлив)
       nextHide = p + rnd(4, 8) * 60000;
-      if (S.trash.length >= 4 || S.mood < 55 || Math.random() < 0.25) {
+      if (S.trash.length >= 4 || S.mood < 55 || Math.random() < (has("hermit") || S.stage === "teen" ? 0.5 : 0.25)) {
         hideUntil = p + 18000;
         say("🙈", S.trash.length >= 4 ? "Не мога да гледам тази бъркотия…" : pick(["Крия се! Намери ме.", "Малко ми трябва тишина…"]));
       }
@@ -1041,7 +1195,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, oct, fx, newIdea: () => newIdea(Date.now()), hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, newIdea: () => newIdea(Date.now()), hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);

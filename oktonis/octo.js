@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 12;
+const VER = 13;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE;
+let g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -344,7 +344,7 @@ function body(t, mt, st) {
   for (const [T, p] of all) if (T.back) tube(p, 19 * A.tW * tw, COL.back, COL.backShade);
   for (const [T, p] of all) if (!T.back) { tube(p, 23 * A.tW * tw, COL.body, COL.shade); if (CUTE) cups(p, 23 * A.tW * tw, T.side); }
 
-  g.save(); g.translate(0, 70); g.rotate(tilt); g.scale(A.head / squash, A.head * squash); g.translate(0, -70);
+  g.save(); g.translate(0, 70); g.rotate(tilt); g.scale(A.head / squash * (TR.includes("chubby") ? 1.13 : 1), A.head * squash); g.translate(0, -70);
   const hx = 0, hy = 0;
   const cx = CUTE ? hx : hx + 8, cy = CUTE ? hy - 34 : hy - 40, rx = CUTE ? 120 : 112, ry = CUTE ? 112 : 128, rot = CUTE ? 0 : -0.22;
   g.lineWidth = 9; g.strokeStyle = C.line; ell(cx, cy, rx, ry, rot); g.stroke();
@@ -442,6 +442,31 @@ function body(t, mt, st) {
         g.moveTo(hx + s * 30, by + (mode === "work" ? 6 : 0)); g.quadraticCurveTo(hx + s * 56, by - 12, hx + s * 84, by + (mode === "work" ? -8 : 2)); g.stroke();
       }
     }
+  }
+  // какъв е станал: цилиндър (търговец), кърпа (авантюрист), листенце (здравеняк)
+  if (TR.includes("adventure") && !TR.includes("trader")) {
+    g.fillStyle = "#e5383b"; g.strokeStyle = C.line; g.lineWidth = 5;
+    g.beginPath(); g.ellipse(cx, cy - 62, rx * 0.98, 20, rot, Math.PI * 1.02, Math.PI * 1.98); g.lineTo(cx + rx * 0.9, cy - 40); g.ellipse(cx, cy - 40, rx * 0.95, 18, rot, 0, Math.PI, true); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(cx + rx * 0.85, cy - 50); g.lineTo(cx + rx * 1.25, cy - 30); g.lineTo(cx + rx * 1.1, cy - 62); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = "#fff"; for (const [x, y] of [[-50, -58], [0, -66], [50, -60]]) { ell(cx + x, cy + y, 4, 4); g.fill(); }
+  }
+  if (TR.includes("trader")) {
+    g.save(); g.translate(cx + 10, cy - ry * 0.98); g.rotate(0.12);
+    g.fillStyle = "#2b2a33"; g.strokeStyle = "#111"; g.lineWidth = 4;
+    g.beginPath(); g.ellipse(0, 0, 62, 13, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.beginPath(); g.roundRect(-38, -78, 76, 78, 6); g.fill(); g.stroke();
+    g.fillStyle = "#c9a227"; g.fillRect(-38, -24, 76, 12);
+    g.restore();
+  }
+  if (TR.includes("healthy")) {
+    g.save(); g.translate(cx + 30, cy - ry * 0.98); g.rotate(0.5);
+    g.strokeStyle = C.line; g.lineWidth = 4; g.beginPath(); g.moveTo(0, 6); g.lineTo(0, -14); g.stroke();
+    g.fillStyle = "#57c08a"; g.beginPath(); g.ellipse(14, -22, 16, 8, -0.5, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.restore();
+  }
+  if (TR.includes("grumpy") && mode === "idle") {
+    g.strokeStyle = C.line; g.lineWidth = 6; g.lineCap = "round";
+    for (const sg of [-1, 1]) { g.beginPath(); g.moveTo(hx + sg * 30, ey - 58); g.lineTo(hx + sg * 82, ey - 70); g.stroke(); }
   }
   if (mode === "hurt") {
     g.save(); g.translate(cx + 55, cy - 80);
@@ -921,7 +946,7 @@ function skEgg(t) {
 }
 
 function draw(ctx, o) {
-  g = ctx; mode = o.mode || "idle";
+  g = ctx; mode = o.mode || "idle"; TR = o.traits || [];
   if (mode === "swim" && o.style !== "sketch") mode = "idle";
   const st = o.st || (o.st = {});
   st.parts = st.parts || [];
@@ -973,6 +998,6 @@ function draw(ctx, o) {
   return { top: o.y + top * k, r: 260 * k, cy: o.y + (top + 200) * k / 2 };
 }
 
-window.Octo = { V: 12, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
+window.Octo = { V: 13, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
   AGE_NAMES: { egg: "Яйце", baby: "Бебе", kid: "Малък", teen: "Тийнейджър", adult: "Голям", aging: "Застаряващ", old: "Много стар" } };
 })();
