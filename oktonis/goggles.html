@@ -65,10 +65,11 @@ const TENT = [
 ];
 function tentPts(T, t, hx, hy) {
   const s = T.side, N = 44, step = T.L / N;
-  const sp = { idle: 1.8, happy: 3, party: 7, work: 4, hurt: 1.3, sleep: 0.7 }[mode];
-  const amp = { idle: 0.012, happy: 0.02, party: 0.03, work: 0.018, hurt: 0.008, sleep: 0.006 }[mode];
+  const sp = { idle: 1.8, happy: 3, party: 7, work: 11, hurt: 1.3, sleep: 0.7 }[mode];
+  const amp = { idle: 0.012, happy: 0.02, party: 0.03, work: 0.03, hurt: 0.008, sleep: 0.006 }[mode];
   let x = hx + T.dx, y = hy + 62;
-  let ang = T.kind === "arm" ? (s > 0 ? 0.55 : Math.PI - 0.55) : Math.PI / 2 + -s * T.spread;
+  const armA = mode === "work" ? 1.15 + Math.sin(t * 13 + T.ph) * 0.25 : 0.55;
+  let ang = T.kind === "arm" ? (s > 0 ? armA : Math.PI - armA) : Math.PI / 2 + -s * T.spread;
   const pts = [];
   for (let j = 0; j <= N; j++) {
     const k = j / N;
@@ -78,7 +79,7 @@ function tentPts(T, t, hx, hy) {
       let up = 0.045;
       if (mode === "party") up = 0.075 + Math.sin(t * 9 + T.ph) * 0.03;
       if (mode === "sleep") up = 0.012;
-      if (mode === "work") up = 0.06;
+      if (mode === "work") up = -0.004;
       d += -s * up;
       if (k > 0.72) d += -s * (mode === "sleep" ? 0.1 : 0.2);      // къдрица на върха
     } else {
@@ -138,6 +139,18 @@ function eyeIn(x, y, r, t, look, s) {
   g.lineCap = "round"; g.strokeStyle = C.line; g.lineWidth = 5;
   if (mode === "happy" || mode === "party") { g.beginPath(); g.arc(x, y + 10, 14, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke(); return; }
   if (mode === "hurt") { const q = 11; g.beginPath(); g.moveTo(x + s * q, y - q); g.lineTo(x - s * q, y); g.lineTo(x + s * q, y + q); g.stroke(); return; }
+  if (mode === "work") {             // съсредоточен: присвити очи, гледа надолу към облака
+    const px = x - s * 7, py = y + 12;
+    g.fillStyle = "#15131c"; ellipsePath(px, py, 11, 12, 0); g.fill();
+    g.fillStyle = "#fff"; ellipsePath(px - 4, py - 4, 3.5, 3.5, 0); g.fill();
+    g.save(); ellipsePath(x, y, r, r, 0); g.clip();
+    const lid = y - 2 + s * 4;      // клепачът е наклонен към носа
+    g.fillStyle = C.body; g.beginPath(); g.moveTo(x - r, y - r); g.lineTo(x + r, y - r);
+    g.lineTo(x + r, lid - s * 8); g.lineTo(x - r, lid + s * 8); g.closePath(); g.fill();
+    g.lineWidth = 5; g.beginPath(); g.moveTo(x + r, lid - s * 8); g.lineTo(x - r, lid + s * 8); g.stroke();
+    g.restore();
+    return;
+  }
   if (blink) { g.beginPath(); g.moveTo(x - 15, y + 2); g.quadraticCurveTo(x, y + 9, x + 15, y + 2); g.stroke(); return; }
   const px = x + look[0] * 10 + s * 3, py = y + look[1] * 10 + 2;
   g.fillStyle = "#15131c"; ellipsePath(px, py, 15, 17, 0); g.fill();
@@ -167,6 +180,58 @@ function star(x, y, r) {
   g.beginPath();
   for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
   g.closePath(); g.fillStyle = "#ffd166"; g.fill(); g.lineWidth = 3; g.strokeStyle = C.line; g.stroke();
+}
+
+const PUFFS = [[-125, 4, 36], [-82, -24, 40], [-30, -36, 42], [25, -34, 40], [80, -24, 40], [126, 2, 36],
+  [85, 16, 36], [30, 22, 38], [-30, 22, 38], [-85, 16, 36], [0, 0, 44]];
+function brawl(cx, cy, t) {
+  const pts = PUFFS.map(([x, y, r], i) => [cx + x + Math.sin(t * 17 + i * 2.1) * 6, cy + y + Math.cos(t * 15 + i * 1.3) * 6,
+    r + Math.sin(t * 21 + i) * 5]);
+  g.fillStyle = C.line;
+  for (const [x, y, r] of pts) { g.beginPath(); g.arc(x, y, r + 5, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = "#f4f0ea";
+  for (const [x, y, r] of pts) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = "#e7e1ec";
+  for (const [x, y, r] of pts) if (y > cy + 5) { g.beginPath(); g.arc(x + 4, y + 10, r * 0.6, 0, Math.PI * 2); g.fill(); }
+  // неща, които се мяркат в облака
+  const k = Math.floor(t * 3);
+  for (let i = 0; i < 3; i++) {
+    const seed = Math.sin((k + i * 7) * 12.9898) * 43758.5453, f = seed - Math.floor(seed);
+    const x = cx + (f - 0.5) * 200, y = cy - 8 + (Math.sin(seed) * 0.5) * 30;
+    const kind = ["star", "cog", "bolt", "tent"][Math.floor(f * 37) % 4];
+    if (kind === "star") star(x, y, 13);
+    else if (kind === "cog") gear(x, y, 12, t * 6);
+    else if (kind === "bolt") part({ x, y, a: t * 8, k: "bolt" });
+    else { g.save(); g.translate(x, y); g.rotate(f * 6);   // мярка се пипало
+      g.lineCap = "round"; g.strokeStyle = C.line; g.lineWidth = 22; g.beginPath(); g.moveTo(-22, 0); g.quadraticCurveTo(0, -16, 20, 0); g.stroke();
+      g.strokeStyle = C.body; g.lineWidth = 13; g.stroke(); g.restore(); }
+  }
+  // черти от движение
+  g.strokeStyle = C.line; g.lineWidth = 4; g.lineCap = "round";
+  for (let i = 0; i < 4; i++) {
+    const a = t * 4 + i * 1.7, r1 = 160 + Math.sin(t * 9 + i) * 8;
+    const x = cx + Math.cos(a) * r1, y = cy - 20 + Math.sin(a) * 50;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 18, y + Math.sin(a) * 8); g.stroke();
+  }
+}
+function part(p) {
+  g.save(); g.translate(p.x, p.y); g.rotate(p.a);
+  g.strokeStyle = C.line; g.lineWidth = 3.5; g.lineJoin = "round"; g.fillStyle = "#c9cfdc";
+  if (p.k === "bolt") {
+    g.beginPath(); g.roundRect(-3.5, -2, 7, 24, 2); g.fill(); g.stroke();
+    g.lineWidth = 2; for (let i = 4; i < 20; i += 5) { g.beginPath(); g.moveTo(-3.5, i); g.lineTo(3.5, i + 2); g.stroke(); }
+    g.lineWidth = 3.5; g.beginPath(); g.roundRect(-9, -8, 18, 8, 2); g.fill(); g.stroke();
+  } else if (p.k === "nut") {
+    g.beginPath(); for (let i = 0; i < 6; i++) g.lineTo(Math.cos(i * Math.PI / 3) * 11, Math.sin(i * Math.PI / 3) * 11);
+    g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.arc(0, 0, 4.5, 0, Math.PI * 2); g.fillStyle = "#f7f3ec"; g.fill(); g.stroke();
+  } else if (p.k === "cog") { g.restore(); gear(p.x, p.y, 11, p.a); return; }
+  else if (p.k === "spring") {
+    g.strokeStyle = C.line; g.lineWidth = 6; g.beginPath();
+    for (let i = 0; i <= 8; i++) g.lineTo(i % 2 ? 7 : -7, -16 + i * 4);
+    g.stroke(); g.strokeStyle = "#c9cfdc"; g.lineWidth = 2.5; g.stroke();
+  }
+  g.restore();
 }
 
 function frame() {
@@ -223,10 +288,23 @@ function frame() {
   else if (mode === "party") { g.moveTo(hx - 20, my - 6); g.quadraticCurveTo(hx, my + 28, hx + 20, my - 6); g.closePath(); g.fillStyle = "#8a2f3a"; g.fill(); }
   else if (mode === "hurt") { g.moveTo(hx - 14, my + 4); g.quadraticCurveTo(hx - 7, my - 5, hx, my + 2); g.quadraticCurveTo(hx + 7, my + 9, hx + 14, my); }
   else if (mode === "sleep") { ellipsePath(hx, my, 6, 4 + Math.sin(t * 0.9) * 2, 0); }
-  else if (mode === "work") { g.moveTo(hx - 10, my); g.lineTo(hx + 8, my - 2); }
+  else if (mode === "work") { g.moveTo(hx - 12, my + 1); g.quadraticCurveTo(hx, my - 3, hx + 12, my + 1); }
   else { g.moveTo(hx - 13, my - 3); g.quadraticCurveTo(hx, my + 7, hx + 13, my - 3); }
   g.stroke();
-  if (mode === "work") { g.fillStyle = "#ff8fa3"; g.strokeStyle = C.line; g.lineWidth = 3; g.beginPath(); g.ellipse(hx + 10, my + 3, 6, 8, 0.3, 0, Math.PI); g.fill(); g.stroke(); }
+  if (mode === "work") {             // от време на време се изплезва настрани
+    const tp = (t % 3.4), out = tp < 1.6 ? Math.min(1, tp / 0.25, (1.6 - tp) / 0.25) : 0;
+    if (out > 0) {
+      const wig = Math.sin(t * 14) * 0.18;
+      g.save(); g.translate(hx + 7, my); g.rotate(0.55 + wig);
+      g.fillStyle = "#ff7d92"; g.strokeStyle = C.line; g.lineWidth = 4;
+      g.beginPath(); g.moveTo(-9, 0); g.lineTo(-9, 10 + 18 * out); g.arc(0, 10 + 18 * out, 9, Math.PI, 0, true); g.lineTo(9, 0); g.fill(); g.stroke();
+      g.strokeStyle = "#d94f6a"; g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, 3); g.lineTo(0, 8 + 16 * out); g.stroke();
+      g.restore();
+    }
+    // бръчка от мислене над очилата
+    g.strokeStyle = C.line; g.lineWidth = 4; g.lineCap = "round";
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(hx + s * 26, ey - 60); g.quadraticCurveTo(hx + s * 55, ey - 64, hx + s * 84, ey - 78); g.stroke(); }
+  }
   if (mode === "sleep") {     // затворени очи, очилата горе на челото
     g.lineWidth = 5; g.strokeStyle = C.line;
     for (const s of [-1, 1]) { g.beginPath(); g.arc(hx + s * 56, ey - 2, 16, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke(); }
@@ -248,10 +326,13 @@ function frame() {
 
   // предмети и ефекти
   if (mode === "work") {
-    const a = all[0][1][36], b = all[5][1][36];
-    gear(a[0] - 4, a[1] - 26, 22, t * 2.6);
-    wrench(b[0] + 6, b[1] - 34, -0.5 + Math.sin(t * 10) * 0.35);
-    if (Math.random() < 0.55) parts.push({ x: hx + rnd(-30, 30), y: GROUND - 30, vx: rnd(-3.5, 3.5), vy: rnd(-6, -2), l: 22, c: pick(["#ffb52e", "#ffd166", "#ff8a3d"]), k: "spark" });
+    brawl(hx, GROUND - 22, t);
+    if (Math.random() < 0.09) {
+      const side = pick([-1, 1]);
+      parts.push({ x: hx + side * rnd(40, 120), y: GROUND - rnd(50, 100), vx: side * rnd(2, 5.5), vy: rnd(-9, -5), l: 90,
+        k: pick(["bolt", "bolt", "nut", "cog", "cog", "spring"]), a: rnd(0, 6), va: rnd(-0.3, 0.3) });
+    }
+    if (Math.random() < 0.3) parts.push({ x: hx + rnd(-110, 110), y: GROUND - rnd(40, 110), vx: rnd(-3, 3), vy: rnd(-5, -1), l: 16, c: pick(["#ffb52e", "#ffd166"]), k: "spark" });
   }
   if (mode === "party" && Math.random() < 0.7)
     for (let i = 0; i < 3; i++) parts.push({ x: rnd(40, LW - 40), y: -10, vx: rnd(-1, 1), vy: rnd(1, 3), l: 220, c: pick(["#ffd166", "#ff8fa3", "#7cc8f2", "#6fd3a0", "#b39ddb"]), k: "conf", a: rnd(0, 6) });
@@ -272,8 +353,9 @@ function frame() {
     g.globalAlpha = 1;
   }
   parts = parts.filter(p => {
-    p.x += p.vx; p.y += p.vy; p.vy += p.k === "spark" ? 0.28 : 0.02; p.l--;
+    p.x += p.vx; p.y += p.vy; p.vy += p.k === "spark" ? 0.28 : p.k === "conf" ? 0.02 : 0.32; p.l--;
     if (p.k === "spark") { g.strokeStyle = p.c; g.lineWidth = 4; g.lineCap = "round"; g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * 2, p.y - p.vy * 2); g.stroke(); }
+    else if (p.k !== "conf") { p.a += p.va; part(p); }
     else { p.a += 0.15; g.save(); g.translate(p.x + Math.sin(p.a) * 6, p.y); g.rotate(p.a); g.fillStyle = p.c; g.fillRect(-6, -3.5, 12, 7); g.restore(); }
     return p.l > 0 && p.y < LH;
   });
