@@ -188,6 +188,7 @@ final class PotGame: NSObject, NSApplicationDelegate {
         setUpTools()
         syncWeedPanels()
         syncExtraPanels()
+        setUpRemote()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let b = statusItem.button {

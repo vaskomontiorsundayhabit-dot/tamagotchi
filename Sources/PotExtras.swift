@@ -260,6 +260,7 @@ extension PotGame {
         menu.addItem(sizeItem)
 
         item(unseen > 0 ? "Дневник… (\(unseen) нови, докато те нямаше)" : "Дневник…", #selector(showJournal))
+        item("📱 Дистанционно от телефона…", #selector(showRemote))
         item("★ Открити тайни: \(secrets.count)", nil)
         if !weedPanels.isEmpty { item("Изскубни всички бурени по пода (\(weedPanels.count))", #selector(pullAllFloorWeeds)) }
         menu.addItem(.separator())

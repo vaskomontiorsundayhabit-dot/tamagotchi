@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Саксията</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Саксията">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1e1b2e">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<style>
+  :root {
+    --bg: #1e1b2e; --card: #2b2840; --line: #3a3655; --text: #f3efe6; --muted: #a59fbf;
+    --green: #52b788; --blue: #4cc9f0; --red: #ff4d6d; --gold: #ffd166; --brown: #c8693f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    max-width: 520px; margin: 0 auto;
+  }
+  h1 { font-size: 20px; margin: 4px 0 2px; display: flex; align-items: center; gap: 10px; }
+  h1 img { width: 32px; height: 32px; border-radius: 8px; image-rendering: pixelated; }
+  .seen { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .seen.warn { color: var(--gold); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 14px; }
+  .stage { font-weight: 700; font-size: 17px; }
+  .bars { display: grid; gap: 8px; margin-top: 10px; }
+  .bar { display: grid; grid-template-columns: 72px 1fr 40px; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .track { height: 10px; background: #15131f; border-radius: 6px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 6px; transition: width .4s; }
+  .bar b { color: var(--text); text-align: right; font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip { background: #15131f; border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  button {
+    font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 14px 10px; min-height: 64px; text-align: left;
+    display: flex; align-items: center; gap: 10px; cursor: pointer; transition: transform .08s, background .2s;
+  }
+  button:active { transform: scale(.97); background: #36325090; }
+  button[disabled] { opacity: .38; }
+  button .i { font-size: 24px; width: 30px; text-align: center; flex: none; }
+  button .l { font-weight: 600; font-size: 14px; }
+  button .s { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+  button.wide { grid-column: 1 / -1; }
+  button.glow { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+  .j { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .j li { padding: 6px 0; border-top: 1px solid var(--line); }
+  .j li:first-child { border-top: 0; }
+  .j time { color: var(--muted); margin-right: 6px; }
+  .toast {
+    position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translate(-50%, 120px);
+    background: var(--green); color: #10251b; font-weight: 700; padding: 10px 18px; border-radius: 999px;
+    transition: transform .25s; pointer-events: none;
+  }
+  .toast.on { transform: translate(-50%, 0); }
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
+</style>
+</head>
+<body>
+<h1><img src="icon.png" alt="">Саксията</h1>
+<div class="seen" id="seen">Свързване…</div>
+
+<div id="app" hidden>
+  <div class="card">
+    <div class="stage" id="stage">…</div>
+    <div class="bars">
+      <div class="bar">Растеж<div class="track"><div class="fill" id="fPct" style="background:var(--green)"></div></div><b id="tPct"></b></div>
+      <div class="bar">Вода<div class="track"><div class="fill" id="fWater" style="background:var(--blue)"></div></div><b id="tWater"></b></div>
+      <div class="bar">Здраве<div class="track"><div class="fill" id="fHealth" style="background:var(--red)"></div></div><b id="tHealth"></b></div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="grid" id="buttons"></div>
+
+  <div class="card">
+    <h2>Дневник</h2>
+    <ul class="j" id="journal"></ul>
+  </div>
+</div>
+
+<div class="empty" id="nokey" hidden>
+  Отвори тази страница от QR кода на Mac-а:<br>иконката горе → „📱 Дистанционно от телефона“.
+</div>
+
+<div class="toast" id="toast">Изпратено ✓</div>
+
+<script>
+(function () {
+  var key = (location.hash || "").slice(1);
+  try {
+    if (key) localStorage.setItem("potKey", key); else key = localStorage.getItem("potKey") || "";
+  } catch (e) {}
+  if (!key) { document.getElementById("nokey").hidden = false; document.getElementById("seen").textContent = ""; return; }
+  if (!location.hash) history.replaceState(null, "", "#" + key);
+
+  var CMD = "https://ntfy.sh/pot-" + key + "-c";
+  var ST = "https://ntfy.sh/pot-" + key + "-s";
+  var state = null;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function send(cmd, label) {
+    fetch(CMD, { method: "POST", body: cmd }).then(function () {
+      if (label) toast(label);
+    }).catch(function () { toast("Няма връзка 😕"); });
+  }
+  var tt;
+  function toast(t) {
+    var el = $("toast"); el.textContent = t; el.classList.add("on");
+    clearTimeout(tt); tt = setTimeout(function () { el.classList.remove("on"); }, 1800);
+  }
+
+  function ago(t) {
+    var m = Math.round((Date.now() / 1000 - t) / 60);
+    if (m < 1) return "току-що";
+    if (m < 60) return "преди " + m + " мин";
+    var h = Math.round(m / 60);
+    return "преди " + h + " ч";
+  }
+  function hhmm(t) {
+    var d = new Date(t * 1000);
+    return d.getDate() + "." + String(d.getMonth() + 1).padStart(2, "0") + " " +
+      String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+  function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+  function btn(icon, label, sub, cmd, ok, opts) {
+    opts = opts || {};
+    return '<button data-cmd="' + cmd + '"' + (ok ? "" : " disabled") +
+      ' class="' + (opts.wide ? "wide " : "") + (opts.glow ? "glow" : "") + '">' +
+      '<span class="i">' + icon + '</span><span class="l">' + label +
+      (sub ? '<span class="s">' + sub + "</span>" : "") + "</span></button>";
+  }
+
+  function render() {
+    var s = state; if (!s) return;
+    $("app").hidden = false;
+    var old = Date.now() / 1000 - s.t > 35 * 60;
+    $("seen").textContent = old
+      ? "Mac-ът спи или е изключен (последно " + ago(s.t) + "). Командите ще чакат и ще се изпълнят, щом се събуди."
+      : "Mac-ът е на линия · обновено " + ago(s.t);
+    $("seen").className = "seen" + (old ? " warn" : "");
+    $("stage").textContent = "🌱 " + s.stage;
+    [["Pct", s.pct], ["Water", s.water], ["Health", s.health]].forEach(function (p) {
+      var v = Math.max(0, Math.min(100, p[1]));
+      $("f" + p[0]).style.width = v + "%"; $("t" + p[0]).textContent = v + "%";
+    });
+    var chips = [];
+    if (s.st >= 3) chips.push("🍎 на растението: " + s.fruits);
+    chips.push("🪣 в кофата: " + s.bucket);
+    if (s.weeds) chips.push("🌿 бурени: " + s.weeds);
+    if (s.ants) chips.push("🐜 мравки: " + s.ants);
+    if (s.egg >= 0) chips.push("🥚 яйце: " + s.egg + "%");
+    if (s.c1) chips.push("🐉 " + s.c1);
+    if (s.c2) chips.push("✨ " + s.c2);
+    if (s.hidden) chips.push("🙈 скрита");
+    $("chips").innerHTML = chips.map(function (c) { return '<span class="chip">' + esc(c) + "</span>"; }).join("");
+
+    var b = "";
+    if (s.wish) b += btn("🌠", "Желание", "дървото чака", "wish", true, { wide: true, glow: true });
+    b += btn("💧", "Полей", s.water > 90 ? "пълно е" : "", "water", true);
+    b += btn("🧪", "Тор", s.fert ? "двоен растеж" : "още не може", "fert", s.fert);
+    if (s.st >= 3) b += btn("🍎", "Откъсни плод", "в кофата", "pick", s.fruits > 0);
+    b += btn("🪣", "Нахрани растението", "с плод от кофата", "feed", s.bucket > 0);
+    if (s.c1) b += btn("💗", "Погали", esc(s.c1), "pet", true);
+    if (s.c1) b += btn("🍓", "Нахрани", esc(s.c1), "feedc", s.bucket > 0);
+    if (s.c2) b += btn("💗", "Погали", esc(s.c2), "pet2", true);
+    b += btn("🌿", "Плеви", "", "weeds", s.weeds > 0);
+    b += btn("🐜", "Изгони мравките", "", "ants", s.ants > 0);
+    if (s.egg >= 0) b += btn("🥚", "Стопли яйцето", "", "egg", true);
+    b += btn("🔔", "Звънни", "тревога!", "bell", true);
+    $("buttons").innerHTML = b;
+
+    $("journal").innerHTML = (s.j || []).map(function (e) {
+      return "<li><time>" + hhmm(e.t) + "</time>" + esc(e.x) + "</li>";
+    }).join("") || "<li>Още нищо.</li>";
+  }
+
+  $("buttons").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b || b.disabled) return;
+    send(b.getAttribute("data-cmd"), "Изпратено ✓");
+    if (navigator.vibrate) navigator.vibrate(15);
+  });
+
+  function onStatus(msg) {
+    try {
+      var s = JSON.parse(msg);
+      if (!state || s.t >= state.t) { state = s; render(); }
+    } catch (e) {}
+  }
+
+  var es;
+  function connect() {
+    if (es) es.close();
+    es = new EventSource(ST + "/sse?since=12h");
+    es.onmessage = function (e) {
+      try { var m = JSON.parse(e.data); if (m.event === "message") onStatus(m.message); } catch (x) {}
+    };
+    es.onerror = function () { $("seen").textContent = state ? $("seen").textContent : "Няма връзка, опитвам пак…"; };
+  }
+  connect();
+  send("ping");
+  setTimeout(function () { if (!state) $("seen").textContent = "Чакам Mac-а да се обади… (трябва приложението да е обновено и пуснато)"; }, 8000);
+  setInterval(render, 30000);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) { connect(); send("ping"); }
+  });
+})();
+</script>
+</body>
+</html>
