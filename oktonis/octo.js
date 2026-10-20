@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 18;
+const VER = 19;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -973,6 +973,7 @@ function draw(ctx, o) {
     LOOK = [dx / d * m, dy / d * m * 0.8];
   }
   if (o.glasses === false && A.gog === "on") A = { ...A, gog: "none", eye: 30 };   // очилата още не са пристигнали
+  if (mode === "work" && age !== "egg") A = { ...A, gog: "on" };   // предпазни очила при майсторене
   if (CUTE) {                          // сладкият стил: без очила (само маска при работа), кръгла глава
     const old = age === "old", aging = age === "aging";
     A = { ...A, gog: mode === "work" ? "on" : "none", brows: null, mustache: false, paci: false, freckles: false, tuft: false,
@@ -1010,6 +1011,6 @@ function draw(ctx, o) {
   return { top: o.y + top * k, r: 260 * k, cy: o.y + (top + 200) * k / 2 };
 }
 
-window.Octo = { V: 15, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
+window.Octo = { V: VER, draw, AGES: ["egg", "baby", "kid", "teen", "adult", "aging", "old"],
   AGE_NAMES: { egg: "Яйце", baby: "Бебе", kid: "Малък", teen: "Тийнейджър", adult: "Голям", aging: "Застаряващ", old: "Много стар" } };
 })();

@@ -115,6 +115,18 @@
   .mix .slot { height: 54px; border-radius: 14px; background: rgba(0,0,0,.28); display: grid; place-items: center; font-size: 30px; cursor: pointer; }
   .btns { display: flex; gap: 5px; } .btns button { padding: 8px 9px; } .add { background: #b39ddb; color: #2a1730; font-weight: 700; }
   .eat { background: #6fd3a0; color: #1f2a20; font-weight: 700; } .it.want { background: rgba(255,209,102,.14); border-radius: 10px; }
+  #sheet.airy { background: linear-gradient(rgba(10,30,60,0), rgba(10,30,60,.55) 30%); border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; text-align: center; padding-top: 26px; }
+  .who { font-size: 22px; font-weight: 800; text-shadow: 0 2px 6px rgba(0,0,0,.5); } .who small { display: block; font-size: 13px; font-weight: 500; color: #d8ecff; }
+  .meters { display: flex; justify-content: center; gap: 14px; margin: 16px 0 12px; flex-wrap: wrap; }
+  .mt { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--c) calc(var(--v) * 1%), rgba(255,255,255,.18) 0); }
+  .mt span { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; background: rgba(12,32,60,.75); }
+  .feel { color: #eaf6ff; font-size: 15px; text-shadow: 0 1px 3px rgba(0,0,0,.6); margin-bottom: 6px; }
+  .ghost { background: none; color: #cfe3f5; font-size: 13px; text-decoration: underline; margin-top: 8px; }
+  .mixbar { position: sticky; bottom: calc(-1 * max(18px, env(safe-area-inset-bottom))); margin: 10px -16px calc(-1 * max(18px, env(safe-area-inset-bottom))); padding: 10px 16px max(14px, env(safe-area-inset-bottom));
+    background: rgba(12,30,54,.97); border-top: 1px solid rgba(255,255,255,.12); display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 6px; align-items: center; }
+  .mixbar .slot { height: 48px; border-radius: 12px; background: rgba(0,0,0,.3); border: 2px dashed rgba(255,255,255,.18); display: grid; place-items: center; font-size: 26px; cursor: pointer; }
+  .mixbar .slot.full { border-style: solid; border-color: #b39ddb; }
+  .mixbar .try { width: auto; padding: 12px; }
   .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
   #bubble .t { font-size: 15px !important; }
   .life { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
@@ -127,6 +139,11 @@
   #chatBtn { position: fixed; left: 14px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 4px); width: 58px; height: 58px; border-radius: 50%;
     background: rgba(255,250,242,.95); border: 3px solid var(--ink); box-shadow: 0 4px 0 rgba(0,0,0,.28); font-size: 27px; padding: 0; z-index: 4; cursor: pointer; }
   #chatBtn i { position: absolute; top: -3px; right: -3px; width: 18px; height: 18px; border-radius: 50%; background: #ff5a5f; border: 3px solid var(--ink); display: none; }
+  #pop { position: fixed; left: 17px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 74px); display: flex; flex-direction: column-reverse; gap: 8px; z-index: 4; }
+  #pop button { width: 52px; height: 52px; border-radius: 50%; padding: 0; font-size: 24px; background: rgba(255,250,242,.95); border: 3px solid var(--ink); color: #2a1730;
+    box-shadow: 0 3px 0 rgba(0,0,0,.25); animation: popin .18s ease backwards; }
+  #pop button.txt { font-size: 15px; font-weight: 800; } #pop button.yes { background: #8fe0b4; } #pop button.no { background: #ffa3a3; }
+  @keyframes popin { from { transform: translateY(20px) scale(.4); opacity: 0; } }
   #chatBtn.ping i { display: block; } #chatBtn.ping { animation: wig .6s infinite; }
   .msgs.quick { max-height: none; min-height: 0; }
   .msgs { max-height: 42vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px 0 10px; }
@@ -158,7 +175,8 @@
 <div id="ver" style="position:fixed;right:8px;bottom:max(6px,env(safe-area-inset-bottom));font-size:10px;color:rgba(255,255,255,.55);z-index:2;pointer-events:none"></div>
 <div id="hint" class="hidden">Докосни Октонис 🐙</div>
 <div id="handle" class="hidden" title="Как е"></div>
-<button id="chatBtn" class="hidden" title="Разговор">💬<i></i></button>
+<button id="chatBtn" class="hidden" title="Отговори">💬<i></i></button>
+<div id="pop" class="hidden"></div>
 <div id="bubble" class="hidden"><div class="e" id="bubbleE"></div><div class="t" id="bubbleT"></div></div>
 <div id="ring"></div>
 
@@ -309,12 +327,12 @@ function spoil(t) {
     }
   }
 }
-function spawnFloor(t) {
-  if (S.trash.length < 7 && Math.random() < 1 / 40) {
+function spawnFloor(t, f = 1) {
+  if (S.trash.length < 7 && Math.random() < f / 40) {
     S.trash.push({ id: uid(), k: pick(FLOOR.junk), x: rnd(0.08, 0.92), t });
     if (S.trash.length === 4) log("🗑️ Около него се събраха боклуци. Не може да ги гледа.", t);
   }
-  if (S.parts.length < 5 && Math.random() < 1 / 22) S.parts.push({ id: uid(), k: pick(FLOOR.other), x: rnd(0.08, 0.92), t });
+  if (S.parts.length < 5 && Math.random() < f / 22) S.parts.push({ id: uid(), k: pick(FLOOR.other), x: rnd(0.08, 0.92), t });
 }
 function pickFloor(id, by) {
   const ti = S.trash.findIndex(x => x.id === id), pi = S.parts.findIndex(x => x.id === id);
@@ -362,20 +380,39 @@ function makeIdea(t) {
   if (!pair) return null;
   return { a: pair[0], b: pair[1], t };
 }
-function ideaText(id) { return `Хм… ако съчетая ${elN(id.a).toLowerCase()} с ${elN(id.b).toLowerCase()}? Да пробвам ли?`; }
+function ideaText(id) {
+  const ab = `${elN(id.a).toLowerCase()} с ${elN(id.b).toLowerCase()}`;
+  if (id.src) return `Сетих се нещо от „${id.src}“… Ако съчетая ${ab}? Да пробвам ли?`;
+  return id.ask ? `Хм… ако се смеси ${ab}? Ще го смесиш ли ти за мен?` : `Хм… ако съчетая ${ab}? Да пробвам ли?`;
+}
 function proposeIdea() {
   if (!S.hatched || S.q || S.naming || stageIdx() < 2) return;
-  const id = makeIdea(S.t); if (!id) return;
+  // идеите от прочетените книги идват след часове, не веднага
+  const due = (S.bookIdeas || []).find(b => b.at < Date.now());
+  let id = null;
+  if (due) {
+    S.bookIdeas = S.bookIdeas.filter(b => b !== due);
+    const [a, b] = recOf(due.c);
+    if (!S.found.includes(due.c)) {
+      S.hints = [...new Set([...(S.hints || []), due.c])];
+      if (canPair(a, b)) id = { a, b, t: S.t, src: due.src };
+      else { if (!S.future.some(f => recKey(f.a, f.b) === recKey(a, b))) S.future = [...S.future, { a, b, src: due.src }].slice(-30);
+        return oSays(`Сетих се нещо от „${due.src}“! Трябват ми ${elN(a).toLowerCase()} и ${elN(b).toLowerCase()}. Записах го в тетрадката.`); }
+    }
+  }
+  if (!id) id = makeIdea(S.t);
+  if (!id) return;
+  if (!id.src && S.stage === "kid" && Math.random() < 0.3) id.ask = true;
   S.idea = id;
-  S.q = { id: "idea", t: Date.now(), tries: 0, text: ideaText(id) };
+  S.q = { id: "idea", path: [], t: Date.now(), tries: 0, text: ideaText(id) };
   oSays(S.q.text, 9000);
 }
 function ideaYes() {
   const id = S.idea; S.idea = null;
   if (!id || !canPair(id.a, id.b)) return "Ох, вече нямам тези неща. Друг път.";
-  if (stageIdx() >= 4) { setTimeout(() => mix(id.a, id.b, "him"), 1500); return "Почвам! Не ме разсейвай."; }
-  S.task = { a: id.a, b: id.b };
-  return `Ти го направи, моля! Отвори торбата и смеси ${elN(id.a).toLowerCase()} и ${elN(id.b).toLowerCase()}. Аз ще гледам.`;
+  if (id.ask) { S.task = { a: id.a, b: id.b }; return `Благодаря! Отвори торбата и смеси ${elN(id.a).toLowerCase()} и ${elN(id.b).toLowerCase()}. Аз ще гледам.`; }
+  setTimeout(() => mix(id.a, id.b, "him"), 2500);
+  return pick(["Отивам да го направя!", "Супер! Почвам веднага.", "Да! Отивам за масата."]);
 }
 function ideaNo() {
   const id = S.idea; S.idea = null;
@@ -384,25 +421,30 @@ function ideaNo() {
 }
 
 // ---------- Смесване ----------
-let working = 0, mixing = null;
-function mix(a, b, who) {
+let working = 0, mixing = null, table = null;
+const WORK_MS = 13500;          // 2.5 с за масата, 3 с влачене, очила, после майстори
+function haveAll(list) { const c = {}; for (const k of list) c[k] = (c[k] || 0) + 1; return Object.entries(c).every(([k, n]) => cnt(k) >= n); }
+function mix(a, b, who, more = []) {
   if (role !== "keeper" || working || reading) return say("", "Чакай, зает съм!");
-  if (!canPair(a, b)) return say("", "Нямам достатъчно от тези неща.");
+  if (!haveAll([a, b, ...more])) return say("", "Нямам достатъчно от тези неща.");
   if (S.asleep) return say("", "Шшш… спи.");
   if (S.energy < 12) return say("", "Нямам сили. Първо да поспя.");
   if (S.stage === "baby") return say("", "Ба-бу! Още съм малък за това.");
-  working = performance.now(); mixing = { a, b, who }; closeSheet(); closeRing();
-  say("", who === "me" ? `Ти смесваш ${elN(a).toLowerCase()} и ${elN(b).toLowerCase()}… Аз гледам внимателно!` : "Не ме разсейвай! Работя!", 6000);
-  setTimeout(mixDone, 6000);
+  working = performance.now(); mixing = { a, b, who, more }; closeSheet(); closeRing(); table = { x: null, a: 0 };
+  say("", pick(["Чакай! Отивам за масата.", "Момент, трябва ми работната маса!"]), 2500);
+  setTimeout(() => say("", "Предпазните очила. Безопасността преди всичко!", 2000), 5600);
+  setTimeout(() => say("", who === "me" ? "Ти смесвай, аз държа! Не ме разсейвай!" : "Не ме разсейвай! Работя!", 5500), 7200);
+  setTimeout(mixDone, WORK_MS);
 }
 function mixDone() {
   working = 0;
-  const { a, b, who } = mixing; mixing = null;
-  const c = RECIPE[recKey(a, b)], now = Date.now(), name = `${elN(a)} + ${elN(b)}`;
+  const { a, b, who, more } = mixing; mixing = null; if (table) table.until = performance.now() + 2500;
+  const all = [a, b, ...(more || [])], key = all.slice().sort().join("+");
+  const c = all.length === 2 ? RECIPE[recKey(a, b)] : null, now = Date.now(), name = all.map(elN).join(" + ");
   S.energy = clamp(S.energy - 6); S.lastCare = now; dirty = true;
   if (S.task && recKey(S.task.a, S.task.b) === recKey(a, b)) S.task = null;
   if (!c) {                                       // не работи: записва го
-    S.nope = [...new Set([...(S.nope || []), recKey(a, b)])];
+    S.nope = [...new Set([...(S.nope || []), key])];
     log(`📓 ${name}: не работи. Записано.`);
     say("", pick(["Нищо. Абсолютно нищо. Записвам го: не работи.", "Пуф! Не става. Поне знаем.", "Това не работи. Записах го, няма да го пробвам пак."]));
     if (Math.random() < 0.15) { S.hurt = 1; S.health = clamp(S.health - 5); fx.hurt = performance.now(); }
@@ -646,43 +688,153 @@ function askNext(forced) {
   if (!list.length) { if (forced) { closeSheet(); oSays(pick(["Нямам въпроси сега. Мисля си.", "Хм… Ще измисля нещо и ще те питам."])); } return; }
   const q = pick(list);
   S.followUp = null;
-  S.q = { id: q.id, t: now, tries: 0, text: qText(q) };
+  S.q = { id: q.id, path: [], t: now, tries: 0, text: qText(q) };
   S.asked[q.id] = now;
   oSays(S.q.text, 9000);
 }
+// ---------- Отговори с иконки: да, не, сърце, смях, махане, въпрос, скарване ----------
+const LABEL = { yes: "Да", no: "Не", love: "❤️", laugh: "😂", wave: "👋", ask: "❓", scold: "😠" };
+const CARE_OF = { love: "❤️", laugh: "😂", wave: "👋" };
+// разговори с разклонения: всяка реакция е текст, функция или { s: текст, n: следващ възел }
+Q.push(
+  { id: "dShell", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Виж! Блестяща раковина! Хубава е, нали?",
+    yes: "Нали! Ще я сложа на рафта. До другите, подредени по големина.",
+    no: { s: "Какво, не?", n: { q: "Наистина ли не ти харесва?", yes: "Хм. Е, на мен ми харесва. Вкусовете са различни.", no: "Аха, значи ти харесва! Объркваш ме.", laugh: "Шегуваш се с мен! Знаех си.", scold: "Добре, добре. Няма значение… Ще я харесвам сам." } },
+    laugh: "Защо се смееш? Раковините са сериозна работа.", ask: "Ей там, до камъка. Лъскавата. Хубава е, нали?", love: "И ти я харесваш! Ще я кръстя на теб." },
+  { id: "dBubbles", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Преброих мехурчетата днес. Двеста и дванайсет! Да ти кажа ли колко бяха вчера?",
+    yes: "Двеста и единайсет! Растем!", no: "Добре… Ама бяха двеста и единайсет. Просто да знаеш.",
+    laugh: "Не е смешно. Това е статистика!", ask: "Мехурчетата. Броя ги всеки ден. Някой трябва." },
+  { id: "dJoke", st: ["kid", "teen", "adult", "aging", "old"], every: 1440, q: "Искаш ли да ти кажа виц?",
+    yes: { s: "Защо октоподът не играе карти? Защото има осем ръце и всички го хващат, че мами!", n: { q: "Смешно ли беше?",
+      yes: "Знаех си! Аз съм много забавен. Записвам го.", laugh: "Смееш се! Перфектно. Работи.",
+      no: { s: "Какво, не? Ох.", n: { q: "Да ти кажа ли друг?", yes: "Какво е синьо и подредено? Морето, след като мина аз!", no: "Добре. Ще го пазя за по-добър ден.", laugh: "Ха! Даже не съм го казал още!" } } } },
+    no: "Хм. Друг път тогава. Имам цял списък с вицове.", laugh: "Още не съм го казал!" },
+  { id: "dRock", st: ["kid", "teen", "adult", "aging", "old"], every: 4320, q: "Мисля, че камъкът се помръдна. Видя ли?",
+    yes: "И ти ли?! Значи не си въобразявам!",
+    no: { s: "Не? Сигурен ли си?", n: { q: "Сигурен ли си?", yes: "Добре… Ще го наблюдавам. Цяла нощ, ако трябва.", no: "Значи може и да се е помръднал! Знаех си.", laugh: "Смееш се, а той може да ни гледа." } },
+    laugh: "Не се смей! Камъните са коварни.", ask: "Камъкът! Големият, вдясно. Помръдна се. Видя ли?" },
+  { id: "dDream", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Сънувах, че подреждам цял подводен град. Хубав сън ли е?",
+    yes: "Да! Всичко беше под прав ъгъл. Даже рибите.", no: "Може би. Малко беше страшно. Градът ме гледаше.", laugh: "Смешно ли е? За мен беше най-хубавият сън." },
+  { id: "dBolt", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Трябва ми мнение. Болтът е по-хубав от зъбното колело, нали?",
+    yes: "Болтът! Класика. Знаех си.", no: "Значи зъбното колело. Смело решение. Уважавам го.", ask: "Болт или зъбно колело? Кое е по-хубаво? Болтът ли?" },
+  { id: "dWeeds", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Подредих водораслите по височина. Забеляза ли?",
+    yes: "Знаех си, че ще забележиш! Ти си внимателен.",
+    no: { s: "Какво, не? Цяла сутрин ги подреждах!", n: { q: "Ще ги погледнеш ли сега?", yes: "Благодаря. Най-високото е вляво. Обърни му внимание.", no: "Ох. Няма значение… Ще ги подредя пак.", love: "Добре, прощавам ти." } },
+    love: "Ох. Това значи, че ти харесва. Разбрах." },
+  { id: "dFish", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Една рибка ми каза здрасти днес. Да ѝ кажа ли и от теб?",
+    yes: "Ще ѝ кажа! Тя ще се зарадва.", no: "Добре. Ще пазя поздравите само за теб.", wave: "Ето, махна! Ще ѝ предам." },
+  { id: "dMiss", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Липсвах ли ти?",
+    yes: "И ти на мен! Броих минутите.", love: "Ох. Това значи да. Разбрах.",
+    no: { s: "Какво, не?", n: { q: "Ама поне малко?", yes: "Малко е достатъчно. Записвам го.", no: "Пфф. Добре. Не ми пука. Много.", laugh: "Шегуваш се! Знаех си." } } },
+  { id: "dCold", st: ["kid", "teen", "adult", "aging", "old"], every: 1440, q: "Днес водата е по-студена. При теб студено ли е?",
+    yes: "Облечи се! Аз имам осем ръкава, ти само два.", no: "Хубаво. Аз ще се стопля с работа." },
+  { id: "dSong", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Измислих песен. Да ти я изпея?",
+    yes: { s: "Бълбук-бълбук, болт и гайка, бълбук-бълбук, мида-майка…", n: { q: "Хареса ли ти?", yes: "Ще стана звезда!", no: "Още работя по нея.", laugh: "Смееш се?! Това беше балада!", love: "Ох. Ще ти я пея всеки ден." } },
+    no: "Добре. Ще я пея на камъка. Той не се оплаква." },
+  { id: "dClean", st: ["teen"], every: 1440, q: "Може ли днес да не чистя?",
+    yes: "Супер! Ох, чакай… Аз съм Дева. Ще почистя все пак.", no: "Пфф. Знаех си.", scold: "Добре де! Ще чистя! Не се карай." },
+  { id: "dFirst", st: ["aging", "old"], every: 2880, q: "Разказвал ли съм ти как изобретих първото си нещо?",
+    yes: "Да, но ще ти го разкажа пак. Беше един мокър ден… Тук всички дни са мокри.", no: "Ами беше така: имах една консерва и една жица… И стана телефон!" },
+);
+// отговорът спрямо текущия възел в разговора
+function qNode() {
+  const root = Q.find(x => x.id === S.q.id); if (!root) return null;
+  let n = root; for (const k of S.q.path || []) n = n[k] && n[k].n ? n[k].n : n;
+  return { root, n };
+}
 function answer(ans) {
   if (role !== "keeper" || !S.q) return;
-  const q = Q.find(x => x.id === S.q.id); if (!q) { S.q = null; return; }
-  chatPush("u", ans === "yes" ? "Да" : "Не");
-  const r = typeof q[ans] === "function" ? q[ans]() : q[ans];
-  const set = q.set && q.set[ans];
+  const f = qNode(); if (!f) { S.q = null; return; }
+  const { root, n } = f, path = S.q.path || [];
+  let r = n[ans];
+  if (r == null) return defaultReact(ans);
+  chatPush("u", LABEL[ans]);
+  if (CARE_OF[ans]) { capture = true; careEffect(ans); capture = false; }
+  let next = null;
+  if (r && typeof r === "object") { next = r.n; r = r.s; }
+  r = typeof r === "function" ? r() : r;
+  const set = n.set && n.set[ans];
   if (set) for (const [k, v] of Object.entries(set)) S.facts[k] = typeof v === "function" ? v() : v;
-  if (q.mood && q.mood[ans]) S.mood = clamp(S.mood + q.mood[ans]);
-  S.answers = S.answers || {}; S.answers[q.id] = ans;
-  if (PD[q.id + ":" + ans]) pdiary(PD[q.id + ":" + ans]);
-  S.q = null; S.lastCare = Date.now();
-  setTimeout(() => { oSays(r); render(); }, 700);
-  if (q.next && q.next[ans]) { S.followUp = q.next[ans]; setTimeout(() => askNext(), 4500); }
+  if (n.mood && n.mood[ans]) S.mood = clamp(S.mood + n.mood[ans]);
+  if (ans === "scold") S.mood = clamp(S.mood - 4);
+  if (!path.length) { S.answers = S.answers || {}; S.answers[root.id] = ans; }
+  if (PD[root.id + ":" + ans]) pdiary(PD[root.id + ":" + ans]);
+  S.q = next ? { id: root.id, path: [...path, ans], t: Date.now(), tries: 0, text: qText(next) } : null;
+  S.lastCare = Date.now();
+  const nq = S.q;
+  setTimeout(() => { if (r) oSays(r); render(); if (nq) setTimeout(() => { if (S.q === nq) oSays(nq.text, 9000); }, r ? 3200 : 0); }, 700);
+  if (!next && !path.length && root.next && root.next[ans]) { S.followUp = root.next[ans]; setTimeout(() => askNext(), 5000); }
   save();
 }
-// емотикон вместо отговор: обърква се и пита пак
-function chatEmoji(e) {
-  if (role !== "keeper") return;
-  chatPush("u", e);
-  if (S.q && !S.naming) {
-    S.q.tries++;
-    closeSheet();
-    const pending = S.q;
-    capture = true; careAct(e); capture = false;          // все пак му е приятно
-    setTimeout(() => {
-      if (pending.tries >= 3) { oSays("Добре, явно не искаш да отговориш. Ще те питам друг път."); S.q = null; save(); return; }
-      oSays(CONFUSED[Math.min(pending.tries - 1, CONFUSED.length - 1)](e));
-      setTimeout(() => { if (S.q === pending) oSays(pending.text, 9000); }, 2600);
-    }, 900);
-    return;
-  }
-  capture = true; careAct(e); capture = false;
+function careEffect(ans) {                 // сърце, смях и махане все пак му действат
+  if (ans === "love") S.mood = clamp(S.mood + 4), S.track.play++;
+  if (ans === "laugh") S.mood = clamp(S.mood + 2);
+  if (ans === "wave") S.mood = clamp(S.mood + 1);
 }
+// отговор, който не пасва на въпроса
+function defaultReact(ans) {
+  const q = S.q, baby = S.stage === "baby";
+  chatPush("u", LABEL[ans]);
+  if (ans === "ask") return oSays(baby ? "~Ъ? Бебо пита! " + q.text.replace(/^~/, "") : pick(["Не разбра ли? Питам: ", "Ами… питам те: "]) + q.text + " Да или не?", 9000);
+  if (ans === "scold") { S.q = null; S.mood = clamp(S.mood - 6); fx.hurt = performance.now(); save();
+    return oSays(baby ? "~Уааа! Бебо само пита!" : S.stage === "teen" ? "Ей! Само питах. Пфф." : pick(["Ох… Добре, няма да питам.", "Защо се караш? Само питах…"])); }
+  if (ans === "yes" || ans === "no") { S.q = null; save(); return oSays(ans === "yes" ? pick(["Да? Добре. Записах го.", "Хубаво!"]) : pick(["Не? Добре де.", "Хм. Няма значение тогава."])); }
+  q.tries++; careEffect(ans);
+  setTimeout(() => {
+    if (q.tries >= 3) { oSays("Добре, явно не искаш да отговориш. Ще те питам друг път."); S.q = null; save(); return; }
+    oSays(baby ? "~Хи-хи! Ама да или не?" : CONFUSED[Math.min(q.tries - 1, CONFUSED.length - 1)](CARE_OF[ans]));
+    setTimeout(() => { if (S.q === q) oSays(q.text, 9000); }, 2600);
+  }, 500);
+  save();
+}
+// иконка, когато нищо не е питал
+let lastLine = { t: 0, x: "" };
+function react(ans) {
+  if (role !== "keeper" || !S || !S.hatched) return;
+  closePop();
+  if (S.naming) return openSheet("chat");
+  S.lastCare = Date.now(); dirty = true;
+  if (S.q && !S.asleep) return answer(ans);
+  const baby = S.stage === "baby", teen = S.stage === "teen";
+  if (CARE_OF[ans]) { chatPush("u", LABEL[ans]); return careAct(CARE_OF[ans]); }
+  chatPush("u", LABEL[ans]);
+  if (S.asleep) {
+    if (ans === "scold") { S.asleep = false; S.mood = clamp(S.mood - 8); log("😠 Събуди го с караници."); save(); return say("", baby ? "~Уааа! Бебо спеше!" : "Ох! Спях! Защо се караш?!"); }
+    return say("", "Шшш… спи.");
+  }
+  const recent = performance.now() - lastLine.t < 25000;
+  if (ans === "yes") return say("", baby ? "~Да! Да! Да!" : recent ? pick(["Нали?! Знаех си, че ще се съгласиш.", "Точно така!"]) : pick(["Да какво? Нищо не съм питал.", "Да? Хубаво. За какво говорим?"]));
+  if (ans === "no") return say("", baby ? "~Не-не-не! Хи-хи!" : recent ? pick(["Какво, не? Няма значение…", "Не? Хм. Ще помисля пак."]) : pick(["Не? Ама аз нищо не съм казал!", "Не какво? Объркваш ме."]));
+  if (ans === "ask") {
+    if (baby) return say("", "~Ъ? Бебо не знае! Хи-хи!");
+    if (working) return say("", "Майсторя! Не виждаш ли масата?");
+    if (S.sick) return say("", "Не ми е добре… Боли ме коремчето. Сигурно от бъркотията или от глада.");
+    if (S.hunger > 65) return say("", "Гладен съм. Затова съм такъв.");
+    if (S.trash.length >= 3) return say("", "Боклуците ме изнервят. Не мога да мисля така.");
+    if (S.task) return say("", `Чакам да смесиш ${elN(S.task.a).toLowerCase()} и ${elN(S.task.b).toLowerCase()}.`);
+    if (Math.random() < 0.5) return askNext(true);
+    return say("", pick(["Какво ли? Просто си плувам и мисля.", "Мисля за изобретения. Както винаги.", "Нищо. Броя мехурчетата. Пак."]));
+  }
+  if (ans === "scold") {
+    S.mood = clamp(S.mood - 8); fx.hurt = performance.now(); save();
+    if (baby) return say("", "~Уааа! Бебо тъжен!");
+    if (teen) return say("", pick(["Ама аз нищо не съм направил! Пфф.", "Защо все на мен се караш?!"]));
+    if (S.trash.length >= 3) return say("", "Не съм ги хвърлил аз тези боклуци! Честно!");
+    if (performance.now() - fx.hurt < 60000 && S.hurt) return say("", "Знам… провалих се. Ще се постарая повече.");
+    return say("", pick(["Ох. Какво направих? Кажи ми и ще го поправя.", "Добре… Ще бъда по-подреден. Обещавам."]));
+  }
+}
+// изскачащите балончета над бутона
+function togglePop() {
+  if (!S || !S.hatched || role !== "keeper") return;
+  if (S.naming) return openSheet("chat");
+  const p = $("pop");
+  if (!p.classList.contains("hidden")) return closePop();
+  p.innerHTML = Object.entries(LABEL).map(([k, v], i) => `<button data-k="${k}" class="${k === "yes" || k === "no" ? "txt " + k : ""}" style="animation-delay:${i * 30}ms">${v}</button>`).join("");
+  p.classList.remove("hidden");
+  p.querySelectorAll("button").forEach(b => b.onclick = ev => { ev.stopPropagation(); react(b.dataset.k); });
+}
+function closePop() { $("pop").classList.add("hidden"); }
 let capture = false;
 // бележка от стария Октонис: как да се казва наследникът
 const NAMES = ["Октавио", "Пипалчо", "Мехурчо", "Бълбук", "Винтчо", "Зъбчо", "Искрица", "Пружинко", "Гайко", "Магнитко",
@@ -762,7 +914,7 @@ const has = t => S && (traitsOf().includes(t) || S.inherit === t);
 function stageIdx() { return STAGES.indexOf(S.stage); }
 function ageKey() { return S.stage || "adult"; }
 // всяка минута: расте според грижата
-function grow(t) {
+function grow(t, f = 1) {
   const k = S.track;
   k.lived++;
   if (t - S.lastCare > 3 * 60 * MIN) k.alone++;
@@ -771,7 +923,7 @@ function grow(t) {
   if (bad) k.neglect++;
   if (S.stage === "egg") return;
   const good = S.hunger < 75 && S.trash.length < 5 && !(S.hurt && S.health < 50) && (S.energy > 10 || S.asleep);
-  S.grow += good ? 1 : 0.3;
+  S.grow += (good ? 1 : 0.3) * f;          // докато те няма, расте по-бавно, а нощем не расте
   if (!S.glasses && !S.parcel && stageIdx() >= 3 && S.books >= 3) {
     S.parcel = { x: rnd(0.15, 0.6), t };
     log("📦 Рибата-пощальон донесе колет! На него пише: „За най-четящия октопод“.", t);
@@ -822,31 +974,41 @@ let stageFlash = null, departing = null;
 // Една минута от живота му. offline = докато никой не гледа.
 function minute(t, offline, ev) {
   if (!S.hatched) return;
-  grow(t);
+  const nt = night(t), f = offline ? (nt ? 0.15 : 0.35) : 1;    // без теб всичко тече по-бавно
+  grow(t, offline ? (nt ? 0 : 0.35) : 1);
   if (!S.hatched) return;                      // току-що се е родило ново яйце
   const st = S.stage, drain = (st === "baby" ? 1.4 : st === "aging" ? 1.3 : st === "old" ? 1.5 : 1) * (has("chubby") ? 1.15 : 1);
   if (S.asleep) {
     S.energy = clamp(S.energy + 1.2);
     if (S.energy >= 100 && (!night(t) || Math.random() < 0.02)) { S.asleep = false; log("☀️ Събуди се бодър.", t); }
   } else {
-    S.energy = clamp(S.energy - (night(t) ? 0.25 : 1 / 6) * drain);
+    if (offline && nt && S.energy < 92) { S.asleep = true; log("😴 Нощ е. Легна да спи.", t); }
+    S.energy = clamp(S.energy - (night(t) ? 0.25 : 1 / 6) * drain * f * (S.sick ? 1.3 : 1));
     if (S.energy <= 8) { S.asleep = true; log("😴 Легна на дъното и заспа от умора.", t); }
   }
-  S.hunger = clamp(S.hunger + (S.asleep ? 1 / 14 : 1 / 8) * (st === "baby" ? 2.6 : 1));
+  S.hunger = clamp(S.hunger + (S.asleep ? 1 / 14 : 1 / 8) * (st === "baby" ? 2.6 : 1) * f);
+  // разболява се от много мръсотия или от глад
+  S.badMin = (S.trash.length >= 6 || S.hunger >= 90) ? (S.badMin || 0) + 1 : Math.max(0, (S.badMin || 0) - 2);
+  if (!S.sick && S.badMin > 60) { S.sick = t; S.goodMin = 0; S.mood = clamp(S.mood - 10); log(S.hunger >= 90 ? "🤒 Разболя се от глад." : "🤒 Разболя се от мръсотията.", t); if (!offline) sickSay = true; }
+  if (S.sick) {
+    S.health = clamp(S.health - 0.05);
+    S.goodMin = S.trash.length < 3 && S.hunger < 60 ? (S.goodMin || 0) + 1 : 0;
+    if (S.goodMin > 45) { S.sick = 0; S.badMin = 0; log("💪 Оздравя! Чисто е и е сит.", t); if (!offline) sickSay = "well"; }
+  }
   if (S.hunger >= 95) S.health = clamp(S.health - 0.1);
   else if (S.hunger < 70) S.health = clamp(S.health + (S.hurt ? 0.03 : 0.1));
   if (S.hurt && S.health >= 95) S.hurt = 0;
-  spawnFloor(t);
+  spawnFloor(t, f);
   spoil(t);
   if (has("adventure") && !S.asleep && Math.random() < 1 / 240) {      // експедиция
     const k = pick(FLOOR.other); addMat(k, t); S.pearls += 5;
     log(`🧭 Отплава на експедиция и донесе ${elN(k).toLowerCase()} и 5 перлинга.`, t); if (!offline) expedition = true;
   }
-  const target = (has("chubby") ? 75 : 70) - (has("grumpy") ? 10 : 0) - (S.hunger > 70 ? 20 : 0) - Math.min(30, S.trash.length * (has("perfect") ? 9 : has("recycler") ? 3 : 6)) - (S.hurt ? 12 : 0) - (S.energy < 20 ? 10 : 0);
+  const target = (has("chubby") ? 75 : 70) - (has("grumpy") ? 10 : 0) - (S.hunger > 70 ? 20 : 0) - Math.min(30, S.trash.length * (has("perfect") ? 9 : has("recycler") ? 3 : 6)) - (S.hurt ? 12 : 0) - (S.sick ? 15 : 0) - (S.energy < 20 ? 10 : 0);
   S.mood = clamp(S.mood + Math.sign(target - S.mood) * 0.15);
 }
 function catchUp(now) {
-  const offline = role === "keeper" && now - S.t > 3 * MIN;
+  const offline = now - S.t > 3 * MIN || (role === "keeper" && (document.hidden || performance.now() - ptr.t > 15 * 60000));
   const ev = { n: 0 };
   let steps = 0;
   if (now - S.t > 14 * 24 * 60 * MIN) S.t = now - 14 * 24 * 60 * MIN;
@@ -863,7 +1025,7 @@ const CHATTER = [
 ];
 let lastChat = 0, ideaFlash = 0;
 function chatter() {
-  if (role !== "keeper" || !S.hatched || S.asleep || performance.now() < bubbleUntil + 25000 || performance.now() - lastChat < 40000) return;
+  if (role !== "keeper" || !S.hatched || S.asleep || performance.now() < bubbleUntil + 25000 || performance.now() - lastChat < 150000) return;
   if ((S.stage === "old" || S.stage === "aging") && S.journal.length > 5 && Math.random() < 0.15) {
     lastChat = performance.now(); const j = pick(S.journal.slice(5));
     return say("", "Помня, когато… " + j.x.replace(NO_EMO, "").trim().toLowerCase());
@@ -878,7 +1040,7 @@ function chatter() {
   if (fc.parent === "mama" || fc.parent === "tate") mem.push(fc.parent === "mama" ? "Мамо, гледай какво мога!" : "Тате, гледай какво мога!");
   if (mem.length && Math.random() < 0.25) { lastChat = performance.now(); return say("", pick(mem)); }
   if (S.stage === "baby" && Math.random() < 0.6) { lastChat = performance.now(); return say("", ""); }
-  if (Math.random() > 0.35) return;
+  if (Math.random() > 0.2) return;
   lastChat = performance.now();
   if (S.trash.length >= 3) return say("😖🗑️", pick(["Боклуци! Навсякъде боклуци!", "Не мога да мисля в тази бъркотия.", "Някой да махне това, моля!"]));
   if (S.hunger > 65) return say("🍕?", "Коремът ми къркори…");
@@ -966,11 +1128,9 @@ function readBook() {
   let [title, line] = pick(BOOKS);
   if (own) {
     title = own.n; S.libRead = [...(S.libRead || []), own.id];
-    S.hints = [...new Set([...(S.hints || []), ...own.hints])];
-    const learn = own.hints.filter(c => !S.found.includes(c));
-    for (const c of learn) { const [a, b] = recOf(c); if (!S.future.some(f => recKey(f.a, f.b) === recKey(a, b))) S.future.push({ a, b, src: own.n }); }
-    S.future = S.future.slice(-30);
-    line = learn.length ? `Тук пише как се прави ${elN(pick(learn)).toLowerCase()}! Записвам го в бъдещите идеи.` : "Всичко това вече съм го открил. Но е хубаво да го видиш написано.";
+    let at = Date.now();
+    for (const c of own.hints.filter(c => !S.found.includes(c))) { at += rnd(3, 20) * 60 * MIN; S.bookIdeas = [...(S.bookIdeas || []), { c, at, src: own.n }]; }
+    line = pick(["Интересно… Много интересно. Ще си помисля.", "Хм. Тази книга ме кара да мисля.", "Подчертах си някои неща. С линийка."]);
   }
   reading = performance.now(); closeRing(); S.lastRead = Date.now();
   say("", `Чета „${title}“…`, 5000);
@@ -996,6 +1156,7 @@ function worries() {
   if (S.hunger > 60) w.push("🍕 гладен съм");
   if (S.trash.length >= 2) w.push(`🗑️ ${S.trash.length} боклука около мен`);
   if (S.hurt) w.push("🩹 боли ме");
+  if (S.sick) w.push("🤒 болен съм");
   if (S.energy < 25) w.push("😴 уморен съм");
   if (S.task) w.push(`💡 чакам да смесиш ${elN(S.task.a).toLowerCase()} и ${elN(S.task.b).toLowerCase()}`);
   const bad = YUCK.filter(k => cnt(k));
@@ -1016,7 +1177,7 @@ function tapEgg() {
   }
   save();
 }
-let eggShake = -1e9, hatchAt = -1e9, expedition = false;
+let sickSay = false, eggShake = -1e9, hatchAt = -1e9, expedition = false;
 
 // ---------- Запазване ----------
 let docRef = null, unsub = null;
@@ -1091,7 +1252,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 18;
+const PAGE_V = 19;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1146,38 +1307,38 @@ function closeSheet() {
 }
 $("scrim").onclick = closeSheet;
 $("handle").onclick = () => S && openSheet("stats");
-$("chatBtn").onclick = () => { if (!S) return; openSheet("chat");
-  if (role === "keeper" && S.hatched && !S.asleep && !S.q && !S.naming && Date.now() - lastAsked() > 3 * MIN) setTimeout(() => askNext(), 1200); };
+$("chatBtn").onclick = ev => { ev.stopPropagation(); if (S) togglePop(); };
+document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#pop") && !ev.target.closest("#chatBtn")) closePop(); });
 function lastAsked() { return Math.max(0, ...Object.values(S.asked || {})); }
 let libTab = "found", mixSel = [];
 function fillSheet(kind) {
   const sh = $("sheet");
+  sh.classList.toggle("airy", kind === "stats");
   const head = (title, extra = "") => `<h2>${title} <span>${extra}<button class="x" id="sx">✕</button></span></h2>`;
   if (kind === "lib") {
     const tabs = [["found", "📗 Открития"], ["notes", "📓 Тетрадка"], ["shelf", "📚 Рафт"], ["secret", "🔒 Личен"]];
     let h = head("📚 Библиотека") + `<div class="tabs">${tabs.map(([k, n]) => `<button data-t="${k}" class="${libTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
     if (libTab === "found") {
-      h += `<div class="sub">Книгата на откритията. Всичко, което е успял да направи, и от какво.</div>`;
+      h += `<div class="sub">Книгата на откритията</div>`;
       h += S.found.length ? `<div class="made">${S.found.map(c => { const r = recOf(c);
         return `<div><span>${elE(c)}</span><b>${esc(elN(c))}</b><small>${r ? esc(elN(r[0]) + " + " + elN(r[1])) : ""}</small></div>`; }).join("")}</div>`
         : `<div class="sub">Още е празна. Смесвайте неща от торбата!</div>`;
       const sp = S.seen.filter(k => EL[k] && EL[k][3] === "spoiled");
       if (sp.length) h += `<div class="sub grp">Развалени, но полезни</div><div class="made">${sp.map(k => `<div><span>${elE(k)}</span><b>${esc(elN(k))}</b></div>`).join("")}</div>`;
     } else if (libTab === "notes") {
-      h += `<div class="sub">Тетрадката на изобретателя.</div>`;
       if (S.task) h += `<div class="idea"><div class="ie" style="font-size:30px;white-space:nowrap">${elE(S.task.a)}${elE(S.task.b)}</div><div><b>Задача за теб</b><div class="sub" style="margin:2px 0">Смеси ${esc(elN(S.task.a).toLowerCase())} и ${esc(elN(S.task.b).toLowerCase())} в торбата.</div></div></div>`;
       const fut = (S.future || []).filter(f => !S.found.includes(RECIPE[recKey(f.a, f.b)]));
-      h += `<div class="sub grp">💡 Бъдещи идеи</div>` + (fut.length ? `<ul class="journal">${fut.map(f => `<li>${elE(f.a)} ${esc(elN(f.a))} + ${elE(f.b)} ${esc(elN(f.b))} = ?${f.src && f.src !== "моя идея" ? ` <small>(от „${esc(f.src)}“)</small>` : ""}</li>`).join("")}</ul>` : `<div class="sub">Няма записани. Казвай му „не“ на идеите, които искаш да чакат.</div>`);
+      h += `<div class="sub grp">💡 Бъдещи идеи</div>` + (fut.length ? `<ul class="journal">${fut.map(f => `<li>${elE(f.a)} ${esc(elN(f.a))} + ${elE(f.b)} ${esc(elN(f.b))} = ?${f.src && f.src !== "моя идея" ? ` <small>(от „${esc(f.src)}“)</small>` : ""}</li>`).join("")}</ul>` : `<div class="sub">Празно.</div>`);
       const nope = S.nope || [];
-      h += `<div class="sub grp">✗ Не работи</div>` + (nope.length ? `<ul class="journal">${nope.slice(-40).reverse().map(x => { const [a, b] = x.split("+"); return `<li>${elE(a)} ${esc(elN(a))} + ${elE(b)} ${esc(elN(b))}: нищо</li>`; }).join("")}</ul>` : `<div class="sub">Още нищо не се е провалило. Подозрително.</div>`);
+      h += `<div class="sub grp">✗ Не работи</div>` + (nope.length ? `<ul class="journal">${nope.slice(-40).reverse().map(x => `<li>${x.split("+").map(k => elE(k) + " " + esc(elN(k))).join(" + ")}: нищо</li>`).join("")}</ul>` : `<div class="sub">Още нищо не се е провалило. Подозрително.</div>`);
     } else if (libTab === "shelf") {
       const own = SHOP.filter(b => (S.lib || []).includes(b.id)), shop = SHOP.filter(b => !(S.lib || []).includes(b.id));
-      h += `<div class="sub">Прочел е ${S.books || 0} ${S.books === 1 ? "книга" : "книги"}. Купените книги му дават идеи, щом ги прочете (📕 Чети в менюто).</div>`;
+      h += `<div class="sub">Прочел е ${S.books || 0} ${S.books === 1 ? "книга" : "книги"}.</div>`;
       if (own.length) h += `<div class="sub grp">На рафта</div>` + own.map(b => `<div class="it"><span class="ii">📕</span><span class="in">${esc(b.n)}<small>${(S.libRead || []).includes(b.id) ? "прочетена ✓" : "още не е прочетена"}</small></span><span></span></div>`).join("");
       h += `<div class="sub grp">Книжарницата на рифа <b class="cash">${money(S.pearls)}</b></div>` + (shop.length ? shop.map(b => `<div class="it"><span class="ii">📗</span><span class="in">${esc(b.n)}<small>${money(b.p)}</small></span>
         ${role === "keeper" ? `<button class="sell buy" data-b="${b.id}" ${S.pearls < b.p ? "disabled" : ""}>Купи</button>` : "<span></span>"}</div>`).join("") : `<div class="sub">Купил е всички книги. Истински книжен плъх. Книжен октопод.</div>`);
     } else {
-      if (!S.asleep) h += `<div class="lock">🔒<div>Личният дневник е заключен.<br><small>Пази го под пипалото си. Може би, докато спи…</small></div></div>`;
+      if (!S.asleep) h += `<div class="lock">🔒<div>Личният дневник е заключен.<br><small>Пази го под пипалото си.</small></div></div>`;
       else h += `<div class="sub">Спи… Дневникът се е изплъзнал изпод пипалото му.</div><div class="sub grp">Какво мисля за теб</div><ul class="journal">${myThoughts().map(x => `<li>${esc(x)}</li>`).join("")}</ul>` +
         `<div class="sub grp">Записки</div>` + ((S.pdiary || []).length ? `<ul class="journal">${S.pdiary.slice().reverse().map(e => `<li><time>${new Date(e.t).toLocaleDateString("bg-BG", { day: "numeric", month: "short" })}</time>${esc(e.x)}</li>`).join("")}</ul>` : `<div class="sub">Празно. Само една рисунка на теб. Доста прилича.</div>`);
     }
@@ -1195,10 +1356,7 @@ function fillSheet(kind) {
       return ` · ${m < 60 ? "разваля се до час!" : "свежо още ~" + Math.round(m / 60) + " ч"}`; };
     const canMix = role === "keeper" && S.hatched && S.stage !== "baby";
     let h = head("🎒 Торба", `<b class="cash">${money(S.pearls)}</b> `);
-    if (canMix) h += `<div class="mix"><span class="slot" data-i="0">${mixSel[0] ? elE(mixSel[0]) : "?"}</span><b>+</b><span class="slot" data-i="1">${mixSel[1] ? elE(mixSel[1]) : "?"}</span>
-      <button class="try" id="mixBtn" ${mixSel.length < 2 || working ? "disabled" : ""}>⚗️ Смеси</button></div>
-      <div class="sub" style="margin:0 0 6px">${S.task ? `Той иска: ${esc(elN(S.task.a))} + ${esc(elN(S.task.b))}` : "Сложи две неща с ⊕ и ги смеси. Може да се получи нещо ново!"}</div>`;
-    else if (S.stage === "baby") h += `<div class="sub">Още е бебе. Смесването е, когато порасне.</div>`;
+    if (canMix && S.task) h += `<div class="sub" style="margin:0 0 6px">Той иска: ${esc(elN(S.task.a))} + ${esc(elN(S.task.b))}</div>`;
     let rows = "";
     for (const [c, title] of CATS) {
       const ks = Object.keys(S.mat).filter(k => cnt(k) > 0 && EL[k] && EL[k][3] === c);
@@ -1213,16 +1371,17 @@ function fillSheet(kind) {
     const junk = Object.keys(S.mat).filter(k => cnt(k) && EL[k] && EL[k][3] === "junk");
     h += rows || `<div class="sub">Торбата е празна. Събирай нещата по дъното.</div>`;
     if (junk.length > 1 && role === "keeper") h += `<button class="try" id="sellJunk" style="margin-top:10px">♻️ Рециклирай всички боклуци</button>`;
-    h += `<div class="sub" style="margin-top:10px">◉ Перлингите са морските пари. Храната се разваля с времето и пак може да потрябва. Най-старото се ползва първо.</div>`;
+    if (canMix) h += `<div class="mixbar">${[0, 1, 2, 3, 4].map(i => `<span class="slot${mixSel[i] ? " full" : ""}" data-i="${i}">${mixSel[i] ? elE(mixSel[i]) : ""}</span>`).join("")}
+      <button class="try" id="mixBtn" ${mixSel.length < 2 || working ? "disabled" : ""}>⚗️ Смеси</button></div>`;
     sh.innerHTML = h;
     sh.querySelectorAll(".add").forEach(b => b.onclick = () => { const k = b.dataset.k;
-      if (mixSel.length >= 2) mixSel = [];
+      if (mixSel.length >= 5) return say("", "Пет неща стигат! Повече не се събират.");
       if (mixSel.filter(x => x === k).length >= cnt(k)) return say("", "Имам само едно такова.");
       mixSel.push(k); fillSheet("bag"); });
     sh.querySelectorAll(".slot").forEach(b => b.onclick = () => { mixSel.splice(+b.dataset.i, 1); fillSheet("bag"); });
     sh.querySelectorAll(".eat").forEach(b => b.onclick = () => feed(b.dataset.k));
     sh.querySelectorAll(".sell").forEach(b => b.onclick = () => sellMat(b.dataset.k));
-    if ($("mixBtn")) $("mixBtn").onclick = () => { const [a, b] = mixSel; mixSel = []; mix(a, b, "me"); };
+    if ($("mixBtn")) $("mixBtn").onclick = () => { const [a, b, ...more] = mixSel; mixSel = []; mix(a, b, "me", more); };
     if ($("sellJunk")) $("sellJunk").onclick = () => { let sum = 0; for (const k of junk) while (cnt(k)) sum += sellMat(k, true); log(`♻️ Рециклира боклуците за ${sum} ${CUR}.`); save(); render(); say("", "Рециклирах всичко! Чисто, подредено и с пари. Перфектно."); };
   } else if (kind === "stats") {
     const clean = Math.max(0, 100 - S.trash.length * 15);
@@ -1234,13 +1393,13 @@ function fillSheet(kind) {
     if (S.hunger > 70) stt.push("Гладен");
     if (S.trash.length >= 3) stt.push("Бъркотия!");
     if (!stt.length) stt.push(S.mood > 70 ? "Щастлив" : "Добре е");
-    const days = Math.max(0, Math.floor((S.t - S.born) / (24 * 60 * MIN)));
-    sh.innerHTML = head("📊 Как е Октонис") + `
-      <div class="bars">${bars.map(([i, v, c]) => `<div class="bar"><span class="ic">${i}</span><div class="track"><div class="fill" style="width:${v.toFixed(0)}%;background:${c}"></div></div><b>${v.toFixed(0)}</b></div>`).join("")}</div>
-      ${lifeBox()}
-      <div class="sub">${stt.join(" · ")}${S.hatched ? " · " + (days ? `на ${days} ${days === 1 ? "ден" : "дни"}` : "роден днес") : ""}<br>
-      ${role === "viewer" ? "toshik беше при него " + ago(S.lastCare) + "." : ""}</div>
-      <button id="logoutBtn">🚪 Изход (${esc(myNick)})</button>`;
+    if (S.sick) stt.unshift("Болен 🤒");
+    sh.innerHTML = `<button class="x" id="sx" style="position:absolute;right:14px;top:10px">✕</button>
+      <div class="who">${esc(S.name)}<small>${S.hatched ? STAGE_NAME[S.stage] : ""}</small></div>
+      <div class="meters">${bars.map(([i, v, c]) => `<div class="mt" style="--v:${v.toFixed(0)};--c:${c}"><span>${i}</span></div>`).join("")}</div>
+      <div class="feel">${stt.join(" · ")}</div>
+      ${role === "viewer" ? `<div class="feel">toshik беше при него ${ago(S.lastCare)}.</div>` : ""}
+      <button id="logoutBtn" class="ghost">Изход (${esc(myNick)})</button>`;
     $("logoutBtn").onclick = logout;
   } else if (kind === "chat") {
     const notes = (S.chat || []).filter(m => m.f === "n").slice(-2);
@@ -1252,13 +1411,10 @@ function fillSheet(kind) {
       <div class="row2 hidden" id="nameRow"><input id="nameIn" maxlength="24" placeholder="Как да се казва?"><button class="ans" id="nameOk">Готово</button></div>`;
     else if (!S.hatched) ctl = `<div class="sub">Яйцето още не може да говори. Но чува всичко.</div>`;
     else if (S.asleep) ctl = `<div class="sub">Спи. Шшш…</div>`;
-    else ctl = (S.q ? `<div class="row2"><button class="ans yes" id="aYes">Да</button><button class="ans no" id="aNo">Не</button></div>`
-        : `<div class="row2"><button class="ans" id="askMe">Питай ме нещо</button></div>`) +
-      `<div class="emo">${["❤️", "🤗", "👍", "😂", "👋"].map(e => `<button data-e="${e}">${e}</button>`).join("")}</div>`;
+    else ctl = "";
     sh.innerHTML = head("💬 " + esc(S.name)) + (msgs ? `<div class="msgs quick" id="msgs">${msgs}</div>` : "") + ctl;
     if ($("aYes")) { $("aYes").onclick = () => { answer("yes"); closeSheet(); }; $("aNo").onclick = () => { answer("no"); closeSheet(); }; }
     if ($("askMe")) $("askMe").onclick = () => askNext(true);
-    sh.querySelectorAll(".emo button").forEach(b => b.onclick = () => { const q = S.q; chatEmoji(b.dataset.e); if (!q) closeSheet(); });
     sh.querySelectorAll(".nm").forEach(b => b.onclick = () => chooseName(b.dataset.n));
     if ($("otherName")) $("otherName").onclick = () => { chatPush("u", "Не ми харесват."); setTimeout(() => { chatPush("n", "Тогава ти кажи как да се казва."); $("nameRow")?.classList.remove("hidden"); $("nameIn")?.focus(); }, 500); };
     if ($("nameOk")) { const go = () => chooseName($("nameIn").value); $("nameOk").onclick = go; $("nameIn").onkeydown = ev => { if (ev.key === "Enter") go(); }; }
@@ -1270,9 +1426,9 @@ function fillSheet(kind) {
       (fam.length ? fam.map(f => `<div class="fam"><b>${esc(f.name)}</b> <small>${new Date(f.born).toLocaleDateString("bg-BG")} – ${new Date(f.died).toLocaleDateString("bg-BG")}</small>
         <div class="sub" style="margin:2px 0">${f.traits.map(k => TRAITS[k].n).join(", ") || "Обикновен и мил"} · изобретения: ${f.made}</div>
         <div class="sub" style="margin:0">Накрая ${esc(f.end)}.</div></div>`).join("")
-        : `<div class="sub">Това е първият Октонис. Когато остарее, ще остави яйце и родът ще продължи.</div>`) +
+        : "") +
       ((S.diary || []).length ? `<div class="sub" style="margin-top:10px">📔 Семейният дневник за теб:</div><ul class="journal">${S.diary.map(e => `<li>${esc(e.by)}: „${esc(e.x)}“${e.ok ? " ✓" : ""}</li>`).join("")}</ul>` : "") +
-      `<div class="sub" style="margin-top:10px">Перлингите и изобретенията се предават на наследника. За теб остава само дневникът, не целият ви разговор.</div>`;
+      "";
   } else if (kind === "journal") {
     sh.innerHTML = head("📖 Дневник") + `<ul class="journal">${S.journal.slice(0, 60).map(j => {
       const d = new Date(j.t);
@@ -1365,7 +1521,7 @@ function ringAction(id) {
 
 // ---------- Говорене (балончето следва Октонис) ----------
 let bubbleUntil = 0;
-function say(e, t = "", ms = 4500) { bubbleUntil = performance.now() + ms; showBubble(e, babify(String(t), e), false); }
+function say(e, t = "", ms = 4500) { bubbleUntil = performance.now() + ms; lastLine = { t: performance.now(), x: t }; showBubble(e, babify(String(t), e), false); }
 // говори само с думи: махам картинките (емотиконите) от текста
 const NO_EMO = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}\u{20E3}]/gu;
 const WORDS = { "🤣": "Ха-ха-ха!", "🤗": "Прегръдка! Обичам прегръдки.", "☺️": "Ох, благодаря!", "🥰": "И аз те обичам!", "💤💗": "Хм… обичам те… хррр…",
@@ -1417,11 +1573,11 @@ function poof(xf, sparkle) { poofs.push({ x: xf * W, y: H * 0.88 + 6, t0: perfor
 function octoMode() {
   const p = performance.now();
   if (drag && drag.moved) return drag.mood;
-  if (working) return "work";
+  if (working) return p - working < 7000 ? "idle" : "work";
   if (reading) return "read";
   if (p - fx.party < 4000) return "party";
   if (S.asleep) return "sleep";
-  if (S.hurt || p - fx.hurt < 2500) return "hurt";
+  if (S.hurt || S.sick || p - fx.hurt < 2500) return "hurt";
   if (S.mood > 70) return "happy";
   return "idle";
 }
@@ -1574,6 +1730,99 @@ function drawFloor(t, s) {
     g.globalAlpha = 1;
   }
 }
+// ---------- Работната маса ----------
+function drawTable(s, ground) {
+  if (!table || table.x == null) return;
+  const p = performance.now();
+  if (table.until && p > table.until + 1500) { table = null; return; }
+  const a = table.until ? Math.max(0, 1 - (p - table.until) / 1500) : 1;
+  const w = 300 * s, h = 120 * s, x = table.x, top = ground - h, sk = STYLE === "sketch";
+  g.save(); g.globalAlpha = a; g.lineWidth = sk ? 2.4 : 4; g.strokeStyle = sk ? SK_INK : "#2b2a33";
+  g.fillStyle = sk ? "#efe6d2" : "#a8703f";
+  for (const lx of [x - w * 0.4, x + w * 0.34]) { g.beginPath(); g.rect(lx, top + 14 * s, 18 * s, h - 14 * s); g.fill(); g.stroke(); }
+  g.fillStyle = sk ? "#f6efdf" : "#c48a52"; g.beginPath(); g.roundRect ? g.roundRect(x - w / 2, top, w, 20 * s, 6 * s) : g.rect(x - w / 2, top, w, 20 * s); g.fill(); g.stroke();
+  if (working && p - working > 7000) {           // инструментите на масата
+    g.font = `${Math.max(16, 34 * s)}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "bottom";
+    const m = mixing ? [mixing.a, mixing.b, ...(mixing.more || [])] : [];
+    m.forEach((k, i) => g.fillText(elE(k), x - w * 0.3 + i * 40 * s, top + 2));
+    g.fillText("🔧", x + w * 0.32, top + 2);
+  }
+  g.restore();
+}
+// ---------- Гости зад камъка ----------
+const GUESTS = [
+  { e: "🦀", when: "day", lines: [["g", "Щрак-щрак! Някой да е виждал щипката ми?"], ["o", "На теб е. Две са. Преброих ги."], ["g", "А! Точно. Благодаря!"]] },
+  { e: "🐢", when: "day", lines: [["g", "Здравей, малкия. Още ли подреждаш?"], ["o", "Винаги. Ти още ли плуваш бавно?"], ["g", "Бавно, но сигурно."]] },
+  { e: "🐡", when: "any", lines: [["g", "Не ме плаши! Иначе се надувам."], ["o", "Няма. Само искам да те измеря."], ["g", "Пфффф!"]] },
+  { e: "🦑", when: "night", lines: [["g", "Пссст. Имаш ли мастило назаем?"], ["o", "Имам. Подредено по цветове."], ["g", "Ще взема черното."]] },
+  { e: "🪼", when: "night", lines: [["g", "Блъм… блъм…"], ["o", "Тя не говори много. Но свети красиво."]] },
+  { e: "🐠", when: "day", lines: [["g", "Видя ли накъде отиде ятото?"], ["o", "Наляво. Преди точно четири минути."], ["g", "Ти си странен. Благодаря!"]] },
+  { e: "🦐", when: "any", lines: [["g", "Ей! Да не ме ядеш, а?"], ["o", "Не! Аз ям… ъъ… броколи."], ["g", "Хм. Ще те наблюдавам."]] },
+  { e: "🦞", when: "night", lines: [["g", "Чу ли за новия риф?"], ["o", "Не. Подреден ли е?"], ["g", "Ни най-малко."], ["o", "Ужас."]] },
+  { e: "🐌", when: "morning", lines: [["g", "Добро… утро…"], ["o", "Вече е обяд."], ["g", "Аха… добро… обяд…"]] },
+  { e: "🐟", when: "any", lines: [["g", "Пощата е по-късно днес. Не питай."], ["o", "Не съм питал."], ["g", "Ей така, за всеки случай."]] },
+  { e: "🦭", when: "day", lines: [["g", "Ар-ар! Само минавам."], ["o", "Тук не е за минаване. Тук е подредено."], ["g", "Ар!"]] },
+];
+let guest = null, nextGuest = performance.now() + rnd(6, 14) * 60000;
+function dayPart() { const h = new Date().getHours(); return h >= 21 || h < 6 ? "night" : h < 10 ? "morning" : "day"; }
+function guestTick(p) {
+  if (guest || p < nextGuest || !S || !S.hatched || working || hidden() || p - ptr.t > 120000) return;
+  nextGuest = p + rnd(15, 35) * 60000;
+  const dp = dayPart(), list = GUESTS.filter(x => x.when === "any" || x.when === dp || (dp === "morning" && x.when === "day"));
+  const G = pick(list);
+  guest = { ...G, at: p, i: -1, line: null, end: p + 3000 + G.lines.length * 4500 + 2500 };
+}
+function drawGuest(t, s) {
+  if (!guest) return;
+  const p = performance.now(), e = p - guest.at, R = rockGeom();
+  if (p > guest.end) { guest = null; return; }
+  const idx = Math.floor((e - 2000) / 4500);
+  if (idx !== guest.i && idx >= 0 && idx < guest.lines.length) {
+    guest.i = idx; const [who, x] = guest.lines[idx];
+    if (who === "o") { if (!S.asleep) say("", S.stage === "baby" ? "~" + pick(["Ова кво е?", "Здъ-ти!", "Хи-хи! Риба!"]) : x, 4000); guest.line = null; }
+    else guest.line = { x: S.asleep && idx > 0 ? "Шшш, той спи." : x, at: p };
+  }
+  const up = Math.min(1, e / 900, (guest.end - p) / 900), sz = Math.max(30, 70 * s);
+  const x = R.cx + R.rw * 0.18, y = R.top + sz * 0.5 - up * sz * 0.85 + Math.sin(t * 2) * 3;
+  g.save(); g.beginPath(); g.rect(0, 0, W, R.top + 14); g.clip();            // показва се само над камъка
+  g.font = `${sz}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(guest.e, x, y); g.restore();
+  guest.box = { x, y, r: sz * 0.6 };
+  if (guest.line && p - guest.line.at < 4200) {                                // неговото балонче
+    g.font = `600 ${Math.max(13, 15)}px -apple-system, system-ui, sans-serif`;
+    const words = guest.line.x.split(" "), lines = []; let cur = "";
+    for (const w of words) { if (g.measureText(cur + " " + w).width > 190 && cur) { lines.push(cur); cur = w; } else cur = cur ? cur + " " + w : w; }
+    lines.push(cur);
+    const bw = Math.max(...lines.map(l => g.measureText(l).width)) + 22, bh = lines.length * 19 + 14;
+    const bx = Math.min(W - bw - 8, Math.max(8, x - bw / 2)), by = y - sz * 0.6 - bh - 10;
+    g.fillStyle = "rgba(255,250,242,.96)"; g.strokeStyle = "#2b2a33"; g.lineWidth = 2.5;
+    g.beginPath(); g.roundRect ? g.roundRect(bx, by, bw, bh, 12) : g.rect(bx, by, bw, bh); g.fill(); g.stroke();
+    g.fillStyle = "#2a1730"; g.textAlign = "left"; g.textBaseline = "top";
+    lines.forEach((l, i) => g.fillText(l, bx + 11, by + 8 + i * 19));
+  }
+}
+// ---------- Светещата риба (нощем) ----------
+let angler = null, nextAngler = performance.now() + rnd(1, 4) * 60000;
+function drawAngler(t, s) {
+  const p = performance.now(), isNight = night(Date.now()) || (S && S.asleep);
+  if (!angler && isNight && p > nextAngler) { nextAngler = p + rnd(6, 15) * 60000; if (Math.random() < 0.6) angler = { at: p, y: H * rnd(0.22, 0.5), dir: Math.random() < 0.5 ? 1 : -1 }; }
+  if (!angler) return;
+  const a = (p - angler.at) / 28000; if (a > 1) { angler = null; return; }
+  const sc = Math.max(0.5, s * 1.1), d = angler.dir, x = d > 0 ? -120 + a * (W + 240) : W + 120 - a * (W + 240), y = angler.y + Math.sin(a * 18) * 12;
+  const lx = x + d * 70 * sc, ly = y - 52 * sc;
+  const glow = g.createRadialGradient(lx, ly, 2, lx, ly, 120 * sc);
+  glow.addColorStop(0, "rgba(255,240,150,.55)"); glow.addColorStop(1, "rgba(255,240,150,0)");
+  g.fillStyle = glow; g.beginPath(); g.arc(lx, ly, 120 * sc, 0, Math.PI * 2); g.fill();
+  g.save(); g.translate(x, y); g.scale(d * sc, sc);
+  g.fillStyle = "#2a3247"; g.strokeStyle = "#11141f"; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(-70, 0); g.lineTo(-100, -26); g.lineTo(-100, 26); g.closePath(); g.fill(); g.stroke();          // опашка
+  g.beginPath(); g.ellipse(0, 0, 62, 44, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  g.fillStyle = "#fff"; for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(30 + i * 7, 14); g.lineTo(33 + i * 7, 24); g.lineTo(36 + i * 7, 14); g.fill(); }
+  g.fillStyle = "#e9f0ff"; g.beginPath(); g.arc(28, -12, 8, 0, Math.PI * 2); g.fill(); g.fillStyle = "#11141f"; g.beginPath(); g.arc(30, -12, 4, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = "#2a3247"; g.lineWidth = 3; g.beginPath(); g.moveTo(20, -40); g.quadraticCurveTo(50, -80, 70, -52); g.stroke();
+  g.restore();
+  g.fillStyle = `rgba(255,245,170,${0.8 + Math.sin(t * 6) * 0.2})`; g.beginPath(); g.arc(lx, ly, 8 * sc, 0, Math.PI * 2); g.fill();
+}
 let frameN = 0;
 const ptr = { x: 0, y: 0, t: -1e9 };       // очите следят пръста/мишката
 addEventListener("pointermove", ev => { ptr.x = ev.clientX; ptr.y = ev.clientY; ptr.t = performance.now(); });
@@ -1598,7 +1847,13 @@ function loop() {
     tx = Math.max(W * 0.32, R.cx - R.rw * 0.5 - 230 * s); k = 0.03;
     if (STYLE === "sketch") { ty = ground - 54 * s; lie = true; } else ty = ground - 170 * s;
   }
-  else if (mode === "work") { tx = oct.px ?? tx; ty = ground - 201 * s; k = 0.035; }
+  else if (working) {
+    const e = performance.now() - working;
+    ty = ground - 201 * s;
+    if (e < 2600) { tx = W + 280 * s; k = 0.06; }                       // отива зад ръба
+    else if (e < 5600) { tx = W * 0.4; k = 0.035; table.x = oct.px + 230 * s; }   // дърпа масата
+    else { tx = oct.px; k = 0.035; table.x += (oct.px - table.x) * 0.08; }       // слага я пред себе си
+  }
   else if (hidden() && !(drag && drag.moved)) { scale = s * 0.55; tx = R.cx; ty = R.top + 40 * scale + Math.sin(t * 2) * 4; k = 0.05; mode = "idle"; }
   if ((ringOpen || sheetKind) && age !== "egg") { tx = oct.px; ty = oct.py; }
   if (oct.px == null) { oct.px = tx; oct.py = ty; }
@@ -1622,10 +1877,14 @@ function loop() {
     Octo.draw(g, { x: W * 0.5 + Math.sin(a * 6) * 30, y: H * 0.45 - a * H * 0.7, s: s * 0.9, age: "old", mode: "swim", t, st: {}, style: STYLE, dir: 1 });
     g.globalAlpha = 1;
   }
+  drawTable(s, ground + 4);
   drawRock(t);
+  drawGuest(t, s);
   if (S) drawMuseum(t, s);
   if (S) drawFloor(t, s);
+  if (S && S.trash.length > 2) { g.fillStyle = `rgba(70,120,30,${Math.min(0.32, (S.trash.length - 2) * 0.065)})`; g.fillRect(0, 0, W, H); }   // мръсна вода
   if (night) { g.fillStyle = "rgba(10,10,40,.25)"; g.fillRect(0, 0, W, H); }
+  if (STYLE !== "sketch") drawAngler(t, s);
   if (inGame) placeBubble();
 }
 requestAnimationFrame(loop);
@@ -1645,6 +1904,7 @@ cv.addEventListener("pointerdown", ev => {
     hideUntil = 0; S.mood = clamp(S.mood + 3); dirty = true;
     return say("😄", pick(["Намери ме!", "Ееех, видя ме!", "Ку-ку!"]));
   }
+  if (guest && guest.box && Math.hypot(x - guest.box.x, y - guest.box.y) < guest.box.r) { guest.line = { x: pick(["Ей! Не пипай!", "Здрасти!", "Само минавам.", "Хи-хи!"]), at: performance.now() }; return; }
   if (onRock(x, y) && !onOcto(x, y)) return say("🪨🧐", pick(["Този камък е малко крив.", "Зад камъка е хубаво място за криене.", "Броих: камъкът има 14 дупчици."]));
   if (!onOcto(x, y)) return;
   drag = { id: ev.pointerId, sx: x, sy: y, dx: oct.px - x, dy: oct.py - y, moved: false };
@@ -1653,7 +1913,7 @@ cv.addEventListener("pointerdown", ev => {
 cv.addEventListener("pointermove", ev => {
   if (!drag || ev.pointerId !== drag.id) return;
   if (!drag.moved && Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) > 10) { drag.moved = true; closeRing(); startDrag(); }
-  if (drag.moved) { oct.px = ev.clientX + drag.dx; oct.py = ev.clientY + drag.dy; }
+  if (drag.moved) { const s = Math.min(H * 0.46 / 430, W * 0.8 / 560); oct.px = ev.clientX + drag.dx; oct.py = Math.min(ev.clientY + drag.dy, H * 0.88 + 6 - 195 * s); }
 });
 cv.addEventListener("pointerup", ev => {
   if (drag && ev.pointerId === drag.id) {
@@ -1709,7 +1969,7 @@ addEventListener("touchend", ev => {
 }, { passive: true });
 
 // ---------- Таймер ----------
-let nextIdeaAt = Date.now() + 4 * MIN, parcelSaid = false, nextQGap = 6 * MIN, lastMinuteCheck = 0, nextHide = performance.now() + 4 * 60000;
+let nextIdeaAt = Date.now() + 4 * MIN, parcelSaid = false, nextQGap = 12 * MIN, lastMinuteCheck = 0, nextHide = performance.now() + 4 * 60000;
 setInterval(() => {
   if (!S || !inGame) return;
   const now = Date.now(), p = performance.now();
@@ -1722,8 +1982,10 @@ setInterval(() => {
     if (S.parcel && !parcelSaid) { parcelSaid = true; say("", "Пощата! Рибата-пощальон остави колет! Отвори го, моля, отвори го!", 8000); }
     if (departing && performance.now() - departing.at < 3000) say("", `Сбогом! Грижи се за яйцето.\nТо е моят наследник.`, 6000);
     grumble(now);
+    if (sickSay) { say("", sickSay === "well" ? "Оздравях! Благодаря, че се погрижи за мен." : "Не ми е добре… Май се разболях.", 7000); sickSay = false; }
+    guestTick(p);
     if (S.hatched && !S.asleep && !working && !S.q && !S.naming && now - lastAsked() > nextQGap && performance.now() - ptr.t < 120000 && !hidden()) {
-      nextQGap = rnd(8, 15) * MIN; askNext();
+      nextQGap = rnd(25, 45) * MIN; askNext();
     }
     if (S.q && now - S.q.t > 2 * 60 * MIN) { chatPush("o", "Не ми отговори… Сигурно си бил зает. Ще те питам друг път."); S.q = null; }
     if (S.facts.promisedClean) {
@@ -1733,7 +1995,7 @@ setInterval(() => {
     $("chatBtn").classList.toggle("ping", !!(S.q || S.naming));
     chatter();
     if (S.hatched && !S.asleep && !working && !reading && !S.q && !S.naming && !S.task && now > nextIdeaAt && performance.now() - ptr.t < 120000 && !hidden()) {
-      nextIdeaAt = now + rnd(has("hermit") ? 5 : 8, has("hermit") ? 10 : 16) * MIN;
+      nextIdeaAt = now + rnd(has("hermit") ? 12 : 20, has("hermit") ? 25 : 40) * MIN;
       if (stageIdx() >= 4 && Math.random() < 0.5) selfT = -1e9, selfWork(p); else proposeIdea();
     }
     selfWork(p);
@@ -1779,7 +2041,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
