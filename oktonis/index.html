@@ -268,6 +268,10 @@
   .pol.leg { box-shadow: 0 0 0 3px #ffcf4a, 0 3px 10px rgba(255,180,0,.6); }
   img.ei { width: 1.15em; height: 1.15em; vertical-align: -0.2em; display: inline-block; }
   .cell img.ei { width: 70%; height: 70%; } #mixbar .slot img.ei { width: 78%; height: 78%; } #ghost img.ei { width: 1em; height: 1em; }
+  .glog { max-height: 42vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+  .gm { padding: 7px 11px; border-radius: 14px; max-width: 85%; font-size: 15px; background: rgba(185,246,255,.25); align-self: flex-start; }
+  .gm.t { align-self: flex-end; background: rgba(255,179,107,.3); }
+  .gform { display: flex; gap: 6px; } .gform input { flex: 1; padding: 10px 12px; border-radius: 12px; border: 2px solid rgba(0,0,0,.2); font-size: 16px; } .gform button { padding: 10px 14px; border-radius: 12px; font-weight: 700; }
   .snap.go { left: calc(100% - 34px); top: 340px; transform: translate(-50%, -50%) scale(.12); opacity: .2; }
   @keyframes snapin { from { transform: translate(-50%, -50%) scale(.3) rotate(10deg); opacity: 0; } }
   #chatBtn.ping i { display: block; } #chatBtn.ping { animation: wig .6s infinite; }
@@ -2229,7 +2233,7 @@ function render() {
   $("top").textContent = role === "viewer" ? topText() : "";
   if (sheetKind) fillSheet(sheetKind);
   if (ringOpen) paintRing();
-  renderHud(); renderMix(); renderAlbBadge();
+  renderHud(); renderMix(); renderAlbBadge(); renderGhostBtn();
 }
 
 // ---------- Панелът отдолу ----------
@@ -2449,6 +2453,15 @@ function fillSheet(kind) {
     sh.querySelectorAll(".nm").forEach(b => b.onclick = () => chooseName(b.dataset.n));
     if ($("otherName")) $("otherName").onclick = () => { chatPush("u", "Не ми харесват."); setTimeout(() => { chatPush("n", "Тогава ти кажи как да се казва."); $("nameRow")?.classList.remove("hidden"); $("nameIn")?.focus(); }, 500); };
     if ($("nameOk")) { const go = () => chooseName($("nameIn").value); $("nameOk").onclick = go; $("nameIn").onkeydown = ev => { if (ev.key === "Enter") go(); }; }
+  } else if (kind === "ghost") {
+    $("side").querySelector('[data-k="ghost"]')?.classList.remove("ping");
+    const was = $("ghIn"), keepTxt = was ? was.value : "", hadFocus = was && document.activeElement === was;
+    sh.innerHTML = ghostHtml(head);
+    if (keepTxt) $("ghIn").value = keepTxt; if (hadFocus) $("ghIn").focus();
+    const lg = sh.querySelector(".glog"); if (lg) lg.scrollTop = lg.scrollHeight;
+    if ($("ghOn")) $("ghOn").onclick = () => { ghostSend({ t: ghost.on ? "off" : "on" }); fillSheet("ghost"); };
+    $("ghForm").onsubmit = ev => { ev.preventDefault(); const x = $("ghIn").value.trim(); if (!x) return;
+      ghostSend({ t: role === "viewer" ? "msg" : "reply", x }); $("ghIn").value = ""; fillSheet("ghost"); setTimeout(() => $("ghIn")?.focus(), 50); };
   } else if (kind === "album") {
     if (S.albumNew && role === "keeper") { S.albumNew = 0; dirty = true; }
     sh.innerHTML = albumHtml(head); renderAlbBadge();
@@ -2608,7 +2621,7 @@ $("profBtn").onclick = ev => {
 };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#profMenu") && !ev.target.closest("#profBtn")) $("profMenu").classList.add("hidden"); });
 // ---------- Бутоните по екрана ----------
-$("side").innerHTML = [["bag", "🧰", "Сандък"], ["cab", "🗄️", "Шкаф"], ["lib", "📚", "Книги"], ["family", "🌳", "Род"], ["journal", "📖", "Дневник"], ["album", "📷", "Албум"]]
+$("side").innerHTML = [["bag", "🧰", "Сандък"], ["cab", "🗄️", "Шкаф"], ["lib", "📚", "Книги"], ["family", "🌳", "Род"], ["journal", "📖", "Дневник"], ["album", "📷", "Албум"], ["ghost", "👻", "Дух"]]
   .map(([k, i, n]) => `<button data-k="${k}" title="${n}">${i}<small>${n}</small></button>`).join("");
 $("side").querySelectorAll("button").forEach(b => b.onclick = ev => { ev.stopPropagation(); if (S) openSheet(b.dataset.k); });
 $("hud").onclick = () => S && openSheet("stats");
@@ -3992,6 +4005,74 @@ function albumHtml(head) {
     : `<div class="sub">Още няма снимки тук. Когато някой мине покрай Октонис, докосни го!</div>`;
   return h;
 }
+// ---------- Рибата-дух: vasko я пуска и пише през нея, toshik вижда и отговаря (през ntfy.sh) ----------
+const ghost = { on: false, msgs: [], last: "", x: 0, y: 0, at: -1e9, poll: 0, seen: new Set(), boot: 0 };
+const ghostTopic = () => S && S.wid ? "okt-ghost-" + String(S.wid).replace(/[^\w-]/g, "") : null;
+function ghostSend(o) {
+  const tp = ghostTopic(); if (!tp) return;
+  fetch(`https://ntfy.sh/${tp}`, { method: "POST", body: JSON.stringify({ ...o, by: role, at: Date.now() }) }).catch(() => {});
+  ghostApply({ ...o, by: role, at: Date.now(), local: true });     // при мен веднага
+}
+function ghostApply(m) {
+  if (m.t === "on" && !ghost.on) {
+    ghost.on = true; ghost.at = performance.now(); ghost.x = W * 0.2; ghost.y = H * 0.35;
+    if (role === "keeper" && S.hatched) setTimeout(() => say("", pick(["Р-р-риба-дух?! Свети… и е прозрачна… Здравей?", "Ох! Риба-дух! Не се страхувам. Почти."]), 6000), 900);
+  }
+  if (m.t === "off" && ghost.on) {
+    ghost.on = false;
+    if (role === "keeper" && S.hatched) setTimeout(() => say("", "Рибата-дух изчезна… Ще дойде ли пак?", 5000), 600);
+  }
+  if (m.t === "msg" || m.t === "reply") {
+    if (!m.local && m.by === role) return;                        // моето вече е показано
+    ghost.msgs.push({ who: m.t === "msg" ? "g" : "t", x: String(m.x || "").slice(0, 200), at: m.at || Date.now() });
+    ghost.msgs = ghost.msgs.slice(-40);
+    if (m.t === "msg") ghost.last = { x: String(m.x || "").slice(0, 200), at: performance.now() };
+    if (m.t === "msg" && !ghost.on) ghostApply({ t: "on" });
+    if (sheetKind === "ghost") fillSheet("ghost");
+    renderGhostBtn(m.t === "msg" && role === "keeper" || m.t === "reply" && role === "viewer");
+  }
+  renderGhostBtn();
+}
+async function ghostPoll() {
+  const tp = ghostTopic(); if (!tp || !inGame) return;
+  const since = ghost.boot ? ghost.lastId || "30s" : "15m";
+  try {
+    const txt = await (await fetch(`https://ntfy.sh/${tp}/json?poll=1&since=${since}`, { cache: "no-store" })).text();
+    for (const line of txt.split("\n")) { if (!line.trim()) continue;
+      let ev; try { ev = JSON.parse(line); } catch { continue; }
+      if (ev.event !== "message" || ghost.seen.has(ev.id)) continue;
+      ghost.seen.add(ev.id); ghost.lastId = ev.id;
+      let m; try { m = JSON.parse(ev.message); } catch { continue; }
+      if (!ghost.boot && m.t === "on" && Date.now() - (m.at || 0) > 10 * MIN) continue;   // старо пускане не се повтаря
+      ghostApply(m); }
+    ghost.boot = 1;
+  } catch {}
+}
+setInterval(() => { if (!document.hidden) ghostPoll(); }, 8000);
+function renderGhostBtn(ping) {
+  const b = $("side") && $("side").querySelector('[data-k="ghost"]'); if (!b) return;
+  b.classList.toggle("hidden", role !== "viewer" && !ghost.on && !ghost.msgs.length);
+  if (ping) b.classList.add("ping");
+}
+function drawGhost(t, s) {
+  if (!ghost.on) return;
+  const p = performance.now(), a = Math.min(1, (p - ghost.at) / 1500);
+  const tx = oct.x - Math.max(140, oct.r * 1.5) * (oct.x > W * 0.45 ? 1 : -1), ty = oct.cy - oct.r * 0.4;
+  ghost.x += (Math.max(60, Math.min(W - 90, tx)) - ghost.x) * 0.02; ghost.y += (ty + Math.sin(t * 1.3) * 18 - ghost.y) * 0.03;
+  const z = Math.max(60, 95 * s);
+  g.save(); g.globalAlpha = 0.55 * a + Math.sin(t * 2) * 0.08; g.shadowColor = "#b9f6ff"; g.shadowBlur = 30;
+  g.translate(ghost.x, ghost.y); if (oct.x < ghost.x) g.scale(-1, 1);
+  g.lineWidth = Math.max(2, z * 0.035); g.strokeStyle = "#d9fbff";
+  fishBody(g, { l: 1.1, h: 0.55, c: "#e8fdff", b: "#bdf1ff", tail: "round", fin: "tall" }, z, t * 0.6, "#9fe6f5");
+  g.globalAlpha = 0.35 * a; g.fillStyle = "#e8fdff"; for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(-z * (0.55 + i * 0.18), Math.sin(t * 3 + i) * 6, z * (0.1 - i * 0.02), 0, 7); g.fill(); }   // опашка от мъгла
+  g.restore();
+  if (ghost.last && p - ghost.last.at < 9000) talkBubble(ghost.x, ghost.y - z * 0.45, ghost.last.x);
+}
+function ghostHtml(head) {
+  const log = ghost.msgs.map(m => `<div class="gm ${m.who}"><b>${m.who === "g" ? "👻" : "🐙"}</b> ${esc(m.x)}</div>`).join("") || `<div class="sub">${role === "viewer" ? "Пусни рибата-дух и пиши. Toshik ще вижда съобщенията ти над нея." : "Рибата-дух още мълчи…"}</div>`;
+  return head("👻 Рибата-дух") + (role === "viewer" ? `<div class="row2"><button class="ans ${ghost.on ? "" : "yes"}" id="ghOn">${ghost.on ? "Скрий рибата-дух" : "Покажи рибата-дух"}</button></div>` : "") +
+    `<div class="glog">${log}</div><form id="ghForm" class="gform"><input id="ghIn" maxlength="200" autocomplete="off" placeholder="${role === "viewer" ? "Напиши като рибата-дух…" : "Отговори на рибата-дух…"}"><button>Прати</button></form>`;
+}
 let frameN = 0;
 const ptr = { x: 0, y: 0, t: -1e9 };       // очите следят пръста/мишката
 addEventListener("pointermove", ev => { ptr.x = ev.clientX; ptr.y = ev.clientY; ptr.t = performance.now(); });
@@ -4083,6 +4164,7 @@ function loop() {
   drawTable(s, ground + 4);
   if (hidden()) drawRock(t);
   drawGuest(t, s);
+  if (S) drawGhost(t, s);
   if (role === "keeper") seaTick(performance.now());
   drawVis(t, s);
   if (S) drawFloor(t, s);
