@@ -3053,7 +3053,7 @@ const SEA = {
   tang: ["@f:tang", "Синя риба-хирург", "fish", "", 1, "swim", "c", "day", "Има малко ножче на опашката. Затова е „хирург“."],
   angel: ["@f:angel", "Риба-ангел", "fish", "", 1.1, "slow", "c", "day", "Плува толкова спокойно, че изглежда, че лети."],
   parrot: ["@f:parrot", "Риба-папагал", "fish", "", 1.3, "swim", "c", "day", "Гризе корали и от тях прави бял пясък."],
-  puffer: ["🐡", "Риба-балон", "fish", "", 1, "slow", "c", "any", "Когато се уплаши, се надува като топка."],
+  puffer: ["@g:puffer", "Риба-балон", "fish", "", 1, "slow", "c", "any", "Когато се уплаши, се надува като топка."],
   lion: ["@f:lion", "Риба-лъв", "fish", "", 1.2, "slow", "r", "any", "Перките ѝ са красиви, но бодат."],
   sunfish: ["@f:sunfish", "Риба-луна", "fish", "", 2.4, "slow", "r", "day", "Най-тежката костна риба. Обича да се пече на слънце."],
   sword: ["@f:sword", "Риба-меч", "fish", "", 1.7, "fast", "r", "any", "Една от най-бързите риби в океана."],
@@ -3078,49 +3078,49 @@ const SEA = {
   ray: ["@ray", "Скат", "shark", "", 1.4, "glide", "c", "any", "Крие се в пясъка, само очите му стърчат."],
   manta: ["@manta", "Манта", "shark", "", 2.6, "far", "r", "day", "Може да е широка колкото кола."],
   eray: ["@eray", "Електрически скат", "shark", "", 1.2, "glide", "r", "night", "Може да даде малък ток. Бззт!"],
-  dolphin: ["🐬", "Делфин", "mam", "", 1.8, "jump", "c", "day", "Всеки делфин си има име, подсвирква го."],
-  whale: ["🐋", "Синият кит", "mam", "brightness(.85)", 4.5, "far", "l", "any", "Най-голямото животно, живяло някога."],
-  humpback: ["🐳", "Гърбат кит", "mam", "", 3.5, "far", "r", "day", "Пее песни, които се чуват надалеч."],
+  dolphin: ["@m:dolphin", "Делфин", "mam", "", 1.8, "jump", "c", "day", "Всеки делфин си има име, подсвирква го."],
+  whale: ["@m:whale", "Синият кит", "mam", "", 4.5, "far", "l", "any", "Най-голямото животно, живяло някога."],
+  humpback: ["@m:humpback", "Гърбат кит", "mam", "", 3.5, "far", "r", "day", "Пее песни, които се чуват надалеч."],
   orca: ["@f:orca", "Косатка", "mam", "", 2.6, "slow", "r", "any", "Живее в голямо семейство. Баба им е водачът."],
-  seal: ["🦭", "Тюлен", "mam", "", 1.5, "swim", "c", "day", "Под водата е много пъргав."],
-  otter: ["🦦", "Морска видра", "mam", "", 1.2, "surface", "c", "day", "Държи се за ръце с другите, докато спи."],
-  penguin: ["🐧", "Пингвин", "mam", "", 1.1, "fast", "c", "day", "Не може да лети във въздуха, но лети под водата."],
-  narwhal: ["@narwhal", "Нарвал", "mam", "", 2, "slow", "l", "night", "Еднорогът на морето."],
-  sealion: ["🦭", "Морски лъв", "mam", "sepia(1) saturate(1.3)", 1.7, "swim", "r", "day", "Може да лае като куче."],
+  seal: ["@m:seal", "Тюлен", "mam", "", 1.5, "swim", "c", "day", "Под водата е много пъргав."],
+  otter: ["@m:otter", "Морска видра", "mam", "", 1.2, "surface", "c", "day", "Държи се за ръце с другите, докато спи."],
+  penguin: ["@m:penguin", "Пингвин", "mam", "", 1.1, "fast", "c", "day", "Не може да лети във въздуха, но лети под водата."],
+  narwhal: ["@m:narwhal", "Нарвал", "mam", "", 2, "slow", "l", "night", "Еднорогът на морето."],
+  sealion: ["@m:sealion", "Морски лъв", "mam", "", 1.7, "swim", "r", "day", "Може да лае като куче."],
   manatee: ["@b:manatee", "Ламантин", "mam", "", 2.2, "slow", "r", "day", "Наричат го морска крава. Пасе водорасли."],
-  squid: ["🦑", "Калмар", "moll", "", 1.1, "jet", "c", "night", "Плува назад, като пуска вода силно."],
-  giant: ["🦑", "Гигантски калмар", "moll", "brightness(.6) saturate(1.5)", 3.5, "far", "l", "night", "Има очи, големи колкото чиния."],
+  squid: ["@g:squid", "Калмар", "moll", "", 1.1, "jet", "c", "night", "Плува назад, като пуска вода силно."],
+  giant: ["@g:squid", "Гигантски калмар", "moll", "hue-rotate(-60deg) brightness(.7) saturate(1.6)", 3.5, "far", "l", "night", "Има очи, големи колкото чиния."],
   cuttle: ["@b:cuttle", "Сепия", "moll", "", 1, "slow", "c", "any", "Сменя цвета си за миг."],
   nautilus: ["@b:nautilus", "Наутилус", "moll", "", 1, "bob", "r", "night", "Живее в черупка, разделена на стаички."],
   mimic: ["@b:mimic", "Октопод-мимик", "moll", "", 1, "swim", "v", "any", "Преструва се на други животни. Братовчед ли е?"],
   bluering: ["@b:bluering", "Синьопръстен октопод", "moll", "", 0.6, "floor", "r", "any", "Малък и красив, но не се пипа."],
   nudi: ["@b:nudi", "Голохрилно охлювче", "moll", "", 0.8, "floor", "c", "any", "Най-цветният охлюв на света."],
-  snail: ["🐌", "Морски охлюв", "moll", "sepia(.4)", 0.8, "floor", "c", "any", "Носи си къщата навсякъде."],
-  oyster: ["🦪", "Стрида", "moll", "", 0.9, "sit", "c", "any", "Понякога в нея има перла."],
-  crab: ["🦀", "Рак", "crust", "", 0.9, "floor", "c", "any", "Ходи настрани. Така му е по-удобно."],
+  snail: ["@g:snail", "Морски охлюв", "moll", "", 0.8, "floor", "c", "any", "Носи си къщата навсякъде."],
+  oyster: ["@m:oyster", "Стрида", "moll", "", 0.9, "sit", "c", "any", "Понякога в нея има перла."],
+  crab: ["@g:crab", "Рак", "crust", "", 0.9, "floor", "c", "any", "Ходи настрани. Така му е по-удобно."],
   hermit: ["@b:hermit", "Рак-отшелник", "crust", "", 0.8, "floor", "c", "any", "Когато порасне, си търси по-голяма черупка."],
   spider: ["@b:spider", "Японски рак-паяк", "crust", "", 2, "floor", "v", "night", "Краката му са по-дълги от човек."],
-  lobster: ["🦞", "Омар", "crust", "", 1.1, "floor", "c", "night", "Може да живее над сто години."],
-  shrimp: ["🦐", "Скарида", "crust", "", 0.8, "swim", "c", "any", "Чисти другите риби. Нещо като фризьор."],
+  lobster: ["@g:lobster", "Омар", "crust", "", 1.1, "floor", "c", "night", "Може да живее над сто години."],
+  shrimp: ["@g:shrimp", "Скарида", "crust", "", 0.8, "swim", "c", "any", "Чисти другите риби. Нещо като фризьор."],
   mantis: ["@b:mantis", "Скарида-богомолка", "crust", "", 0.9, "floor", "r", "day", "Вижда цветове, които ние не можем."],
   krill: ["@b:krill", "Крил", "crust", "", 0.35, "school", "c", "night", "Мъничък, но китовете го обожават."],
-  jelly: ["🪼", "Медуза", "jelly", "", 1.1, "drift", "c", "any", "Няма мозък, но си живее добре."],
-  moon: ["🪼", "Луна-медуза", "jelly", "grayscale(1) brightness(1.4)", 1.2, "drift", "c", "night", "Прозрачна е като стъкло."],
+  jelly: ["@g:jelly", "Медуза", "jelly", "", 1.1, "drift", "c", "any", "Няма мозък, но си живее добре."],
+  moon: ["@g:jelly", "Луна-медуза", "jelly", "grayscale(1) brightness(1.5)", 1.2, "drift", "c", "night", "Прозрачна е като стъкло."],
   manowar: ["@b:manowar", "Португалска галера", "jelly", "", 1.1, "surface", "r", "day", "Всъщност е много животинки заедно."],
   comb: ["@b:comb", "Ребреста медуза", "jelly", "", 0.9, "drift", "r", "night", "Свети в цветовете на дъгата."],
   star: ["@b:star", "Морска звезда", "jelly", "", 0.8, "sit", "c", "any", "Ако си загуби ръка, ѝ пораства нова."],
   urchin: ["@urchin", "Морски таралеж", "jelly", "", 0.8, "sit", "c", "any", "Ходи с мъничките си крачета между бодлите."],
   cucumber: ["@b:cucumber", "Морска краставица", "jelly", "", 0.9, "sit", "c", "any", "Не е зеленчук! Животно е."],
   anemone: ["@anemone", "Актиния", "jelly", "", 1, "sit", "c", "any", "Прилича на цвете, но е животно."],
-  turtle: ["🐢", "Морска костенурка", "rep", "", 1.4, "slow", "c", "day", "Връща се да снесе яйца на плажа, където се е родила."],
-  leather: ["🐢", "Кожеста костенурка", "rep", "grayscale(.9) brightness(.8)", 2.2, "slow", "r", "any", "Най-голямата костенурка. Яде медузи."],
+  turtle: ["@g:turtle", "Морска костенурка", "rep", "", 1.4, "slow", "c", "day", "Връща се да снесе яйца на плажа, където се е родила."],
+  leather: ["@g:turtle", "Кожеста костенурка", "rep", "grayscale(.9) brightness(.65)", 2.2, "slow", "r", "any", "Най-голямата костенурка. Яде медузи."],
   seasnake: ["@f:seasnake", "Морска змия", "rep", "", 1.1, "wave", "r", "day", "Може да задържи въздуха си с часове."],
   iguana: ["@b:iguana", "Морска игуана", "rep", "", 1.2, "swim", "r", "day", "Единствената игуана, която плува в морето."],
   coelacanth: ["@f:coelacanth", "Целакант", "fish", "", 1.6, "slow", "l", "night", "Жива вкаменелост. Плува тук от преди динозаврите."],
-  mermaid: ["🧜‍♀️", "Русалка", "leg", "", 1.4, "slow", "l", "night", "Казват, че пее на тези, които се грижат за морето."],
+  mermaid: ["@m:mermaid", "Русалка", "leg", "", 1.4, "slow", "l", "night", "Казват, че пее на тези, които се грижат за морето."],
   kraken: ["@b:kraken", "Кракенът", "leg", "", 5, "far", "l", "night", "Огромен като остров. Само минава. Надяваме се."],
-  goldfish: ["🐠", "Златната рибка", "leg", "sepia(1) saturate(4) brightness(1.2)", 0.9, "glow", "l", "any", "Ако я снимаш, можеш да си пожелаеш нещо. Тихичко."],
-  ghostjelly: ["🪼", "Призрачна медуза", "leg", "grayscale(1) brightness(1.8)", 1.6, "drift", "l", "night", "Прозрачна като спомен. Свети едва-едва."],
+  goldfish: ["@f:goldfish", "Златната рибка", "leg", "", 0.9, "glow", "l", "any", "Ако я снимаш, можеш да си пожелаеш нещо. Тихичко."],
+  ghostjelly: ["@g:jelly", "Призрачна медуза", "leg", "grayscale(1) brightness(2) opacity(.75)", 1.6, "drift", "l", "night", "Прозрачна като спомен. Свети едва-едва."],
   // гостите зад камъка и рибата-фенер (не минават сами, снимат се, когато дойдат)
   g_crab: ["@g:crab", "Ракът", "guest", "", 1, "guest", "c", "day", "Все си търси щипката. А тя е на него."],
   g_lobster: ["@g:lobster", "Омарът", "guest", "", 1, "guest", "c", "night", "Знае всички клюки за новия риф."],
@@ -3133,7 +3133,7 @@ const SEA = {
   g_snail: ["@g:snail", "Охлювът", "guest", "", 1, "guest", "c", "morning", "Казва „добро утро“ и по обяд."],
   g_shrimp: ["@g:shrimp", "Скаридата", "guest", "", 1, "guest", "c", "any", "Подозира всички, че искат да я изядат."],
   g_angler: ["@angler", "Рибата-фенер", "guest", "", 1.2, "guest", "r", "night", "Носи си лампа. Нощем минава съвсем бавно."],
-  croc: ["🐊", "Морски крокодил", "rep", "", 2.4, "slow", "v", "any", "Най-големият крокодил. Добре, че само минава."],
+  croc: ["@m:croc", "Морски крокодил", "rep", "", 2.4, "slow", "v", "any", "Най-големият крокодил. Добре, че само минава."],
 };
 let seaForce = null, vis = null, nextVis = performance.now() + rnd(1, 2.5) * 60000, flashAt = -1e9, albTab = "fish", albPick = null;
 const THUMB = {}, TIER_W = { c: 10, r: 3, v: 1, l: 0.6 }, TIER_N = { c: "Обикновен", r: "Рядък", v: "Много рядък", l: "⭐ Легендарен" };
@@ -3225,6 +3225,7 @@ const FISHP = {   // l дължина, h височина, c цвят, b кор�
   whaleshark: { shark: 1, c: "#2f4f6f", b: "#dfe7ee", pat: "spots", pc: "#ffffff", sp: "widemouth" },
   nurse: { shark: 1, c: "#b08a5a", b: "#e2cba7", sp: "barbel" },
   orca: { shark: 2, c: "#16181d", b: "#ffffff", sp: "orca" },
+  goldfish: { l: 0.9, h: 0.55, c: "#ffb300", b: "#ffe066", tail: "fork", tc: "#ffcf40", fin: "round" },
 };
 function seaFish(ctx, k, z, t, dir) {
   const P = FISHP[k], L = "#2b2a33";
@@ -3436,6 +3437,99 @@ function bugArt(ctx, k, z, t, dir) {      // не-риби: главоноги, 
     for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(z * 0.55, z * 0.02 + i * z * 0.03, z * 0.008, 0, 7); ctx.fill(); } return;
   }
 }
+function mamArt(ctx, k, z, t, dir) {      // бозайници, птици, влечуги и легенди
+  const L = "#2b2a33"; ctx.lineWidth = Math.max(2, z * 0.035); ctx.strokeStyle = L; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.scale(dir > 0 ? 1 : -1, 1);
+  const eye = (x, y, r) => { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = L; ctx.beginPath(); ctx.arc(x + r * 0.25, y, r * 0.55, 0, 7); ctx.fill(); };
+  const dot = (x, y, r) => { ctx.fillStyle = L; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+  if (k === "dolphin" || k === "whale" || k === "humpback" || k === "narwhal") {
+    const P = { dolphin: ["#6f8fae", "#dfe9f2", 1.1, 0.26], whale: ["#3d5a80", "#9fb4c9", 1.3, 0.24], humpback: ["#2f3a48", "#c9d2dc", 1.2, 0.3], narwhal: ["#9aa6ad", "#e6eaec", 1.1, 0.27] }[k];
+    const l = z * P[2], h = z * P[3], fl = Math.sin(t * 3) * 0.2;
+    ctx.fillStyle = P[0];
+    ctx.save(); ctx.translate(-l * 0.48, 0); ctx.rotate(fl);              // опашка (хоризонтална)
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-l * 0.08, -h * 0.2, -l * 0.18, -h * 0.75); ctx.quadraticCurveTo(-l * 0.1, -h * 0.05, -l * 0.18, h * 0.75); ctx.quadraticCurveTo(-l * 0.08, h * 0.2, 0, 0); ctx.fill(); ctx.stroke(); ctx.restore();
+    if (k !== "narwhal") { ctx.beginPath(); ctx.moveTo(-l * 0.05, -h * 0.42); ctx.quadraticCurveTo(-l * 0.02, -h * (k === "dolphin" ? 1.2 : 0.75), -l * 0.14, -h * (k === "dolphin" ? 1.25 : 0.7)); ctx.quadraticCurveTo(-l * 0.08, -h * 0.6, -l * 0.18, -h * 0.4); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    const body = () => { ctx.beginPath(); ctx.moveTo(l * 0.5, h * 0.05);
+      ctx.bezierCurveTo(l * 0.45, -h * 0.7, -l * 0.2, -h * 0.6, -l * 0.48, -h * 0.08); ctx.lineTo(-l * 0.48, h * 0.08);
+      ctx.bezierCurveTo(-l * 0.2, h * 0.55, l * 0.4, h * 0.6, l * 0.5, h * 0.05); ctx.closePath(); };
+    const gr = ctx.createLinearGradient(0, -h / 2, 0, h / 2); gr.addColorStop(0, P[0]); gr.addColorStop(0.55, P[0]); gr.addColorStop(0.65, P[1]); gr.addColorStop(1, P[1]);
+    ctx.fillStyle = gr; body(); ctx.fill();
+    ctx.save(); body(); ctx.clip();
+    if (k === "humpback") { ctx.strokeStyle = "rgba(40,50,60,.6)"; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo(l * 0.4, h * 0.15 + i * h * 0.06); ctx.lineTo(-l * 0.05, h * 0.18 + i * h * 0.06); ctx.stroke(); } ctx.fillStyle = "#c9d2dc"; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(l * 0.42 - i * l * 0.03, -h * 0.25 + (i % 2) * 4, z * 0.02, 0, 7); ctx.fill(); } }
+    if (k === "narwhal") { ctx.fillStyle = "rgba(60,70,80,.45)"; for (let i = 0; i < 20; i++) { ctx.beginPath(); ctx.arc(Math.sin(i * 9.1) * l * 0.45, -h * 0.3 + Math.cos(i * 4.3) * h * 0.18, z * 0.025, 0, 7); ctx.fill(); } }
+    ctx.restore(); ctx.strokeStyle = L; body(); ctx.stroke();
+    ctx.fillStyle = P[0]; ctx.beginPath(); ctx.moveTo(l * 0.18, h * 0.22); ctx.quadraticCurveTo(l * 0.1, h * (k === "humpback" ? 1.6 : 0.9), -l * (k === "humpback" ? 0.12 : 0.02), h * (k === "humpback" ? 1.5 : 0.85)); ctx.quadraticCurveTo(l * 0.08, h * 0.5, l * 0.05, h * 0.25); ctx.fill(); ctx.stroke();
+    if (k === "dolphin") { ctx.fillStyle = P[0]; ctx.beginPath(); ctx.moveTo(l * 0.46, -h * 0.05); ctx.quadraticCurveTo(l * 0.6, 0, l * 0.62, h * 0.08); ctx.quadraticCurveTo(l * 0.55, h * 0.14, l * 0.47, h * 0.12); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(l * 0.47, h * 0.08); ctx.quadraticCurveTo(l * 0.4, h * 0.2, l * 0.32, h * 0.12); ctx.stroke(); }
+    else { ctx.beginPath(); ctx.moveTo(l * 0.49, h * 0.08); ctx.quadraticCurveTo(l * 0.3, h * 0.25, l * 0.12, h * 0.15); ctx.stroke(); }
+    if (k === "narwhal") { ctx.strokeStyle = "#f3ead2"; ctx.lineWidth = Math.max(3, z * 0.045); ctx.beginPath(); ctx.moveTo(l * 0.48, -h * 0.05); ctx.lineTo(l * 1.15, -h * 0.25); ctx.stroke();
+      ctx.strokeStyle = "#c9bb95"; ctx.lineWidth = 1.5; for (let i = 1; i < 8; i++) { const x = l * 0.48 + i * l * 0.085, y = -h * 0.05 - i * h * 0.025; ctx.beginPath(); ctx.moveTo(x - 3, y - 3); ctx.lineTo(x + 3, y + 3); ctx.stroke(); } ctx.strokeStyle = L; ctx.lineWidth = Math.max(2, z * 0.035); }
+    if (k === "whale" || k === "humpback") { ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = Math.max(2, z * 0.02); const sp = (t * 1.5) % 1; ctx.beginPath(); ctx.moveTo(l * 0.15, -h * 0.55); ctx.quadraticCurveTo(l * 0.1, -h * (0.9 + sp), l * 0.05, -h * (1.1 + sp)); ctx.moveTo(l * 0.15, -h * 0.55); ctx.quadraticCurveTo(l * 0.2, -h * (0.9 + sp), l * 0.25, -h * (1.1 + sp)); ctx.stroke(); ctx.strokeStyle = L; ctx.lineWidth = Math.max(2, z * 0.035); }
+    eye(l * 0.3, -h * 0.05, Math.max(3, z * 0.04)); return;
+  }
+  if (k === "seal" || k === "sealion") {
+    const sl = k === "sealion", col = sl ? "#8a5a35" : "#8e9aa6", bel = sl ? "#b07a4e" : "#c9d1d8";
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(-z * 0.55, 0); ctx.lineTo(-z * 0.75, -z * 0.12 + Math.sin(t * 4) * 4); ctx.lineTo(-z * 0.75, z * 0.12 + Math.sin(t * 4) * 4); ctx.closePath(); ctx.fill(); ctx.stroke();   // задни плавници
+    const gr = ctx.createLinearGradient(0, -z * 0.2, 0, z * 0.2); gr.addColorStop(0, col); gr.addColorStop(1, bel); ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.ellipse(-z * 0.1, 0, z * 0.48, z * 0.2, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(z * 0.38, sl ? -z * 0.12 : -z * 0.04, z * 0.16, z * 0.14, sl ? -0.4 : 0, 0, 7); ctx.fill(); ctx.stroke();
+    if (!sl) { ctx.fillStyle = "rgba(60,70,80,.45)"; for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(-z * 0.45 + i * z * 0.09, -z * 0.08 + (i % 3) * z * 0.05, z * 0.02, 0, 7); ctx.fill(); } }
+    else { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(z * 0.32, -z * 0.24, z * 0.03, 0, 7); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(z * 0.12, z * 0.2, z * 0.12, z * 0.05, 0.6 + Math.sin(t * 5) * 0.2, 0, 7); ctx.fill(); ctx.stroke();
+    const hy = sl ? -z * 0.12 : -z * 0.04; eye(z * 0.4, hy - z * 0.04, Math.max(3, z * 0.04)); dot(z * 0.53, hy + z * 0.02, z * 0.025);
+    ctx.lineWidth = 1.5; for (const d of [-1, 0, 1]) { ctx.beginPath(); ctx.moveTo(z * 0.5, hy + z * 0.04); ctx.lineTo(z * 0.64, hy + z * 0.04 + d * z * 0.04); ctx.stroke(); } return;
+  }
+  if (k === "otter") {
+    ctx.rotate(Math.sin(t * 1.5) * 0.06);
+    ctx.fillStyle = "#7a5233"; ctx.beginPath(); ctx.ellipse(0, 0, z * 0.45, z * 0.16, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#d9b48a"; ctx.beginPath(); ctx.ellipse(z * 0.02, -z * 0.04, z * 0.3, z * 0.09, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#7a5233"; ctx.beginPath(); ctx.moveTo(-z * 0.42, 0); ctx.quadraticCurveTo(-z * 0.65, -z * 0.05, -z * 0.7, z * 0.08); ctx.quadraticCurveTo(-z * 0.55, z * 0.08, -z * 0.4, z * 0.06); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(z * 0.45, -z * 0.08, z * 0.15, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#d9b48a"; ctx.beginPath(); ctx.ellipse(z * 0.5, -z * 0.04, z * 0.09, z * 0.06, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#f2d9b5"; ctx.beginPath(); ctx.arc(z * 0.1, -z * 0.14, z * 0.06, 0, 7); ctx.fill(); ctx.stroke();      // мида на корема
+    dot(z * 0.47, -z * 0.12, z * 0.025); dot(z * 0.56, -z * 0.06, z * 0.022); return;
+  }
+  if (k === "penguin") {
+    ctx.rotate(0.15);
+    ctx.fillStyle = "#1e2229"; ctx.beginPath(); ctx.ellipse(0, 0, z * 0.42, z * 0.18, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(z * 0.02, z * 0.06, z * 0.34, z * 0.1, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#1e2229"; ctx.beginPath(); ctx.arc(z * 0.38, -z * 0.03, z * 0.13, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#ffb020"; ctx.beginPath(); ctx.moveTo(z * 0.48, -z * 0.04); ctx.lineTo(z * 0.62, 0); ctx.lineTo(z * 0.48, z * 0.03); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#1e2229"; ctx.beginPath(); ctx.ellipse(z * 0.0, -z * 0.12, z * 0.18, z * 0.05, -0.5 + Math.sin(t * 8) * 0.4, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#ffb020"; ctx.beginPath(); ctx.ellipse(-z * 0.44, 0, z * 0.07, z * 0.04, 0, 0, 7); ctx.fill();
+    eye(z * 0.42, -z * 0.07, Math.max(2.5, z * 0.035)); return;
+  }
+  if (k === "oyster") {
+    ctx.fillStyle = "#b9ab95"; ctx.beginPath(); ctx.ellipse(0, z * 0.05, z * 0.35, z * 0.12, 0, 0, 7); ctx.fill(); ctx.stroke();
+    const op = (Math.sin(t * 0.8) + 1) / 2 * 0.5;
+    ctx.save(); ctx.translate(-z * 0.32, z * 0.02); ctx.rotate(-op); ctx.fillStyle = "#cfc2ad"; ctx.beginPath(); ctx.ellipse(z * 0.32, -z * 0.02, z * 0.35, z * 0.12, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = "#f3f0ff"; ctx.beginPath(); ctx.arc(z * 0.02, 0, z * 0.07 * (op > 0.15 ? 1 : 0), 0, 7); ctx.fill(); if (op > 0.15) ctx.stroke(); return;
+  }
+  if (k === "croc") {
+    ctx.fillStyle = "#5f7d3a"; ctx.beginPath(); ctx.moveTo(z * 0.8, -z * 0.02); ctx.lineTo(z * 0.35, -z * 0.1); ctx.quadraticCurveTo(0, -z * 0.18, -z * 0.4, -z * 0.08);
+    ctx.quadraticCurveTo(-z * 0.8, -z * 0.02, -z * 1.1, Math.sin(t * 3) * z * 0.08); ctx.quadraticCurveTo(-z * 0.8, z * 0.08, -z * 0.4, z * 0.1); ctx.quadraticCurveTo(0, z * 0.16, z * 0.35, z * 0.06); ctx.lineTo(z * 0.8, z * 0.04); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#4a6630"; for (let i = 0; i < 12; i++) { ctx.beginPath(); ctx.moveTo(z * 0.3 - i * z * 0.11, -z * 0.12 + (i > 6 ? (i - 6) * z * 0.01 : 0)); ctx.lineTo(z * 0.25 - i * z * 0.11, -z * 0.2 + (i > 6 ? (i - 6) * z * 0.015 : 0)); ctx.lineTo(z * 0.2 - i * z * 0.11, -z * 0.11 + (i > 6 ? (i - 6) * z * 0.01 : 0)); ctx.fill(); }
+    ctx.fillStyle = "#fff"; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo(z * 0.4 + i * z * 0.065, z * 0.02); ctx.lineTo(z * 0.43 + i * z * 0.065, z * 0.07); ctx.lineTo(z * 0.46 + i * z * 0.065, z * 0.02); ctx.fill(); }
+    for (const [lx, d] of [[z * 0.15, 1], [-z * 0.35, -1]]) { ctx.beginPath(); ctx.moveTo(lx, z * 0.1); ctx.lineTo(lx - z * 0.12, z * 0.25 + Math.sin(t * 4 * d) * z * 0.04); ctx.stroke(); }
+    eye(z * 0.32, -z * 0.14, Math.max(3, z * 0.04)); return;
+  }
+  if (k === "mermaid") {
+    ctx.scale(dir > 0 ? 1 : -1, 1);       // стои изправена, не се обръща
+    const sw = Math.sin(t * 2.5);
+    ctx.fillStyle = "#3fc1b0"; ctx.beginPath(); ctx.moveTo(-z * 0.1, z * 0.05); ctx.quadraticCurveTo(-z * 0.12, z * 0.35, sw * z * 0.08, z * 0.55); ctx.quadraticCurveTo(z * 0.12, z * 0.35, z * 0.1, z * 0.05); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.translate(sw * z * 0.08, z * 0.55); ctx.rotate(sw * 0.3); ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-z * 0.18, z * 0.05, -z * 0.2, z * 0.16); ctx.quadraticCurveTo(0, z * 0.08, z * 0.2, z * 0.16); ctx.quadraticCurveTo(z * 0.18, z * 0.05, 0, 0); ctx.fill(); ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1.5; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(0, z * 0.1 + i * z * 0.08, z * 0.06, 0.2, Math.PI - 0.2); ctx.stroke(); } ctx.strokeStyle = L; ctx.lineWidth = Math.max(2, z * 0.035);
+    ctx.fillStyle = "#ffd2b3"; ctx.beginPath(); ctx.ellipse(0, -z * 0.08, z * 0.1, z * 0.15, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#c86fd8"; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(sx * z * 0.045, -z * 0.12, z * 0.04, 0, 7); ctx.fill(); ctx.stroke(); }
+    ctx.strokeStyle = "#ffd2b3"; ctx.lineWidth = Math.max(3, z * 0.04); for (const sx of [-1, 1]) { ctx.beginPath(); ctx.moveTo(sx * z * 0.08, -z * 0.15); ctx.quadraticCurveTo(sx * z * 0.2, -z * 0.05 + sw * z * 0.05, sx * z * 0.22, z * 0.05); ctx.stroke(); } ctx.strokeStyle = L; ctx.lineWidth = Math.max(2, z * 0.035);
+    ctx.fillStyle = "#e0453a"; ctx.beginPath(); ctx.moveTo(-z * 0.14, -z * 0.3); ctx.quadraticCurveTo(-z * 0.24, -z * 0.05, -z * 0.16 + sw * 3, z * 0.05); ctx.lineTo(-z * 0.08, -z * 0.25); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#ffd2b3"; ctx.beginPath(); ctx.arc(0, -z * 0.34, z * 0.12, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#e0453a"; ctx.beginPath(); ctx.arc(0, -z * 0.38, z * 0.13, Math.PI, 0); ctx.fill(); ctx.stroke();
+    dot(-z * 0.04, -z * 0.33, z * 0.018); dot(z * 0.04, -z * 0.33, z * 0.018);
+    ctx.beginPath(); ctx.arc(0, -z * 0.29, z * 0.04, 0.3, Math.PI - 0.3); ctx.stroke(); return;
+  }
+}
 function anglerArt(x, y, sc, d, t) {
   const lx = x + d * 70 * sc, ly = y - 52 * sc;
   const glow = g.createRadialGradient(lx, ly, 2, lx, ly, 120 * sc);
@@ -3455,6 +3549,7 @@ function anglerArt(x, y, sc, d, t) {
 function drawSeaArt(ctx, k, z, t, dir) {
   if (k.startsWith("f:")) { ctx.scale(dir > 0 ? 1 : -1, 1); return seaFish(ctx, k.slice(2), z, t, dir); }
   if (k.startsWith("b:")) return bugArt(ctx, k.slice(2), z, t, dir);
+  if (k.startsWith("m:")) return mamArt(ctx, k.slice(2), z, t, dir);
   if (k.startsWith("g:") || k === "angler") { const g0 = g; g = ctx; try { if (k === "angler") anglerArt(z * 0.1, z * 0.12, z / 150, dir > 0 ? 1 : -1, t); else drawCreature(k.slice(2), 0, 0, z / 90, t); } finally { g = g0; } return; }
   const L = "#2b2a33"; ctx.lineWidth = Math.max(2, z * 0.05); ctx.strokeStyle = L; ctx.lineJoin = "round";
   if (k === "ray" || k === "manta" || k === "eray") {
