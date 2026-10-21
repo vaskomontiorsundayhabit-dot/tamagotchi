@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Октонис: нощна визия</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&family=Rubik:wght@500;700;800&display=swap">
+<style>
+/* Проба: цялата визия като нощен „плъгин“ – розов неон, нощно море, вълнист панел с копчета. */
+:root { --night: #120c22; --pink: #ff7fbf; --pink-hi: #ffc2e3; --cream: #ffe9f3; --ink: #1c0a16;
+  --logo: "Rubik Mono One", "Arial Black", sans-serif; --ui: "Rubik", system-ui, sans-serif; color-scheme: dark; }
+html, body { height: 100%; margin: 0; }
+body { background: radial-gradient(120% 80% at 50% 0%, #2a1530 0%, #0b0710 70%); color: var(--cream); font-family: var(--ui);
+  display: grid; place-items: center; padding: 16px; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+.wrap { width: min(100%, 560px); container-type: inline-size; }
+.app { --u: 0.1cqw; position: relative; width: 100%; aspect-ratio: 1000 / 1500; border-radius: calc(var(--u) * 30); overflow: hidden;
+  background: var(--night); box-shadow: 0 0 0 calc(var(--u)*6) #2b0f22, 0 calc(var(--u)*40) calc(var(--u)*100) #000a; transition: filter .4s; }
+.app.off { filter: saturate(.3) brightness(.55); }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.logo { position: absolute; left: calc(var(--u)*50); top: calc(var(--u)*50); }
+.logo h1 { margin: 0; font-family: var(--logo); font-weight: 400; font-size: calc(var(--u)*96); color: var(--pink); transform: rotate(-3deg);
+  -webkit-text-stroke: calc(var(--u)*5) var(--ink); paint-order: stroke fill; text-shadow: calc(var(--u)*8) calc(var(--u)*10) 0 var(--ink), 0 0 calc(var(--u)*40) #ff7fbf66; letter-spacing: calc(var(--u)*-2); }
+.logo span { display: block; margin: calc(var(--u)*18) 0 0 calc(var(--u)*40); font-weight: 800; font-size: calc(var(--u)*34); letter-spacing: calc(var(--u)*4); text-shadow: 0 calc(var(--u)*4) 0 var(--ink); }
+.logo span b { color: var(--pink); margin: 0 calc(var(--u)*10); }
+.power { position: absolute; right: calc(var(--u)*50); top: calc(var(--u)*60); width: calc(var(--u)*100); height: calc(var(--u)*100); border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #6a2448, #2a0c1e); border: calc(var(--u)*4) solid #c8648f; box-shadow: 0 0 calc(var(--u)*28) #ff7fbf88;
+  display: grid; place-items: center; cursor: pointer; padding: 0; font-size: calc(var(--u)*44); }
+.preset { position: absolute; left: calc(var(--u)*50); right: calc(var(--u)*50); top: calc(var(--u)*270); height: calc(var(--u)*80);
+  display: grid; grid-template-columns: calc(var(--u)*80) 1fr calc(var(--u)*80); align-items: center; background: #1a0a16d9; border: calc(var(--u)*3) solid #b0587f;
+  border-radius: calc(var(--u)*14); box-shadow: inset 0 0 calc(var(--u)*20) #000; }
+.preset span { text-align: center; font-weight: 700; font-size: calc(var(--u)*34); }
+.preset button { background: none; border: 0; color: var(--cream); font-size: calc(var(--u)*34); cursor: pointer; height: 100%; }
+.panel { position: absolute; left: calc(var(--u)*30); right: calc(var(--u)*30); bottom: calc(var(--u)*30); height: calc(var(--u)*500); }
+.panel svg.frame { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.knobs { position: absolute; left: 0; right: 0; top: calc(var(--u)*40); display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; padding: 0 calc(var(--u)*20); }
+.cell { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u)*8); }
+.knob { --size: calc(var(--u)*120); --ang: 0deg; position: relative; width: calc(var(--size)*1.4); aspect-ratio: 1; display: grid; place-items: center; touch-action: none; cursor: ns-resize; }
+.knob.big { --size: calc(var(--u)*150); }
+.knob svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.knob .body { width: var(--size); aspect-ratio: 1; border-radius: 50%; position: relative; transform: rotate(var(--ang));
+  background: radial-gradient(circle, #5b1f3f 0 54%, transparent 55%), radial-gradient(circle at 38% 30%, #8a3a62, #3b1129 70%);
+  box-shadow: 0 0 0 calc(var(--u)*6) #e88ab6, 0 0 0 calc(var(--u)*11) #2a0c1e, 0 0 calc(var(--u)*34) #ff7fbf99, inset 0 calc(var(--u)*-8) calc(var(--u)*14) #0007; }
+.knob .body::after { content: ""; position: absolute; left: 50%; top: 9%; width: calc(var(--u)*8); height: 30%; border-radius: 9px; transform: translateX(-50%); background: var(--pink-hi); box-shadow: 0 0 calc(var(--u)*12) var(--pink); }
+.knob i { position: absolute; font-style: normal; font-size: calc(var(--u)*44); pointer-events: none; }
+.lbl { font-weight: 800; font-size: calc(var(--u)*26); letter-spacing: calc(var(--u)*2); text-shadow: 0 calc(var(--u)*3) 0 var(--ink); text-align: center; }
+.val { min-width: calc(var(--u)*120); padding: calc(var(--u)*6) calc(var(--u)*10); text-align: center; font-weight: 700; font-size: calc(var(--u)*26);
+  background: #1a0912; border: calc(var(--u)*2) solid #9a4a70; border-radius: calc(var(--u)*8); font-variant-numeric: tabular-nums; }
+.bar { position: absolute; left: calc(var(--u)*40); right: calc(var(--u)*40); bottom: calc(var(--u)*40); display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--u)*20); }
+.bar button { height: calc(var(--u)*86); font-family: var(--ui); font-weight: 800; font-size: calc(var(--u)*28); letter-spacing: calc(var(--u)*2); color: var(--cream);
+  background: linear-gradient(#5a2140, #33102a); border: calc(var(--u)*3) solid #9a4a70; border-radius: calc(var(--u)*14); cursor: pointer; }
+.bar button.on { background: linear-gradient(#ff9bcc, #d65d98); color: var(--ink); border-color: var(--pink-hi); box-shadow: 0 0 calc(var(--u)*26) var(--pink); }
+.say { position: absolute; left: 50%; top: calc(var(--u)*390); transform: translateX(-50%); max-width: 80%; padding: calc(var(--u)*16) calc(var(--u)*30);
+  background: #1a0a16e6; border: calc(var(--u)*3) solid var(--pink); border-radius: calc(var(--u)*30); font-weight: 700; font-size: calc(var(--u)*32); text-align: center;
+  box-shadow: 0 0 calc(var(--u)*30) #ff7fbf66; transition: opacity .3s; }
+.note { margin: 14px 0 0; font-size: 13px; color: #c99bb4; text-align: center; }
+.note a { color: var(--pink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="app" id="app">
+    <canvas id="c"></canvas>
+    <div class="logo"><h1>ОКТОНИС</h1><span><b>+</b>НОЩНО МОРЕ<b>+</b></span></div>
+    <button class="power" id="power" title="Сън">🌙</button>
+    <div class="preset"><button id="prev">◀</button><span id="mood">Спокоен</span><button id="next">▶</button></div>
+    <div class="say" id="say">Обичам нощта. Тогава мехурчетата светят.</div>
+    <div class="panel">
+      <svg class="frame" viewBox="0 0 940 500" preserveAspectRatio="none">
+        <defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#55203b" stop-opacity=".95"/><stop offset="1" stop-color="#2f0f22" stop-opacity=".98"/></linearGradient></defs>
+        <path d="M14 22 Q60 6 120 16 T240 12 T360 18 T480 4 T600 16 T720 10 T840 18 T926 16 Q938 80 932 180 T934 486 Q880 496 800 490 T580 494 T360 488 T160 494 T8 488 Q2 300 8 180 T14 22 Z" fill="url(#pg)" stroke="#e88ab6" stroke-width="3"/>
+        <path d="M24 360 H916" stroke="#9a4a70" stroke-width="2" stroke-dasharray="3 7"/>
+      </svg>
+      <div class="knobs" id="knobs"></div>
+      <div class="bar"><button id="feed">НАХРАНИ</button><button id="play">ИГРАЙ</button><button id="work">МАЙСТОРИ</button></div>
+    </div>
+  </div>
+  <p class="note">Копчетата се въртят с влачене нагоре и надолу. Това е само проба на визията. <a href="goggles.html">← обратно</a></p>
+</div>
+<script>document.write('<script src="octo.js?t=' + Date.now() + '"><\/script>')</script>
+<script>
+(() => {
+  const KN = [["hunger", "ГЛАД", "🍕", 30], ["energy", "СИЛИ", "⚡", 80], ["mood", "НАСТРОЕНИЕ", "😊", 70, true], ["health", "ЗДРАВЕ", "❤️", 95], ["clean", "ЧИСТО", "🧹", 60]];
+  const st = {}, box = document.getElementById("knobs");
+  const ticks = () => { let s = '<svg viewBox="0 0 100 100">'; for (let i = 0; i <= 10; i++) { const a = (-135 + i * 27) * Math.PI / 180, r2 = i % 5 ? 42.5 : 40;
+    s += `<line x1="${50 + 46 * Math.sin(a)}" y1="${50 - 46 * Math.cos(a)}" x2="${50 + r2 * Math.sin(a)}" y2="${50 - r2 * Math.cos(a)}" stroke="#e88ab6" stroke-width="${i % 5 ? 1.6 : 2.4}" stroke-linecap="round"/>`; } return s + "</svg>"; };
+  for (const [id, n, ic, def, big] of KN) {
+    const c = document.createElement("div"); c.className = "cell";
+    c.innerHTML = `<div class="knob${big ? " big" : ""}">${ticks()}<div class="body"></div><i>${ic}</i></div><div class="lbl">${n}</div><div class="val"></div>`;
+    box.appendChild(c);
+    const k = c.querySelector(".knob"), set = v => { v = Math.max(0, Math.min(100, v)); st[id] = v; k.style.setProperty("--ang", (-135 + v * 2.7) + "deg"); c.querySelector(".val").textContent = Math.round(v) + "%"; };
+    let s0 = null;
+    k.onpointerdown = e => { k.setPointerCapture(e.pointerId); s0 = { y: e.clientY, v: st[id] }; };
+    k.onpointermove = e => { if (s0) set(s0.v + (s0.y - e.clientY) / 2); };
+    k.onpointerup = k.onpointercancel = () => { s0 = null; };
+    set(def);
+  }
+  // настроението (горе) сменя режима
+  const MODES = [["idle", "Спокоен"], ["happy", "Щастлив"], ["party", "Получи се!"], ["sad", "Тъжен"], ["angry", "Ядосан"], ["eat", "Яде"], ["work", "Изобретява"]];
+  let mi = 0, mode = "idle", modeAt = 0, sleep = false;
+  const LINES = { idle: "Обичам нощта. Тогава мехурчетата светят.", happy: "Виж колко звезди! Преброих ги. Почти.", party: "Работи! Работи! Изобретих го!",
+    sad: "Боклуците пак плуват наоколо…", angry: "Не ме буди посред нощ!", eat: "Ням-ням! Нощна закуска.", work: "Шшш… майсторя под луната." };
+  const setMode = (d) => { mi = (mi + d + MODES.length) % MODES.length; mode = MODES[mi][0]; modeAt = performance.now() / 1000; document.getElementById("mood").textContent = MODES[mi][1]; say(LINES[mode]); };
+  const say = t => { const el = document.getElementById("say"); el.style.opacity = 0; setTimeout(() => { el.textContent = t; el.style.opacity = 1; }, 200); };
+  document.getElementById("prev").onclick = () => setMode(-1);
+  document.getElementById("next").onclick = () => setMode(1);
+  document.getElementById("power").onclick = () => { sleep = !sleep; document.getElementById("app").classList.toggle("off", sleep); say(sleep ? "Лека нощ… хррр…" : "Добро утро! Е, добра нощ."); };
+  const pick = (id, m) => { document.getElementById(id).onclick = e => { document.querySelectorAll(".bar button").forEach(b => b.classList.remove("on")); e.target.classList.add("on");
+    mode = m; modeAt = performance.now() / 1000; say(LINES[m]); setTimeout(() => e.target.classList.remove("on"), 2500); }; };
+  pick("feed", "eat"); pick("play", "happy"); pick("work", "work");
+  // нощното море
+  const cv = document.getElementById("c"), g = cv.getContext("2d");
+  let W = 0, H = 0, stars = [], dust = [], glow = [], weeds = [];
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const floorY = x => H * 0.62 - Math.sin(x / W * Math.PI) * H * 0.03 + Math.sin(x / W * 9) * H * 0.004;
+  function build() {
+    const r = cv.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1);
+    W = r.width; H = r.height; cv.width = W * d; cv.height = H * d; g.setTransform(d, 0, 0, d, 0, 0);
+    stars = Array.from({ length: 160 }, () => ({ x: rnd(0, W), y: rnd(0, H * 0.18), r: rnd(0.3, 1.4), p: rnd(0, 6), s: rnd(0.5, 2) }));
+    dust = Array.from({ length: 500 }, () => { const t = Math.random(), off = (Math.random() + Math.random() + Math.random() - 1.5) * 0.12;
+      return { x: W * (1.05 - t * 0.7) + off * W, y: H * (0.2 + t * 0.42) + off * W * 0.4, r: rnd(0.3, 1.1), a: rnd(0.2, 0.8), v: rnd(4, 14) }; });
+    glow = Array.from({ length: 22 }, () => ({ x: rnd(0, W), y: rnd(H * 0.25, H * 0.6), p: rnd(0, 6) }));
+    weeds = Array.from({ length: 9 }, (_, i) => ({ x: (i + 0.5) / 9 * W + rnd(-12, 12), h: rnd(0.05, 0.12), p: rnd(0, 6) }));
+  }
+  const ost = {};
+  function frame(time) {
+    requestAnimationFrame(frame);
+    const t = time / 1000;
+    let gr = g.createLinearGradient(0, 0, 0, H * 0.18);                     // небе над водата
+    gr.addColorStop(0, "#0d0a24"); gr.addColorStop(1, "#2a1640"); g.fillStyle = gr; g.fillRect(0, 0, W, H * 0.18);
+    g.fillStyle = "#fff"; for (const s of stars) { g.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(s.p + t * s.s)); g.beginPath(); g.arc(s.x, s.y, s.r, 0, 7); g.fill(); }
+    g.globalAlpha = 1;
+    const mx = W * 0.72, my = H * 0.09, mr = W * 0.04;                       // луна
+    const mg = g.createRadialGradient(mx, my, 0, mx, my, mr * 5); mg.addColorStop(0, "#ffe9b866"); mg.addColorStop(1, "transparent"); g.fillStyle = mg; g.fillRect(mx - mr * 5, my - mr * 5, mr * 10, mr * 10);
+    g.save(); g.beginPath(); g.arc(mx, my, mr, 0, 7); g.arc(mx + mr * 0.45, my - mr * 0.3, mr * 0.88, 0, 7, true); g.fillStyle = "#ffe7b0"; g.shadowColor = "#ffd98f"; g.shadowBlur = 18; g.fill("evenodd"); g.restore();
+    gr = g.createLinearGradient(0, H * 0.18, 0, H);                          // водата
+    gr.addColorStop(0, "#3a1a55"); gr.addColorStop(0.35, "#22123e"); gr.addColorStop(1, "#0d0820"); g.fillStyle = gr; g.fillRect(0, H * 0.18, W, H);
+    g.strokeStyle = "#ffb3da88"; g.lineWidth = 2; g.beginPath(); for (let x = 0; x <= W; x += 6) g.lineTo(x, H * 0.18 + Math.sin(x * 0.04 + t * 1.5) * 3); g.stroke();
+    g.save(); g.globalCompositeOperation = "lighter";                        // лунни лъчи
+    for (let i = 0; i < 4; i++) { const x = mx - W * 0.2 + i * W * 0.1 + Math.sin(t * 0.3 + i) * 10; const rg = g.createLinearGradient(0, H * 0.18, 0, H * 0.62);
+      rg.addColorStop(0, "rgba(255,190,230,.13)"); rg.addColorStop(1, "rgba(255,190,230,0)"); g.fillStyle = rg;
+      g.beginPath(); g.moveTo(x, H * 0.18); g.lineTo(x + W * 0.05, H * 0.18); g.lineTo(x - W * 0.08, H * 0.62); g.lineTo(x - W * 0.16, H * 0.62); g.fill(); }
+    g.restore();
+    for (const [cx, cy, rr, c] of [[0.8, 0.3, 0.35, "#7a5cc044"], [0.55, 0.45, 0.3, "#c05a9a33"], [0.3, 0.55, 0.25, "#ff8fc022"]]) {
+      const rg = g.createRadialGradient(cx * W, cy * H, 0, cx * W, cy * H, rr * W); rg.addColorStop(0, c); rg.addColorStop(1, "transparent"); g.fillStyle = rg; g.fillRect(0, 0, W, H); }
+    g.fillStyle = "#fff";                                                   // светещ планктон
+    for (const d of dust) { const y = (d.y - t * d.v) % (H * 0.62); g.globalAlpha = d.a * 0.55; g.beginPath(); g.arc(d.x, y < H * 0.18 ? y + H * 0.44 : y, d.r, 0, 7); g.fill(); }
+    g.globalAlpha = 1;
+    g.fillStyle = "#170c26"; g.beginPath(); g.moveTo(0, H * 0.6);           // дъното
+    for (let x = 0; x <= W; x += W / 40) g.lineTo(x, H * 0.59 - Math.sin(x / W * 5 + 1) * H * 0.012); g.lineTo(W, H); g.lineTo(0, H); g.fill();
+    g.beginPath(); g.moveTo(0, H); for (let x = 0; x <= W; x += 4) g.lineTo(x, floorY(x)); g.lineTo(W, H); g.closePath();
+    gr = g.createLinearGradient(0, H * 0.58, 0, H); gr.addColorStop(0, "#4a2a4a"); gr.addColorStop(0.3, "#2a1630"); gr.addColorStop(1, "#100814"); g.fillStyle = gr; g.fill();
+    const pg = g.createRadialGradient(W * 0.5, H * 0.58, 0, W * 0.5, H * 0.58, W * 0.45); pg.addColorStop(0, "#ff7fbf66"); pg.addColorStop(1, "transparent");
+    g.save(); g.clip(); g.fillStyle = pg; g.fillRect(0, 0, W, H); g.restore();
+    g.strokeStyle = "#ffb3da66"; g.lineWidth = 1.5; g.beginPath(); for (let x = W * 0.15; x <= W * 0.85; x += 4) g.lineTo(x, floorY(x)); g.stroke();
+    for (const w of weeds) { g.strokeStyle = "#2a5a3a"; g.lineWidth = 5; g.lineCap = "round"; g.beginPath(); const y0 = floorY(w.x);    // водорасли
+      for (let j = 0; j <= 10; j++) { const k = j / 10; g.lineTo(w.x + Math.sin(t * 1.2 + w.p + k * 3) * 10 * k, y0 - w.h * H * k); } g.stroke(); }
+    for (const f of glow) { const x = f.x + Math.sin(t * 0.4 + f.p) * 18, y = f.y + Math.cos(t * 0.6 + f.p) * 12;        // светулки на морето
+      g.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(t * 1.3 + f.p)); g.fillStyle = "#ffe08a"; g.shadowColor = "#ffcf5a"; g.shadowBlur = 10; g.beginPath(); g.arc(x, y, 2, 0, 7); g.fill(); }
+    g.globalAlpha = 1; g.shadowBlur = 0;
+    // Октонис с розово сияние
+    const s = W / 1100, ox = W * 0.5, oy = H * 0.5 + Math.sin(t * 1.4) * 6 * s;
+    const hg = g.createRadialGradient(ox, oy - 120 * s, 0, ox, oy - 120 * s, 330 * s); hg.addColorStop(0, "#ff9fd055"); hg.addColorStop(1, "transparent"); g.fillStyle = hg; g.fillRect(0, 0, W, H);
+    if (window.Octo) Octo.draw(g, { x: ox, y: oy, s, age: "adult", mode: sleep ? "sleep" : mode, t, mt: t - modeAt, st: ost, ground: mode === "work" ? floorY(ox) + 10 * s : null, style: "goggles" });
+  }
+  build(); new ResizeObserver(build).observe(cv); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

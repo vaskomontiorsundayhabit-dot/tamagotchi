@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 21;
+const VER = 22;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let SAD = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
+let SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -387,7 +387,8 @@ function body(t, mt, st) {
   const my = ey + (CUTE ? 46 : 62);
   g.lineWidth = 5; g.strokeStyle = C.line; g.lineCap = "round";
   g.beginPath();
-  if (mode === "happy") g.arc(hx, my - 10, 16, 0.15 * Math.PI, 0.85 * Math.PI);
+  if (EAT) { const o2 = Math.abs(Math.sin(t * 9)); g.fillStyle = "#8a2f3a"; ell(hx, my, 11, 3 + o2 * 9); g.fill(); }
+  else if (mode === "happy") g.arc(hx, my - 10, 16, 0.15 * Math.PI, 0.85 * Math.PI);
   else if (mode === "angry") { g.moveTo(hx - 16, my + 4); for (let i = 1; i <= 4; i++) g.lineTo(hx - 16 + i * 8, my + (i % 2 ? -3 : 4)); }
   else if (mode === "party" || mode === "wee") { g.moveTo(hx - 20, my - 6); g.quadraticCurveTo(hx, my + 28, hx + 20, my - 6); g.closePath(); g.fillStyle = "#8a2f3a"; g.fill(); }
   else if (mode === "hurt") { g.moveTo(hx - 14, my + 4); g.quadraticCurveTo(hx - 7, my - 5, hx, my + 2); g.quadraticCurveTo(hx + 7, my + 9, hx + 14, my); }
@@ -981,9 +982,66 @@ function drawPixel(ctx, o) {
   ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(PXC, ox, oy, w * P, h * P); ctx.restore();
   return res;
 }
-function draw(ctx, o) { return o.style === "pixel" ? drawPixel(ctx, o) : drawReal(ctx, o); }
+function drawArcade(ctx, o) {
+  const age = o.age || "adult", A2 = AGES[age] || AGES.adult, k = age === "egg" ? 0.8 : A2.k, P = Math.max(2, Math.round(11 * (o.s || 1) * k));
+  const t = o.t || 0, md = o.mode || "idle", GW = 32, GH = 34;
+  const skin = { ...BASE, ...(A2.col || {}), ...(o.skin || {}) };
+  const px = {};                                   // "x,y" → цвят
+  const set = (x, y, c) => { if (x >= 0 && x < GW && y >= 0 && y < GH) px[x + "," + y] = c; };
+  const bob = md === "sleep" ? 0 : Math.round(Math.sin(t * (md === "happy" || md === "party" || md === "wee" ? 7 : 2.2)) * (md === "party" ? 2 : 1));
+  if (age === "egg") {
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { const dx = (x - 16) / 9, dy = (y - 21) / 11.5; if (dx * dx + dy * dy < 1) set(x, y, (x + y * 3) % 11 === 0 && y > 13 ? "#d7c3a0" : y < 17 && x < 14 ? "#fffbea" : "#f3e7c8"); }
+  } else {
+    const hy = 11 + bob, sw = md === "sleep" ? 0.3 : md === "angry" ? 2.2 : 1;
+    for (let i = 0; i < 6; i++) {                  // пипала
+      const x0 = 6 + i * 4;
+      for (let y = 18; y < 31; y++) {
+        const kk = (y - 18) / 12, dx = Math.round(Math.sin(t * 3 * sw + i * 1.3 + y * 0.35) * 1.4 * kk + (i < 3 ? -1 : 1) * kk * kk * 3);
+        set(x0 + dx, y + bob, skin.back); set(x0 + dx + 1, y + bob, y % 3 === 0 && kk > 0.2 ? skin.spot : skin.body);
+      }
+    }
+    for (let y = 0; y < 21; y++) for (let x = 0; x < GW; x++) {            // глава
+      const dx = (x - 16) / 10.5, dy = (y - hy) / 10; if (dx * dx + dy * dy >= 1) continue;
+      set(x, y, dx > 0.35 && dy > 0.1 ? skin.shade : skin.body);
+    }
+    set(9, hy - 6, "#fff"); set(10, hy - 7, "#fff"); set(9, hy - 5, "#ffd9c4");
+    const ey = hy + 1, look = md === "sad" ? 1 : 0;
+    for (const cx of [11, 21]) {                    // очила
+      for (let y = -4; y <= 4; y++) for (let x = -4; x <= 4; x++) {
+        const d = Math.hypot(x, y); if (d > 4.3) continue;
+        set(cx + x, ey + y, d > 2.9 ? "#3c4350" : "#c6ece6");
+      }
+      if (md === "sleep" || md === "happy" || md === "party" || md === "wee" || md === "eat") { for (let x = -2; x <= 2; x++) set(cx + x, ey + (Math.abs(x) === 2 ? 1 : 0), "#1c0a16"); }
+      else if (md === "hurt") { for (let j = -1; j <= 1; j++) { set(cx + j, ey + j, "#1c0a16"); set(cx + j, ey - j, "#1c0a16"); } }
+      else { const lx = Math.round(Math.sin(t * 0.5) * 1); set(cx + lx, ey + look, "#1c0a16"); set(cx + lx + 1, ey + look, "#1c0a16"); set(cx + lx, ey + look + 1, "#1c0a16"); set(cx + lx + 1, ey + look + 1, "#1c0a16"); set(cx + lx - 1, ey - 1 + look, "#fff"); }
+      if (md === "angry") for (let x = -3; x <= 3; x++) set(cx + x, ey - 5 + Math.round((cx < 16 ? x : -x) * 0.4), "#1c0a16");
+    }
+    for (let x = 15; x <= 17; x++) set(x, ey, "#3c4350");
+    set(5, ey + 1, "#e0b25a"); set(27, ey + 1, "#e0b25a");
+    set(7, hy + 6, "#ff9a9a"); set(8, hy + 6, "#ff9a9a"); set(24, hy + 6, "#ff9a9a"); set(25, hy + 6, "#ff9a9a");
+    const my = hy + 7;                              // уста
+    if (md === "eat") { const op = Math.sin(t * 9) > 0; for (let x = 14; x <= 18; x++) { set(x, my, "#8a2f3a"); if (op) set(x, my + 1, "#8a2f3a"); } }
+    else if (md === "sad" || md === "hurt") { set(14, my + 1, "#1c0a16"); for (let x = 15; x <= 17; x++) set(x, my, "#1c0a16"); set(18, my + 1, "#1c0a16"); }
+    else if (md === "happy" || md === "party" || md === "wee") { set(14, my, "#1c0a16"); for (let x = 15; x <= 17; x++) set(x, my + 1, "#8a2f3a"); set(18, my, "#1c0a16"); }
+    else if (md === "angry") { for (let x = 14; x <= 18; x++) set(x, my + (x % 2), "#1c0a16"); }
+    else for (let x = 15; x <= 17; x++) set(x, my, "#1c0a16");
+    if (md === "sad") { const ty = ey + 4 + Math.floor((t * 6) % 6); set(7, ty, "#8fd3ff"); set(7, ty + 1, "#8fd3ff"); }
+    if (md === "sleep") { const zz = Math.floor(t * 2) % 3; for (const [x, y] of [[0, 0], [1, 0], [2, 0], [1, 1], [0, 2], [1, 2], [2, 2]]) set(26 + x + zz, 1 + y - zz, "#ffffff"); }
+  }
+  // контур: празно поле до пълно → тъмно
+  const keys = Object.keys(px);
+  for (const kk of keys) { const [x, y] = kk.split(",").map(Number); for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = (x + a) + "," + (y + b); if (!px[n]) px[n] = "#1c0a16"; } }
+  let ox = Math.round(o.x - 16 * P), oy = Math.round(o.y - 19 * P);
+  if (o.ground != null && md !== "swim") oy = Math.min(oy, Math.round(o.ground - 31 * P));
+  if (age === "egg" && o.ground != null) oy = Math.round(o.ground - 33 * P);
+  if (md === "angry") { ctx.save(); ctx.translate(Math.round(Math.sin(t * 40) * 2), 0); }
+  for (const [kk, c] of Object.entries(px)) { const [x, y] = kk.split(",").map(Number); ctx.fillStyle = md === "angry" && c === skin.body ? "#f2603e" : c; ctx.fillRect(ox + x * P, oy + y * P, P, P); }
+  if (md === "angry") ctx.restore();
+  return { top: oy, r: 16 * P, cy: oy + 12 * P };
+}
+function draw(ctx, o) { return o.style === "pixel" ? drawArcade(ctx, o) : o.style === "pixelsoft" ? drawPixel(ctx, o) : drawReal(ctx, o); }
 function drawReal(ctx, o) {
-  g = ctx; mode = o.mode || "idle"; SAD = mode === "sad"; if (SAD) mode = "idle"; TR = o.traits || [];
+  g = ctx; mode = o.mode || "idle"; SAD = mode === "sad"; EAT = mode === "eat"; if (SAD) mode = "idle"; if (EAT) mode = "happy"; TR = o.traits || [];
   if (mode === "swim" && o.style !== "sketch") mode = "idle";
   const st = o.st || (o.st = {});
   st.parts = st.parts || [];
@@ -1009,6 +1067,7 @@ function drawReal(ctx, o) {
     C.rim = "#2f6fb0"; C.lens = "#bfe7f5";
   } else { C.rim = "#3c4350"; C.lens = "#c6ece6"; }
   COL = A.col || BASE;
+  if (o.skin) COL = { ...COL, ...o.skin };          // наследникът е оцветен според храната на родителя
   SP = A.speed || 1;
   const k = sc * (age === "egg" ? 0.9 : A.k);
   LIE = !!o.lie && mode === "sleep" && age !== "egg";       // спи легнал на дъното

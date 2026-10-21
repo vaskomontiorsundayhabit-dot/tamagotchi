@@ -60,7 +60,6 @@
   #mixbar .slot.over { background: rgba(255,209,102,.6); }
   #mixbar button { height: 52px; border-radius: 14px; padding: 0; font-size: 24px; background: var(--peach); border: 3px solid var(--ink); }
   #mixbar button:disabled { opacity: .5; }
-  body.hasbar #sheet:not(.open) { transform: translateY(calc(100% + 120px)); }
   body.hasbar #sheet { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 62px); border-bottom: 3px solid var(--ink); border-radius: 24px; }
   body.hasbar #hint { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 70px); }
   #ghost { position: fixed; z-index: 10; pointer-events: none; font-size: 44px; transform: translate(-50%, -60%); }
@@ -88,7 +87,7 @@
   #sheet { position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; max-width: 560px; max-height: 72vh; overflow-y: auto;
     background: rgba(18,40,68,.9); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
     border: 3px solid var(--ink); border-bottom: 0; border-radius: 24px 24px 0 0; z-index: 6;
-    padding: 14px 16px max(18px, env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .25s ease; }
+    padding: 14px 16px max(18px, env(safe-area-inset-bottom)); transform: translateY(calc(100% + 140px)); transition: transform .25s ease; }
   #sheet.open { transform: translateY(0); }
   #sheet h2 { font-size: 17px; margin: 0 0 12px; display: flex; justify-content: space-between; align-items: center; }
   #sheet h2 span { color: var(--muted); font-size: 13px; font-weight: 500; }
@@ -164,6 +163,9 @@
   .zones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
   .zones span { border: 2px dashed rgba(255,255,255,.35); border-radius: 12px; padding: 12px; text-align: center; font-weight: 700; }
   .zones span.over, #mixbar.over .slot:not(.full) { background: rgba(255,209,102,.45); }
+  .letter { background: #fbf3dc; color: #3a2a1a; border-radius: 6px; padding: 18px 18px 22px; font: italic 17px/1.5 Georgia, serif; transform: rotate(-1deg);
+    box-shadow: 0 6px 18px rgba(0,0,0,.35); background-image: repeating-linear-gradient(transparent 0 25px, rgba(90,140,220,.18) 25px 26px); }
+  .ntf code { display: block; background: rgba(0,0,0,.3); padding: 10px; border-radius: 10px; font-size: 16px; margin: 6px 0; -webkit-user-select: all; user-select: all; }
   .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
   #bubble .t { font-size: 15px !important; }
   .life { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
@@ -253,7 +255,7 @@ const END_TEST = DEMO && new URLSearchParams(location.search).has("end"), LSKEY 
 if (END_TEST && new URLSearchParams(location.search).has("reset")) try { localStorage.removeItem(LSKEY); } catch {}
 function endWorld(now) {                    // проба: стар Октонис, на минути от края
   const s = fresh(now);
-  Object.assign(s, { hatched: true, stage: "old", stageT: now - 6 * 1440 * MIN, grow: STAGE_MIN.old - 6, born: now - 50 * 1440 * MIN, glasses: true, books: 6, smarts: 6,
+  Object.assign(s, { hatched: true, stage: "old", stageT: now - 6 * 1440 * MIN, grow: STAGE_MIN.old - 3, born: now - 50 * 1440 * MIN, glasses: true, books: 6, smarts: 6,
     pearls: 140, hunger: 20, energy: 95, mood: 85, found: ["canphone", "lamp", "compass", "map", "radio", "sockfinder", "dreamlamp"],
     facts: { likesMe: true, pizza: true, music: true, morning: false, seaside: true, inventor: true }, journal: [{ t: now, x: "🧪 Проба: Октонис е много стар." }] });
   Object.assign(s.track, { lived: 70000, veg: 30, pizza: 10, clean: 40, play: 30, sold: 1 });
@@ -340,6 +342,14 @@ Object.assign(EL, {             // ястия, които после влиза�
   omelet: ["🍳", "Омлет", 1, "made", 12], pudding: ["🍮", "Коралов пудинг", 2, "made", 20],
 });
 REC.push(["fish", "weed", "soup"], ["milk", "egg", "pancake"], ["egg", "cheese", "omelet"], ["milk", "coral", "pudding"]);
+Object.assign(EL, {             // големите машини: от 3 или 4 неща
+  rocket: ["🚀", "Ракета", 3, "made", 80], carousel: ["🎠", "Въртележка за рибки", 3, "made", 70], organ: ["🎹", "Раковинен орган", 3, "made", 70],
+  bdaycake: ["🎂", "Торта за рожден ден", 3, "made", 60], castle: ["🏰", "Пясъчен замък", 3, "made", 65], bubbleship: ["🛸", "Мехурколет", 4, "made", 200],
+});
+const REC3 = [[["motor", "bat", "bottle"], "rocket"], [["mech", "spring", "float"], "carousel"], [["shell", "shell", "speaker"], "organ"],
+  [["pancake", "cheese", "milk", "banana"], "bdaycake"], [["pebble", "pebble", "shell", "coral"], "castle"], [["sub", "lighthouse", "arm", "spring"], "bubbleship"]];
+const MACHINES = REC3.map(r => r[1]);
+const ingOf = c => { const r = REC.find(x => x[2] === c); if (r) return [r[0], r[1]]; const m = REC3.find(x => x[1] === c); return m ? m[0] : null; };
 const FOODS = {   // емоджи → [име, глад, здраве, настроение, вид]
   "🍕": ["Пица", 45, 0, 3, "junk"], "🥦": ["Броколи", 30, 6, 2, "veg"], "🦐": ["Скариди", 40, 2, 5, ""], "🍣": ["Суши", 40, 3, 6, ""],
   "🥕": ["Морков", 25, 5, 1, "veg"], "🍪": ["Бисквитка", 20, -1, 8, "junk"],
@@ -354,6 +364,7 @@ const FOOD_SAY = {
 const SECRET = ["wreck", "robokt", "fondue", "penicillin"];          // не се казват предварително
 const recKey = (a, b) => [a, b].sort().join("+");
 const RECIPE = Object.fromEntries(REC.map(([a, b, c]) => [recKey(a, b), c]));
+for (const [list, c] of REC3) RECIPE[list.slice().sort().join("+")] = c;
 const elE = k => (EL[k] || ["❓"])[0], elN = k => (EL[k] || ["", k])[1];
 const elFull = k => elE(k) + " " + elN(k);
 const CUR = "перлинги";
@@ -370,6 +381,7 @@ const SHOP = [
   { id: "b_maps", n: "Карти и съкровища", p: 40, hints: ["quill", "papyrus", "map", "compass", "treasure"] },
   { id: "b_great", n: "Великите изобретения", p: 60, hints: ["sockfinder", "bubblemeter", "dreamlamp", "tidier", "singbolt"] },
   { id: "b_great2", n: "Великите изобретения II", p: 60, hints: ["fork", "yawnmeter", "snackcompass", "teapot", "perfectometer"] },
+  { id: "b_mach", n: "Големите машини", p: 70, hints: ["rocket", "carousel", "organ", "castle"] },
   { id: "b_legend", n: "Легенди от дълбокото", p: 90, hints: ["sub", "expedition", "festival"] },
 ];
 const recOf = c => REC.find(r => r[2] === c);
@@ -397,10 +409,10 @@ function spoil(t) {
 }
 function spawnFloor(t, f = 1) {
   if (S.trash.length < 7 && Math.random() < f / 40) {
-    S.trash.push({ id: uid(), k: pick(FLOOR.junk), x: rnd(0.08, 0.92), t });
+    S.trash.push({ id: uid(), k: pick(FLOOR.junk), x: S.nextX ?? rnd(0.08, 0.92), t }); S.nextX = rnd(0.08, 0.92);
     if (S.trash.length === 4) log("🗑️ Около него се събраха боклуци. Не може да ги гледа.", t);
   }
-  if (S.parts.length < 5 && Math.random() < f / 22) S.parts.push({ id: uid(), k: pick(FLOOR.other), x: rnd(0.08, 0.92), t });
+  if (S.parts.length < 5 && Math.random() < f / 22) { S.parts.push({ id: uid(), k: pick(FLOOR.other), x: S.nextX ?? rnd(0.08, 0.92), t }); S.nextX = rnd(0.08, 0.92); }
 }
 function pickFloor(id, by) {
   const ti = S.trash.findIndex(x => x.id === id), pi = S.parts.findIndex(x => x.id === id);
@@ -412,7 +424,7 @@ function pickFloor(id, by) {
   if (by === "me") { S.lastCare = Date.now(); if (ti >= 0) { S.track.clean++; S.mood = clamp(S.mood + 4); } }
   return { it, junk: ti >= 0 };
 }
-function pickTrash(id) {
+function doPickTrash(id) {
   if (role !== "keeper") return;
   const r = pickFloor(id, "me"); if (!r) return;
   if (has("recycler") && Math.random() < 0.3) { const k = pick(FLOOR.other); addMat(k); setTimeout(() => say("", `В боклука намерих ${elN(k).toLowerCase()}! Рециклиране!`), 4700); }
@@ -420,12 +432,133 @@ function pickTrash(id) {
   else say("", pick(["Благодаря! Прибрах го в торбата.", `${elN(r.it.k)}… може да стане за нещо!`, "Едно по едно. Систематично."]));
   save();
 }
-function pickPart(id) {
+function doPickPart(id) {
   if (role !== "keeper") return;
   const r = pickFloor(id, "me"); if (!r) return;
   const k = r.it.k;
   say("", EL[k][3] === "food" ? `${elN(k)}! Да го пазим, докато е прясно.` : pick([`${elN(k)}. Влиза в торбата.`, `Ооо, ${elN(k).toLowerCase()}! Имам идеи.`]));
   save();
+}
+
+// ---------- Ядене, чистене, възглавница ----------
+let eatFx = null, grabQ = [], grabT = 0, pillow = null, bounceT = -1e9;
+function startEat(e) { eatFx = { e, t0: performance.now() }; }
+function drawEat() {
+  if (!eatFx) return;
+  const a = performance.now() - eatFx.t0; if (a > 2600) { eatFx = null; return; }
+  const mx = oct.x + oct.dir * 4, my = oct.cy + oct.r * 0.3, sx = W * 0.15, sy = H * 0.3;
+  let x = mx, y = my, sz = Math.max(26, oct.r * 0.32);
+  if (a < 700) { const k = a / 700; x = sx + (mx - sx) * k; y = sy + (my - sy) * k - Math.sin(k * Math.PI) * 60; }
+  else { const k = (a - 700) / 1900; sz *= Math.max(0.1, 1 - Math.floor(k * 4) / 4); }
+  g.font = `${sz}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(eatFx.e, x, y);
+  if (a > 700) { g.fillStyle = "#e9c88a"; for (let i = 0; i < 4; i++) { const k = ((a / 300 + i * 0.25) % 1); g.beginPath(); g.arc(mx + (i - 1.5) * 10, my + 10 + k * 40, 3 * (1 - k), 0, 7); g.fill(); } }
+}
+function queueGrab(id, kind) {
+  if (quietPick || !S.hatched || S.asleep || working || reading) return kind === "t" ? doPickTrash(id) : doPickPart(id);
+  if (!grabQ.some(q => q.id === id)) grabQ.push({ id, kind });
+  if (grabQ.length === 1) grabT = performance.now();
+}
+function pickTrash(id) { if (role === "keeper") queueGrab(id, "t"); }
+function pickPart(id) { if (role === "keeper") queueGrab(id, "p"); }
+// ---------- Изобретенията вършат работа ----------
+const LIGHTS = ["lamp", "glowcoral", "nightlight", "starlamp", "lighthouse", "dreamlamp"];
+const owns = k => S && cnt(k) > 0;
+function drawLamp(s) {
+  const L = LIGHTS.find(owns); if (!L) return;
+  if (!(S.asleep || night(Date.now()))) return;
+  g.save(); g.globalCompositeOperation = "lighter";
+  const r = 320 * s + (L === "lighthouse" ? 160 * s : 0), lx = oct.x - oct.dir * 60 * s, ly = oct.cy - 30 * s;
+  const lg = g.createRadialGradient(lx, ly, 10, lx, ly, r); lg.addColorStop(0, "rgba(255,220,140,.35)"); lg.addColorStop(1, "rgba(255,220,140,0)");
+  g.fillStyle = lg; g.beginPath(); g.arc(lx, ly, r, 0, 7); g.fill(); g.restore();
+  g.font = `${Math.max(18, 40 * s)}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(elE(L), lx, ly);
+}
+function drawCompassMark(t, s) {
+  if (!owns("compass") && !owns("snackcompass")) return;
+  if (S.nextX == null) S.nextX = rnd(0.08, 0.92);
+  const x = S.nextX * W, y = H * 0.88 + 8, a = 0.5 + Math.sin(t * 4) * 0.3;
+  g.save(); g.strokeStyle = `rgba(255,90,90,${a})`; g.lineWidth = 4; const q = 12 * Math.max(0.6, s * 1.5);
+  g.beginPath(); g.moveTo(x - q, y - q); g.lineTo(x + q, y + q); g.moveTo(x + q, y - q); g.lineTo(x - q, y + q); g.stroke();
+  g.setLineDash([5, 6]); g.beginPath(); g.arc(x, y, q * 1.8, 0, 7); g.stroke(); g.restore();
+}
+let trampBox = null;
+function drawTramp(t, s) {
+  trampBox = null; if (!owns("trampoline")) return;
+  const w = 170 * s, x = W * 0.42 - w / 2, y = H * 0.88 - 10 * s, sk = STYLE === "sketch", p = performance.now();
+  const dip = p - bounceT < 300 ? Math.sin((p - bounceT) / 300 * Math.PI) * 14 * s : 0;
+  g.save(); g.lineWidth = sk ? 2.4 : 4; g.strokeStyle = sk ? SK_INK : "#2b2a33";
+  for (const lx of [x + 12 * s, x + w - 12 * s]) { g.beginPath(); g.moveTo(lx, y); g.lineTo(lx, y + 28 * s); g.stroke(); }
+  g.fillStyle = sk ? "#fff" : "#4a5a8a"; g.beginPath(); g.ellipse(x + w / 2, y + dip, w / 2, 14 * s, 0, 0, 7); g.fill(); g.stroke();
+  g.restore();
+  trampBox = { x: x + w / 2, y, r: w / 2 };
+}
+function bounce() { bounceT = performance.now(); if (S) { S.mood = clamp(S.mood + 3); S.track.play++; dirty = true; } say("", pick(["Уииии! Батутът работи!", "По-високо! По-високо!", "Летяяя!"])); }
+function drawPillow(s, ground) {
+  if (!pillow || pillow.x == null) return;
+  const w = 330 * s, h = 70 * s, x = pillow.x, y = ground - h * 0.55, sk = STYLE === "sketch";
+  g.save(); g.lineWidth = sk ? 2.4 : 4; g.strokeStyle = sk ? SK_INK : "#2b2a33"; g.fillStyle = sk ? "#fff" : "#cfe3ff";
+  g.beginPath(); g.ellipse(x, y, w / 2, h / 2, 0, 0, 7); g.fill(); g.stroke();
+  g.strokeStyle = sk ? "rgba(35,57,93,.4)" : "#9cb8e6"; g.lineWidth = 3; for (const dx of [-0.25, 0, 0.25]) { g.beginPath(); g.moveTo(x + dx * w, y - h * 0.38); g.lineTo(x + dx * w, y + h * 0.38); g.stroke(); }
+  g.restore();
+}
+// ---------- Подаръци от гостите ----------
+const GIFT = { crab: "shell", lobster: "bolt", turtle: "coral", fish: "star", mail: "paper", puffer: "feather", squid: "bottle", jelly: "star", snail: "pebble", shrimp: "weed" };
+const GNAME = { crab: "Ракът", lobster: "Омарът", turtle: "Костенурката", fish: "Рибката", mail: "Рибата-пощальон", puffer: "Балон-рибата", squid: "Калмарът", jelly: "Медузата", snail: "Охлювът", shrimp: "Скаридата" };
+function guestGift(k) {
+  if (!S || !S.hatched || role !== "keeper" || Math.random() > 0.4 || S.parts.length >= 6) return;
+  const it = GIFT[k]; if (!it) return;
+  S.parts.push({ id: uid(), k: it, x: 0.72, t: S.t }); dirty = true;
+  log(`🎁 ${GNAME[k]} остави подарък: ${elN(it).toLowerCase()}.`);
+  setTimeout(() => say("", `${GNAME[k]} ми остави ${elN(it).toLowerCase()}! Колко мило.`, 5000), 1500);
+}
+// ---------- Сутрешното писмо в бутилка ----------
+const LETTERS = [
+  ["Скъпа Медузке, всяка вечер светиш по-ярко от луната. Ще те чакам до големия корал. Твой, Калмарчо.", "Любовно писмо! Изгубено… Ох, сърцето ми. Дано Медузката го получи."],
+  ["Мила Морска звездичке, имаш пет лъча, а аз мисля за всеки от тях. Отговори ми с мехурче.", "Някой е влюбен! Звездичката сигурно ще се изчерви."],
+  ["На теб, който ме гледаш всеки ден: благодаря. От някой, който е по-близо, отколкото мислиш.", "Кой ли го е писал? Ти ли беше?! Ох, изчервих се."],
+  ["ПОМОЩ! Заседнах в една консерва. Не е спешно, но е тясно. Рачо.", "Помощ?! Рачо е в консерва! Ще оглеждам дъното. И ще събирам консервите."],
+  ["Някой да е виждал черупката ми? Голяма, кафява, с петно. Охлювът Стамат.", "Горкият Стамат. Ще търся кафява черупка с петно."],
+  ["Търси се помощник за броене на рибите в ятото. Заплащане: един перлинг на сто риби.", "Работа! Обичам броенето. Седемдесет… осемдесет… Ще кандидатствам."],
+  ["Желая си един ден да видя снега. Казват, че е като бели мехурчета, които не се пукат.", "Сняг… Може да изобретя машина за сняг. Записвам го."],
+  ["Искам си подредена стая, топъл чай и приятел, който брои мехурчетата с мен.", "Това е почти моето желание. Някой ме разбира!"],
+  ["Пожелавам на този, който намери писмото, сухи чорапи и топли пипала.", "Сухи чорапи под водата… Хубаво желание. Невъзможно, но хубаво."],
+  ["Ако вълните са морето, което маха, на кого ли маха то?", "Хм. Дълбоко. Ще мисля над това цял ден."],
+  ["Най-хубавите неща потъват бавно. Като захарта в чая.", "Красиво. Сигурно го е писал някой стар кит."],
+  ["Днес е добър ден да направиш нещо малко и хубаво.", "Добре! Ще подредя един болт. Малко и хубаво."],
+];
+function morningLetter() {
+  if (role !== "keeper" || !S.hatched || S.stage === "baby") return;
+  const d = new Date(), day = d.toDateString();
+  if (S.letterDay === day || d.getHours() < 5 || S.letter) return;
+  S.letterDay = day; S.letter = { i: Math.floor(Math.random() * LETTERS.length), x: rnd(0.3, 0.55) }; dirty = true;
+  log("🍾 На дъното има бутилка с писмо.");
+}
+function openLetter() {
+  if (!S.letter) return;
+  const L = LETTERS[S.letter.i]; poof(S.letter.x, true); S.letter = null; S.mood = clamp(S.mood + 3); dirty = true;
+  letterText = L; openSheet("letter"); save();
+  setTimeout(() => say("", L[1], 8000), 900);
+}
+let letterText = null;
+// ---------- Известия на телефона (ntfy) ----------
+function ntfyTopic() { if (!S.ntfy) { S.ntfy = "oktonis-" + Math.random().toString(36).slice(2, 10); dirty = true; } return S.ntfy; }
+function ntfy(seq, inMin, msg) {
+  const q = (inMin ? `in=${Math.max(10, Math.round(inMin))}m&` : "") + `title=${encodeURIComponent(S.name)}&tags=octopus`;
+  return fetch(`https://ntfy.sh/${ntfyTopic()}${seq ? "/" + seq : ""}?${q}`, { method: "POST", body: msg, keepalive: true }).catch(() => {});
+}
+function ntfyCancel(seq) { fetch(`https://ntfy.sh/${ntfyTopic()}/${seq}/delete`, { keepalive: true }).catch(() => {}); }
+let lastSched = 0;
+function schedNotify(force) {
+  if (DEMO || role !== "keeper" || !S || !S.hatched || !S.notify) return;
+  if (!force && Date.now() - lastSched < 10 * MIN) return;
+  lastSched = Date.now();
+  let h = S.hunger, t = Date.now(), m = 0, hm = null, sm = null; const base = S.stage === "baby" ? 2.6 : 1;
+  while (m < 4320 && sm == null) {                        // без теб: гладът расте бавно, нощем още по-бавно
+    h += (night(t) ? 1 / 14 * 0.15 : 1 / 8 * 0.35) * base * 10; t += 10 * MIN; m += 10;
+    if (hm == null && h >= 75) hm = m;
+    if (h >= 90) sm = m + 60;
+  }
+  if (hm != null) ntfy("hungry", hm, `${S.name} е гладен! Мисли за теб. И за храна. Повече за храна.`); else ntfyCancel("hungry");
+  if (sm != null) ntfy("sick", sm, `${S.name} се разболя от глад… Ела да го нахраниш.`); else ntfyCancel("sick");
 }
 
 // ---------- Идеи ----------
@@ -447,11 +580,14 @@ function makeIdea(t) {
       if (canPair(a, b) && !tried.has(recKey(a, b)) && !(RECIPE[recKey(a, b)] && S.found.includes(RECIPE[recKey(a, b)]))) pair = [a, b];
     }
   }
+  const bigs = REC3.filter(([l, c]) => !S.found.includes(c) && haveAll(l));
+  if (bigs.length && Math.random() < 0.35) { const [l] = pick(bigs); return { a: l[0], b: l[1], more: l.slice(2), t }; }
   if (!pair) return null;
   return { a: pair[0], b: pair[1], t };
 }
 function ideaText(id) {
-  const ab = `${elN(id.a).toLowerCase()} с ${elN(id.b).toLowerCase()}`;
+  const all = [id.a, id.b, ...(id.more || [])].map(k => elN(k).toLowerCase());
+  const ab = all.length > 2 ? all.slice(0, -1).join(", ") + " и " + all[all.length - 1] : `${all[0]} с ${all[1]}`;
   if (id.src) return `Сетих се нещо от „${id.src}“… Ако съчетая ${ab}? Да пробвам ли?`;
   return id.ask ? `Хм… ако се смеси ${ab}? Ще го смесиш ли ти за мен?` : `Хм… ако съчетая ${ab}? Да пробвам ли?`;
 }
@@ -462,12 +598,13 @@ function proposeIdea() {
   let id = null;
   if (due) {
     S.bookIdeas = S.bookIdeas.filter(b => b !== due);
-    const [a, b] = recOf(due.c);
+    const [a, b, ...more] = ingOf(due.c);
     if (!S.found.includes(due.c)) {
       S.hints = [...new Set([...(S.hints || []), due.c])];
-      if (canPair(a, b)) id = { a, b, t: S.t, src: due.src };
-      else { if (!S.future.some(f => recKey(f.a, f.b) === recKey(a, b))) S.future = [...S.future, { a, b, src: due.src }].slice(-30);
-        return oSays(`Сетих се нещо от „${due.src}“! Трябват ми ${elN(a).toLowerCase()} и ${elN(b).toLowerCase()}. Записах го в тетрадката.`); }
+      if (haveAll([a, b, ...more])) id = { a, b, more, t: S.t, src: due.src };
+      else { if (!S.future.some(f => recKey(f.a, f.b) === recKey(a, b))) S.future = [...S.future, { a, b, more, src: due.src }].slice(-30);
+        const names = [a, b, ...more].map(k => elN(k).toLowerCase());
+        return oSays(`Сетих се нещо от „${due.src}“! Трябват ми ${names.slice(0, -1).join(", ")} и ${names[names.length - 1]}. Записах го в тетрадката.`); }
     }
   }
   if (!id) id = makeIdea(S.t);
@@ -479,9 +616,9 @@ function proposeIdea() {
 }
 function ideaYes() {
   const id = S.idea; S.idea = null;
-  if (!id || !canPair(id.a, id.b)) return "Ох, вече нямам тези неща. Друг път.";
+  if (!id || !haveAll([id.a, id.b, ...(id.more || [])])) return "Ох, вече нямам тези неща. Друг път.";
   if (id.ask) { S.task = { a: id.a, b: id.b }; return `Благодаря! Отвори торбата и смеси ${elN(id.a).toLowerCase()} и ${elN(id.b).toLowerCase()}. Аз ще гледам.`; }
-  setTimeout(() => mix(id.a, id.b, "him"), 2500);
+  setTimeout(() => mix(id.a, id.b, "him", id.more || []), 2500);
   return pick(["Отивам да го направя!", "Супер! Почвам веднага.", "Да! Отивам за масата."]);
 }
 function ideaNo() {
@@ -510,7 +647,7 @@ function mixDone() {
   working = 0;
   const { a, b, who, more } = mixing; mixing = null; if (table) table.until = performance.now() + 2500;
   const all = [a, b, ...(more || [])], key = all.slice().sort().join("+");
-  const c = all.length === 2 ? RECIPE[recKey(a, b)] : null, now = Date.now(), name = all.map(elN).join(" + ");
+  const c = RECIPE[key], now = Date.now(), name = all.map(elN).join(" + ");
   S.energy = clamp(S.energy - 6); S.lastCare = now; dirty = true;
   if (S.task && recKey(S.task.a, S.task.b) === recKey(a, b)) S.task = null;
   if (!c) {                                       // не работи: записва го
@@ -586,7 +723,7 @@ function feed(k) {
   if (YUCK.includes(k)) { S.mood = clamp(S.mood - 2); return say("", pick(["Фуу! Това е развалено. Изхвърли го, моля!", "Не! Мирише ужасно. Само за изобретения става."])); }
   if (!EDIBLE[k]) return;
   if (S.hunger < 20) return say("", "Не съм гладен. Режимът си е режим!");
-  takeMat(k); S.hunger = clamp(S.hunger - EDIBLE[k]); S.mood = clamp(S.mood + (EL[k][3] === "made" ? 8 : 3)); S.lastCare = Date.now(); dirty = true;
+  takeMat(k); startEat(elE(k)); S.hunger = clamp(S.hunger - EDIBLE[k]); S.mood = clamp(S.mood + (EL[k][3] === "made" ? 8 : 3)); S.lastCare = Date.now(); dirty = true;
   log(`${elE(k)} Хапна ${elN(k).toLowerCase()} от торбата.`);
   say("", k === "bluecheese" ? "Синьо сирене! Звучи развалено, ама е деликатес." : EL[k][3] === "made" ? `${elN(k)}! Сами го направихме. Двойно вкусно.` : pick(["Ммм! Прясно. Проверих датата.", "Вкусно! Ядох най-старото първо, както трябва."]));
   save(); render();
@@ -1005,6 +1142,7 @@ function grow(t, f = 1) {
     S.naming = { opts, from: S.name, pre: true };
     oSays(`Скоро ще отплавам към дълбокото… Да помислим как да се казва наследникът ми. ${opts[0]} или ${opts[1]}? Натисни балончето долу вляво.`, 12000);
   }
+  if (END_TEST && S.stage === "old" && !S.heirName) S.grow = Math.min(S.grow, STAGE_MIN.old - 2);   // пробата чака да избереш име
   if (S.grow >= STAGE_MIN[S.stage]) nextStage(t);
 }
 function nextStage(t) {
@@ -1034,6 +1172,13 @@ function farewell(t) {
     diary: writeDiary(S) };
   const opts = nameOptions(S), oldName = S.name;
   const nx = fresh(t);
+  const ate = Object.entries((S.track && S.track.ate) || {}).sort((a, b) => b[1] - a[1])[0];
+  const SKIN = { veg: { body: "#86c96f", shade: "#63a84f", back: "#5d9e4c", backShade: "#4a853c", spot: "#4f9440" },
+    junk: { body: "#f0685a", shade: "#d14b40", back: "#c94a3f", backShade: "#a83a31", spot: "#ffd166" },
+    sea: { body: "#f58fb0", shade: "#d9708f", back: "#d06a89", backShade: "#b45673", spot: "#ffd0e0" },
+    egg: { body: "#f2b043", shade: "#d4922c", back: "#c98a2a", backShade: "#a87020", spot: "#fff1b8" } };
+  const fk = ate && FOODS[ate[0]] ? (["🦐", "🍣"].includes(ate[0]) ? "sea" : ate[0] === "🍳" ? "egg" : FOODS[ate[0]][4] || "sea") : null;
+  keep.skin = fk ? SKIN[fk] : null;
   Object.assign(nx, keep, { name: S.heirName || genName(keep.gen), track: newTrack(), naming: S.heirName ? null : { opts, from: oldName } });
   nx.chat.push({ f: "n", t, x: `${oldName} остави на яйцето семейния дневник. В него има ${keep.diary.length ? keep.diary.length + " неща за теб" : "само една рисунка на мехурче"}.` });
   if (!S.heirName) nx.chat.push({ f: "n", t, x: `${oldName} не успя да реши името. В дневника пише: „Как да се казва моят наследник: ${opts[0]} или ${opts[1]}?“` });
@@ -1139,7 +1284,7 @@ function careAct(e) {
     }
   }
   switch (e) {
-    case "🍕": case "🥦": case "🦐": case "🍣": case "🥕": case "🍪": case "🍲": case "🥞": case "🍳": case "🍮": eat(e, now); break;
+    case "🍕": case "🥦": case "🦐": case "🍣": case "🥕": case "🍪": case "🍲": case "🥞": case "🍳": case "🍮": { const h0 = S.hunger; eat(e, now); if (S.hunger < h0) { startEat(e); S.track.ate = S.track.ate || {}; S.track.ate[e] = (S.track.ate[e] || 0) + 1; } break; }
     case "😴":
       if (S.energy > 60) { say("😤", "Не съм уморен, работя!"); break; }
       S.asleep = true; log("😴 Легна на дъното да спи."); say("😴", "Лека нощ…"); break;
@@ -1329,11 +1474,12 @@ function afterLoad() {
   save();
   show("gameView"); buildStatic(); render();
   loadAt = performance.now();
+  morningLetter(); schedNotify(true);
   if (S.hatched && S.trash.length >= 3) { sadUntil = performance.now() + 60000; setTimeout(() => say("", pick(["Толкова боклуци се събраха… Тъжно ми е.", "Виж каква бъркотия… Плуват навсякъде."]), 7000), 1500); }
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 21;
+const PAGE_V = 22;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1422,15 +1568,16 @@ function fillSheet(kind) {
     let h = head("📚 Библиотека") + `<div class="tabs">${tabs.map(([k, n]) => `<button data-t="${k}" class="${libTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
     if (libTab === "found") {
       h += `<div class="sub">Книгата на откритията</div>`;
-      h += S.found.length ? `<div class="made">${S.found.map(c => { const r = recOf(c);
-        return `<div><span>${elE(c)}</span><b>${esc(elN(c))}</b><small>${r ? esc(elN(r[0]) + " + " + elN(r[1])) : ""}</small></div>`; }).join("")}</div>`
-        : `<div class="sub">Още е празна. Смесвайте неща от торбата!</div>`;
+      const card = c => { const r = ingOf(c); return `<div><span>${elE(c)}</span><b>${esc(elN(c))}</b><small>${r ? esc(r.map(elN).join(" + ")) : ""}</small></div>`; };
+      const small = S.found.filter(c => !MACHINES.includes(c)), big = S.found.filter(c => MACHINES.includes(c));
+      h += small.length ? `<div class="made">${small.map(card).join("")}</div>` : `<div class="sub">Още е празна. Смесвайте неща от торбата!</div>`;
+      if (big.length) h += `<div class="sub grp">⚙️ Машини</div><div class="made">${big.map(card).join("")}</div>`;
       const sp = S.seen.filter(k => EL[k] && EL[k][3] === "spoiled");
       if (sp.length) h += `<div class="sub grp">Развалени, но полезни</div><div class="made">${sp.map(k => `<div><span>${elE(k)}</span><b>${esc(elN(k))}</b></div>`).join("")}</div>`;
     } else if (libTab === "notes") {
       if (S.task) h += `<div class="idea"><div class="ie" style="font-size:30px;white-space:nowrap">${elE(S.task.a)}${elE(S.task.b)}</div><div><b>Задача за теб</b><div class="sub" style="margin:2px 0">Смеси ${esc(elN(S.task.a).toLowerCase())} и ${esc(elN(S.task.b).toLowerCase())} в торбата.</div></div></div>`;
       const fut = (S.future || []).filter(f => !S.found.includes(RECIPE[recKey(f.a, f.b)]));
-      h += `<div class="sub grp">💡 Бъдещи идеи</div>` + (fut.length ? `<ul class="journal">${fut.map(f => `<li>${elE(f.a)} ${esc(elN(f.a))} + ${elE(f.b)} ${esc(elN(f.b))} = ?${f.src && f.src !== "моя идея" ? ` <small>(от „${esc(f.src)}“)</small>` : ""}</li>`).join("")}</ul>` : `<div class="sub">Празно.</div>`);
+      h += `<div class="sub grp">💡 Бъдещи идеи</div>` + (fut.length ? `<ul class="journal">${fut.map(f => `<li>${[f.a, f.b, ...(f.more || [])].map(k => elE(k) + " " + esc(elN(k))).join(" + ")} = ?${f.src && f.src !== "моя идея" ? ` <small>(от „${esc(f.src)}“)</small>` : ""}</li>`).join("")}</ul>` : `<div class="sub">Празно.</div>`);
       const nope = S.nope || [];
       h += `<div class="sub grp">✗ Не работи</div>` + (nope.length ? `<ul class="journal">${nope.slice(-40).reverse().map(x => `<li>${x.split("+").map(k => elE(k) + " " + esc(elN(k))).join(" + ")}: нищо</li>`).join("")}</ul>` : `<div class="sub">Още нищо не се е провалило. Подозрително.</div>`);
     } else if (libTab === "shelf") {
@@ -1493,6 +1640,18 @@ function fillSheet(kind) {
       };
       c.onpointercancel = () => { invDrag = null; $("ghost")?.remove(); dropHover(-1, -1); };
     });
+  } else if (kind === "notify") {
+    const tp = ntfyTopic();
+    sh.innerHTML = head("🔔 Известия на телефона") + `<div class="ntf"><div class="sub">1. Свали приложението <b>ntfy</b> (има го за iPhone и Android).</div>
+      <div class="sub">2. В него натисни „+“ и напиши тази тема:</div><code>${esc(tp)}</code>
+      <div class="sub">3. Включи тук и пробвай:</div>
+      <div class="row2"><button class="ans ${S.notify ? "yes" : ""}" id="ntOn">${S.notify ? "✓ Включени" : "Включи"}</button><button class="ans" id="ntTest">Изпрати проба</button></div>
+      <div class="sub">Ще ти пише, когато огладнее или се разболее, докато те няма.</div></div>`;
+    $("ntOn").onclick = () => { S.notify = !S.notify; dirty = true; save(); if (!S.notify) { ntfyCancel("hungry"); ntfyCancel("sick"); } else schedNotify(true); fillSheet("notify"); };
+    $("ntTest").onclick = () => { ntfy("", 0, `Здравей! Аз съм ${S.name}. Известията работят. Подредено и навреме.`); say("", "Пратих ти писмо на телефона!"); };
+  } else if (kind === "letter") {
+    const L = letterText || ["…", ""];
+    sh.innerHTML = head("🍾 Писмо в бутилка") + `<div class="letter">${esc(L[0])}</div>`;
   } else if (kind === "stats") {
     const clean = Math.max(0, 100 - S.trash.length * 15);
     const bars = [["🍕", 100 - S.hunger, "#ffb36b"], ["⚡", S.energy, "#ffd166"], ["😊", S.mood, "#7cc8f2"], ["❤️", S.health, "#ff6b81"], ["🧹", clean, "#6fd3a0"]];
@@ -1655,10 +1814,11 @@ $("profBtn").onclick = ev => {
   const m = $("profMenu");
   if (!m.classList.contains("hidden")) return m.classList.add("hidden");
   m.innerHTML = `<div class="pm-who">👤 ${esc(myNick)}${role === "viewer" ? " · само гледаш" : ""}</div>` +
-    (canFull ? `<button id="pmFull">${isFull() ? "🪟 Малък екран" : "🖥️ Цял екран"}</button>` : "") + `<button id="pmOut">🚪 Изход</button>`;
+    (canFull ? `<button id="pmFull">${isFull() ? "🪟 Малък екран" : "🖥️ Цял екран"}</button>` : "") + (role === "keeper" && !DEMO ? `<button id="pmNt">🔔 Известия</button>` : "") + `<button id="pmOut">🚪 Изход</button>`;
   m.classList.remove("hidden");
   if ($("pmFull")) $("pmFull").onclick = () => { m.classList.add("hidden"); toggleFull(); };
   $("pmOut").onclick = () => { m.classList.add("hidden"); logout(); };
+  if ($("pmNt")) $("pmNt").onclick = () => { m.classList.add("hidden"); openSheet("notify"); };
 };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#profMenu") && !ev.target.closest("#profBtn")) $("profMenu").classList.add("hidden"); });
 // ---------- Бутоните по екрана ----------
@@ -1835,6 +1995,8 @@ function octoMode() {
   const p = performance.now();
   if (drag && drag.moved) return drag.mood;
   if (working) return p - working < 7000 ? "idle" : "work";
+  if (eatFx && p - eatFx.t0 > 600) return "eat";
+  if (p - bounceT < 1300) return "wee";
   if (reading) return "read";
   if (p - fx.party < 4000) return "party";
   if (S.asleep) return "sleep";
@@ -1962,7 +2124,8 @@ function drawFloor(t, s, behind) {
   const now = performance.now(), sandY = H * 0.88 + 4, sz = Math.max(26, 64 * s);
   g.textAlign = "center"; g.textBaseline = "middle";
   const list = [...S.trash.map(x => ({ ...x, kind: "trash", e: elE(x.k) })), ...S.parts.map(x => ({ ...x, kind: "part", e: elE(x.k) })),
-    ...(S.parcel && !behind ? [{ id: "parcel", x: S.parcel.x, e: "📦", kind: "parcel" }] : [])];
+    ...(S.parcel && !behind ? [{ id: "parcel", x: S.parcel.x, e: "📦", kind: "parcel" }] : []),
+    ...(S.letter && !behind ? [{ id: "letter", x: S.letter.x, e: "🍾", kind: "letter" }] : [])];
   if (S.parcel && !behind) {                            // рибата-пощальон отплува
     const a = ((now - (seen.parcel || now)) / 1000) / 6;
     if (a < 1) { g.font = `${sz * 1.3}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.fillText("🐟", W * (1.1 - a * 1.3), H * 0.25 + Math.sin(a * 20) * 10); g.font = `${sz * 0.7}px system-ui, sans-serif`; g.fillText("✉️", W * (1.1 - a * 1.3) - sz * 0.5, H * 0.25 + 18); }
@@ -1972,7 +2135,7 @@ function drawFloor(t, s, behind) {
       seen[it.id] = now;
       const old = now - loadAt < 4000 || Date.now() - it.t > 5 * MIN;        // събрано, докато те нямаше
       if (old) { seen[it.id] = now - 1e5; if (it.kind === "trash") floats[it.id] = { y: rnd(0.24, 0.78), ph: rnd(0, 6) }; }
-      else if (it.kind !== "parcel") setTimeout(() => notice(it), 1800);
+      else if (it.kind !== "parcel" && it.kind !== "letter") setTimeout(() => notice(it), 1800);
     }
     if (itemDrag && itemDrag.moved && itemDrag.id === it.id) continue;
     if (floats[it.id] && !behind) continue;
@@ -1986,7 +2149,7 @@ function drawFloor(t, s, behind) {
     if (STYLE === "sketch") g.globalAlpha = 0.92;
     g.fillText(it.e, 0, 0); g.globalAlpha = 1;
     g.restore();
-    if (it.kind === "part") {                       // блести, за да се забележи
+    if (it.kind === "part" || it.kind === "letter") {                       // блести, за да се забележи
       const tw = (Math.sin(now / 300 + it.x * 20) + 1) / 2;
       g.strokeStyle = `rgba(255,200,40,${0.4 + tw * 0.6})`; g.lineWidth = 2;
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + now / 900; g.beginPath(); g.moveTo(x + Math.cos(a) * sz * 0.55, y + Math.sin(a) * sz * 0.55); g.lineTo(x + Math.cos(a) * sz * 0.75, y + Math.sin(a) * sz * 0.75); g.stroke(); }
@@ -2046,7 +2209,7 @@ function guestTick(p) {
 function drawGuest(t, s) {
   if (!guest) return;
   const p = performance.now(), e = p - guest.at, R = rockGeom();
-  if (p > guest.end) { guest = null; return; }
+  if (p > guest.end) { guestGift(guest.k); guest = null; return; }
   const idx = Math.floor((e - 2000) / 4500);
   if (idx !== guest.i && idx >= 0 && idx < guest.lines.length) {
     guest.i = idx; const [who, x] = guest.lines[idx];
@@ -2111,18 +2274,31 @@ function loop() {
   let age = S && S.hatched ? ageKey() : "egg", lie = false, scale = s;
   // къде отива
   if (!oct.wp || t > oct.wpT) { oct.wp = [rnd(0.2, 0.6) * W, H * rnd(0.3, 0.6)]; oct.wpT = t + rnd(5, 10); }
-  let tx = oct.wp[0], ty = oct.wp[1], k = 0.02;
+  let tx = oct.wp[0], ty = oct.wp[1], k = 0.02, lin = 0;
+  if (mode !== "sleep") pillow = null;
   if (age === "egg") { tx = W * 0.33; ty = ground - 60 * s; k = 1; mode = "idle"; if (performance.now() - eggShake < 600) mode = "happy"; }
-  else if (mode === "sleep") {               // ляга на дъното до камъка
-    tx = Math.max(W * 0.32, R.cx - R.rw * 0.5 - 230 * s); k = 0.03;
-    if (STYLE === "sketch") { ty = ground - 54 * s; lie = true; } else ty = ground - 170 * s;
+  else if (mode === "sleep") {               // взима си възглавница и ляга до камъка
+    const sx = Math.max(W * 0.32, R.cx - R.rw * 0.5 - 230 * s);
+    if (!pillow) pillow = { t0: performance.now() - (performance.now() - loadAt < 4000 ? 1e4 : 0), x: null };
+    const e = performance.now() - pillow.t0;
+    if (e < 1800) { tx = -160 * s; ty = ground - 201 * s; k = 0.07; mode = "idle"; }
+    else if (e < 4200) { tx = sx; ty = ground - 201 * s; lin = 5; mode = "idle"; pillow.x = pillow.x == null ? -250 * s : pillow.x + (oct.px - 200 * s * Math.sign(sx - oct.px || 1) - pillow.x) * 0.25; }
+    else { tx = sx; k = 0.03; if (STYLE === "sketch") { ty = ground - 54 * s; lie = true; } else ty = ground - 170 * s; pillow.x = pillow.x == null ? sx : pillow.x + (sx - pillow.x) * 0.08; }
   }
   else if (working) {
     const e = performance.now() - working;
     ty = ground - 201 * s;
-    if (e < 2600) { tx = W + 280 * s; k = 0.06; }                       // отива зад ръба
-    else if (e < 5600) { tx = W * 0.4; k = 0.035; table.x = oct.px + 230 * s; }   // дърпа масата
-    else { tx = oct.px; k = 0.035; table.x += (oct.px - table.x) * 0.08; }       // слага я пред себе си
+    if (e < 2600) { tx = W + 280 * s; k = 0.06; if (table.x == null) table.x = W + 600 * s; }       // отива зад ръба
+    else if (e < 5600) { tx = W * 0.4; lin = 4; table.x += (oct.px + 230 * s - table.x) * 0.3; }   // дърпа масата равномерно
+    else { tx = oct.px; k = 0.035; table.x += (oct.px - table.x) * 0.06; }                        // слага я пред себе си
+  }
+  else if (grabQ.length && !(drag && drag.moved)) {                     // отива и взима нещото
+    const q = grabQ[0], h = floorHits.find(f => f.id === q.id), pn = performance.now();
+    if (!h) { grabQ.shift(); grabT = pn; }
+    else {
+      tx = h.x; ty = h.y - 150 * s; k = 0.1;
+      if (Math.hypot(oct.px - tx, oct.py - ty) < 60 * s || pn - grabT > 3000) { grabQ.shift(); grabT = pn; (q.kind === "t" ? doPickTrash : doPickPart)(q.id); fx.grab = pn; }
+    }
   }
   else if (hidden() && !(drag && drag.moved)) { scale = s * 0.55; tx = Math.min(R.cx, W - 70 * s); ty = R.top + 40 * scale + Math.sin(t * 2) * 4; k = 0.05; mode = "idle"; }
   if ((ringOpen || sheetKind) && age !== "egg") { tx = oct.px; ty = oct.py; }
@@ -2130,14 +2306,20 @@ function loop() {
   if (oct.sc == null) oct.sc = scale;
   oct.sc += (scale - oct.sc) * 0.08;
   const px0 = oct.px;
-  if (!(drag && drag.moved)) { oct.px += (tx - oct.px) * k; oct.py += (ty - oct.py) * k; }
+  if (!(drag && drag.moved)) {
+    if (lin) { const dx = tx - oct.px; oct.px += Math.sign(dx) * Math.min(Math.abs(dx), lin * Math.max(0.6, s * 2)); oct.py += (ty - oct.py) * 0.05; }
+    else { oct.px += (tx - oct.px) * k; oct.py += (ty - oct.py) * k; }
+  }
+  const bt = performance.now() - bounceT; const hop = bt < 1300 ? Math.sin(bt / 1300 * Math.PI) * H * 0.28 : 0;
   const vx = oct.px - px0;
   if (Math.abs(vx) > 0.6) oct.dir = Math.sign(vx);
   if (S && S.hatched && (mode === "idle" || mode === "happy") && !hidden() && Math.hypot(tx - oct.px, ty - oct.py) > 60 && !ringOpen && !sheetKind) mode = "swim";
   if (mode !== lastMode) { lastMode = mode; modeAt = t; }
-  const near = oct.py > ground - 260 * oct.sc && !(drag && drag.moved) && mode !== "swim" && !lie;
+  const near = oct.py > ground - 260 * oct.sc && !(drag && drag.moved) && mode !== "swim" && !lie && !hop;
   if (S) drawFloor(t, s, true);            // плаващите боклуци са зад него
-  const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * oct.sc, s: oct.sc, age, mode, t, mt: t - modeAt, st, lie, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
+  drawPillow(s, ground);
+  drawTramp(t, s);
+  const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * oct.sc - hop, s: oct.sc, skin: S && S.skin, age, mode, t, mt: t - modeAt, st, lie, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
     ground: near || age === "egg" ? ground : null, drop: age === "egg", style: STYLE, dir: oct.dir,
     lookAt: performance.now() - ptr.t < 3000 ? ptr : gaze && performance.now() < gaze.until ? gaze : null });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
@@ -2148,6 +2330,7 @@ function loop() {
     Octo.draw(g, { x: W * 0.5 + Math.sin(a * 6) * 30, y: H * 0.45 - a * H * 0.7, s: s * 0.9, age: "old", mode: "swim", t, st: {}, style: STYLE, dir: 1 });
     g.globalAlpha = 1;
   }
+  drawEat();
   drawTable(s, ground + 4);
   drawRock(t);
   drawGuest(t, s);
@@ -2155,6 +2338,7 @@ function loop() {
   if (S) drawFloor(t, s);
   if (S && S.trash.length > 2) { g.fillStyle = `rgba(70,120,30,${Math.min(0.32, (S.trash.length - 2) * 0.065)})`; g.fillRect(0, 0, W, H); }   // мръсна вода
   if (night) { g.fillStyle = "rgba(10,10,40,.25)"; g.fillRect(0, 0, W, H); }
+  if (S && S.hatched) { drawLamp(s); drawCompassMark(t, s); }
   if (STYLE !== "sketch") drawAngler(t, s);
   if (inGame) placeBubble();
 }
@@ -2171,9 +2355,11 @@ cv.addEventListener("pointerdown", ev => {
   const hit = floorHits.find(h => Math.hypot(h.x - x, h.y - y) < h.r);
   if (hit && role === "keeper") { closeRing();
     if (hit.kind === "parcel") return openParcel();
+    if (hit.kind === "letter") return openLetter();
     itemDrag = { id: hit.id, kind: hit.kind, pid: ev.pointerId, sx: x, sy: y, moved: false };
     try { cv.setPointerCapture(ev.pointerId); } catch {}
     return; }
+  if (trampBox && Math.abs(x - trampBox.x) < trampBox.r && Math.abs(y - trampBox.y) < 40 && role === "keeper" && !S.asleep) return bounce();
   if (chestBox && Math.hypot(x - chestBox.x, y - chestBox.y) < chestBox.r) { chestOpen = performance.now(); return openSheet("bag"); }
   if (!S.hatched) { if (eggBox && Math.hypot(x - eggBox.x, y - eggBox.y) < eggBox.r) tapEgg(); return; }
   if (hidden() && (onRock(x, y) || onOcto(x, y))) {
@@ -2312,13 +2498,15 @@ setInterval(() => {
       }
     }
     if (dirty && now - lastSave > 60000) save();
+    schedNotify();
+    if (sickSay === true && document.hidden && S.notify) ntfy("", 0, `${S.name} се разболя… Ела да го видиш.`);
   } else if (viewBase && now - lastMinuteCheck > 20000) {
     lastMinuteCheck = now;
     S = JSON.parse(viewBase); catchUp(now); render();
   }
   updateBubble(); renderHud();
 }, 1000);
-document.addEventListener("visibilitychange", () => { if (document.hidden) save(true); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) { save(true); schedNotify(true); } });
 window.addEventListener("pagehide", () => save(true));
 
 // ---------- Вход ----------
@@ -2345,7 +2533,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
