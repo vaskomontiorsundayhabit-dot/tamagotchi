@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 22;
+const VER = 23;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -462,11 +462,14 @@ function body(t, mt, st) {
     if (((t * 0.4) % 1) < 0.12) { g.fillStyle = "#fffaf0"; g.strokeStyle = C.line; g.beginPath(); g.moveTo(0, 6); g.quadraticCurveTo(30, -30, 50, -10); g.lineTo(0, 54); g.closePath(); g.fill(); g.stroke(); }
     g.restore();
   }
-  if (TR.includes("adventure") && !TR.includes("trader")) {
-    g.fillStyle = "#e5383b"; g.strokeStyle = C.line; g.lineWidth = 5;
-    g.beginPath(); g.ellipse(cx, cy - 62, rx * 0.98, 20, rot, Math.PI * 1.02, Math.PI * 1.98); g.lineTo(cx + rx * 0.9, cy - 40); g.ellipse(cx, cy - 40, rx * 0.95, 18, rot, 0, Math.PI, true); g.closePath(); g.fill(); g.stroke();
-    g.beginPath(); g.moveTo(cx + rx * 0.85, cy - 50); g.lineTo(cx + rx * 1.25, cy - 30); g.lineTo(cx + rx * 1.1, cy - 62); g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = "#fff"; for (const [x, y] of [[-50, -58], [0, -66], [50, -60]]) { ell(cx + x, cy + y, 4, 4); g.fill(); }
+  if (TR.includes("adventure") && !TR.includes("trader")) {     // изследователска шапка с перо
+    g.save(); g.translate(cx - 6, cy - ry * 0.9); g.rotate(-0.12); g.scale(1.35, 1.35);
+    g.fillStyle = "#d8b878"; g.strokeStyle = C.line; g.lineWidth = 5;
+    g.beginPath(); g.ellipse(0, 4, 78, 15, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(-48, 4); g.quadraticCurveTo(-46, -54, 0, -56); g.quadraticCurveTo(46, -54, 48, 4); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = "#7a4a26"; g.beginPath(); g.rect(-47, -12, 94, 12); g.fill(); g.stroke();
+    g.fillStyle = "#e5383b"; g.beginPath(); g.moveTo(30, -10); g.quadraticCurveTo(60, -60, 44, -78); g.quadraticCurveTo(36, -40, 26, -12); g.closePath(); g.fill(); g.stroke();
+    g.restore();
   }
   if (TR.includes("trader")) {
     g.save(); g.translate(cx + 10, cy - ry * 0.98); g.rotate(0.12);

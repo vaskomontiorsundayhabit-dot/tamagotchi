@@ -12,6 +12,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap">
 <style>
   :root { --ink: #2b2a33; --text: #f6efe6; --muted: #c9dbe8; --peach: #f4a07a; --gold: #ffd166; --red: #ff6b81; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -62,7 +63,7 @@
   #mixbar button:disabled { opacity: .5; }
   body.hasbar #sheet { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 62px); border-bottom: 3px solid var(--ink); border-radius: 24px; }
   body.hasbar #hint { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 70px); }
-  #ghost { position: fixed; z-index: 10; pointer-events: none; font-size: 44px; transform: translate(-50%, -60%); }
+  #ghost { position: fixed; z-index: 10; pointer-events: none; font-size: 44px; transform: translate(-50%, -120%); }
 
   /* менюто около него */
   .rb { position: fixed; left: 0; top: 0; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%;
@@ -166,6 +167,24 @@
   .letter { background: #fbf3dc; color: #3a2a1a; border-radius: 6px; padding: 18px 18px 22px; font: italic 17px/1.5 Georgia, serif; transform: rotate(-1deg);
     box-shadow: 0 6px 18px rgba(0,0,0,.35); background-image: repeating-linear-gradient(transparent 0 25px, rgba(90,140,220,.18) 25px 26px); }
   .ntf code { display: block; background: rgba(0,0,0,.3); padding: 10px; border-radius: 10px; font-size: 16px; margin: 6px 0; -webkit-user-select: all; user-select: all; }
+  .diary { display: grid; gap: 0; background: #7a4a26; padding: 10px; border-radius: 10px; box-shadow: inset 0 0 0 3px #5a3418, 0 8px 20px rgba(0,0,0,.4); }
+  .diary.two { grid-template-columns: 1fr 1fr; }
+  .diary .pg { position: relative; min-height: 340px; padding: 16px 16px 30px 34px; color: #3a2a1a; font: 20px/1.3 "Caveat", "Segoe Print", cursive;
+    background: #fbf3dc repeating-linear-gradient(transparent 0 25px, rgba(90,140,220,.22) 25px 26px); background-position: 0 12px; }
+  .diary .pg::before { content: ""; position: absolute; left: 24px; top: 0; bottom: 0; width: 2px; background: rgba(220,80,80,.45); }
+  .diary.two .pg:first-child { box-shadow: inset -14px 0 16px -10px rgba(0,0,0,.35); border-radius: 6px 0 0 6px; }
+  .diary.two .pg:last-child { box-shadow: inset 14px 0 16px -10px rgba(0,0,0,.35); border-radius: 0 6px 6px 0; }
+  .diary:not(.two) .pg { border-radius: 6px; box-shadow: inset 14px 0 16px -10px rgba(0,0,0,.35); }
+  .diary p { margin: 0 0 8px; } .diary time { display: block; font-size: 15px; color: #8a6a4a; }
+  .diary .pn { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 16px; color: #8a6a4a; }
+  .shelf { background: #6b4226; border-radius: 8px; padding: 10px 10px 0; box-shadow: inset 0 0 0 4px #4e2e18; margin: 6px 0 10px; }
+  .shelf .row { display: flex; align-items: flex-end; gap: 4px; height: 150px; border-bottom: 12px solid #8b5a34; box-shadow: 0 6px 0 #4e2e18; overflow-x: auto; padding: 0 4px; }
+  .spine { position: relative; flex: 0 0 34px; border-radius: 4px 4px 0 0; border: 2px solid rgba(0,0,0,.35); cursor: pointer; display: flex; justify-content: center;
+    box-shadow: inset -5px 0 0 rgba(0,0,0,.18), inset 4px 0 0 rgba(255,255,255,.15); }
+  .spine em { writing-mode: vertical-rl; transform: rotate(180deg); font-style: normal; font-size: 11px; font-weight: 700; color: #fff7e6; padding: 6px 0; overflow: hidden; text-shadow: 0 1px 1px rgba(0,0,0,.5); }
+  .spine i { position: absolute; top: 4px; font-style: normal; font-size: 12px; color: #fff; } .spine.sel { outline: 3px solid var(--gold); transform: translateY(-8px); }
+  .spine u { position: absolute; bottom: 4px; text-decoration: none; font-size: 10px; font-weight: 800; background: #ffe7a8; color: #2a1730; border-radius: 4px; padding: 0 3px; white-space: nowrap; z-index: 1; }
+  .shelf.shop .row { height: 160px; } .shelf.shop .spine em { padding-bottom: 24px; } .spine { flex-basis: 38px; } .shelf .empty { color: #e8d2b0; font-size: 13px; align-self: center; } .shelf .deco { font-size: 34px; margin-left: auto; }
   .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
   #bubble .t { font-size: 15px !important; }
   .life { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
@@ -217,7 +236,6 @@
 <div id="mixbar" class="hidden"></div>
 <div id="ver" style="position:fixed;right:8px;bottom:max(6px,env(safe-area-inset-bottom));font-size:10px;color:rgba(255,255,255,.55);z-index:2;pointer-events:none"></div>
 <div id="hint" class="hidden">Докосни Октонис 🐙</div>
-<div id="handle" class="hidden" title="Как е"></div>
 <button id="chatBtn" class="hidden" title="Отговори">💬<i></i></button>
 <div id="pop" class="hidden"></div>
 <div id="bubble" class="hidden"><div class="e" id="bubbleE"></div><div class="t" id="bubbleT"></div></div>
@@ -403,7 +421,7 @@ function spoil(t) {
     const sp = EL[k] && EL[k][5]; if (!sp || !list.length) continue;
     while (list.length && t - list[0] > sp[0] * MIN) {
       list.shift(); S.mat[k]--; addMat(sp[1], t);
-      if (!S.spoilSaid) { S.spoilSaid = true; log(`🦠 ${elN(k)} в торбата се развали и стана „${elN(sp[1]).toLowerCase()}“. Може пак да потрябва!`, t); }
+      if (!S.spoilSaid) { S.spoilSaid = true; log(`🦠 ${elN(k)} в сандъка се развали и стана „${elN(sp[1]).toLowerCase()}“. Може пак да потрябва!`, t); }
     }
   }
 }
@@ -429,14 +447,14 @@ function doPickTrash(id) {
   const r = pickFloor(id, "me"); if (!r) return;
   if (has("recycler") && Math.random() < 0.3) { const k = pick(FLOOR.other); addMat(k); setTimeout(() => say("", `В боклука намерих ${elN(k).toLowerCase()}! Рециклиране!`), 4700); }
   if (!S.trash.length) { log("✨ Всичко е чисто."); say("", "Чисто! Най-сетне мога да дишам."); }
-  else say("", pick(["Благодаря! Прибрах го в торбата.", `${elN(r.it.k)}… може да стане за нещо!`, "Едно по едно. Систематично."]));
+  else say("", pick(["Благодаря! Прибрах го в сандъка.", `${elN(r.it.k)}… може да стане за нещо!`, "Едно по едно. Систематично."]));
   save();
 }
 function doPickPart(id) {
   if (role !== "keeper") return;
   const r = pickFloor(id, "me"); if (!r) return;
   const k = r.it.k;
-  say("", EL[k][3] === "food" ? `${elN(k)}! Да го пазим, докато е прясно.` : pick([`${elN(k)}. Влиза в торбата.`, `Ооо, ${elN(k).toLowerCase()}! Имам идеи.`]));
+  say("", EL[k][3] === "food" ? `${elN(k)}! Да го пазим, докато е прясно.` : pick([`${elN(k)}. Влиза в сандъка.`, `Ооо, ${elN(k).toLowerCase()}! Имам идеи.`]));
   save();
 }
 
@@ -617,7 +635,7 @@ function proposeIdea() {
 function ideaYes() {
   const id = S.idea; S.idea = null;
   if (!id || !haveAll([id.a, id.b, ...(id.more || [])])) return "Ох, вече нямам тези неща. Друг път.";
-  if (id.ask) { S.task = { a: id.a, b: id.b }; return `Благодаря! Отвори торбата и смеси ${elN(id.a).toLowerCase()} и ${elN(id.b).toLowerCase()}. Аз ще гледам.`; }
+  if (id.ask) { S.task = { a: id.a, b: id.b }; return `Благодаря! Отвори сандъка и смеси ${elN(id.a).toLowerCase()} и ${elN(id.b).toLowerCase()}. Аз ще гледам.`; }
   setTimeout(() => mix(id.a, id.b, "him", id.more || []), 2500);
   return pick(["Отивам да го направя!", "Супер! Почвам веднага.", "Да! Отивам за масата."]);
 }
@@ -724,7 +742,7 @@ function feed(k) {
   if (!EDIBLE[k]) return;
   if (S.hunger < 20) return say("", "Не съм гладен. Режимът си е режим!");
   takeMat(k); startEat(elE(k)); S.hunger = clamp(S.hunger - EDIBLE[k]); S.mood = clamp(S.mood + (EL[k][3] === "made" ? 8 : 3)); S.lastCare = Date.now(); dirty = true;
-  log(`${elE(k)} Хапна ${elN(k).toLowerCase()} от торбата.`);
+  log(`${elE(k)} Хапна ${elN(k).toLowerCase()} от сандъка.`);
   say("", k === "bluecheese" ? "Синьо сирене! Звучи развалено, ама е деликатес." : EL[k][3] === "made" ? `${elN(k)}! Сами го направихме. Двойно вкусно.` : pick(["Ммм! Прясно. Проверих датата.", "Вкусно! Ядох най-старото първо, както трябва."]));
   save(); render();
 }
@@ -755,7 +773,7 @@ function selfWork(p) {
   const floor = S.parts.length ? S.parts : null;
   if (floor && Math.random() < 0.5) {
     const it = floor[0]; pickFloor(it.id, "him");
-    say("", pick([`Взех си ${elN(it.k).toLowerCase()} от дъното. Сам!`, `${elN(it.k)}. Влиза в торбата.`])); return save();
+    say("", pick([`Взех си ${elN(it.k).toLowerCase()} от дъното. Сам!`, `${elN(it.k)}. Влиза в сандъка.`])); return save();
   }
   if (S.energy > 30 && S.hunger < 70 && Math.random() < 0.4) {
     const id = makeIdea(S.t); if (!id) return;
@@ -823,7 +841,7 @@ const Q = [
   { id: "school", q: "Научи ли нещо ново днес?", yes: "Браво! Мозъкът е като мускул. Пипало. Както и да е.", no: "Ето ти едно: октоподите имат три сърца. Сега научи!", every: 1440 },
   { id: "tidyDesk", q: "Подредено ли е около теб в момента?", yes: "Гордея се с теб. Подредено място, подредени мисли.", no: "Иди подреди. Ще те чакам. Сериозно, ще чакам.", mood: { yes: 4 }, every: 2880 },
   { id: "music", q: "Обичаш ли музика?", yes: "И аз! Мехурчетата бълбукат в ритъм, ако се заслушаш.", no: "Тишината също е хубава. Особено за мислене.", set: { yes: { music: true } } },
-  { id: "help", when: () => S.task && canPair(S.task.a, S.task.b), q: () => `Ще смесиш ли ${elN(S.task.a).toLowerCase()} и ${elN(S.task.b).toLowerCase()} за мен? В торбата са.`, yes: "Супер! Отвори торбата, сложи ги двете и натисни Смеси.", no: "Добре, ще почакам. Записах го в тетрадката.", mood: { yes: 4 }, every: 300 },
+  { id: "help", when: () => S.task && canPair(S.task.a, S.task.b), q: () => `Ще смесиш ли ${elN(S.task.a).toLowerCase()} и ${elN(S.task.b).toLowerCase()} за мен? В сандъка са.`, yes: "Супер! Отвори сандъка, сложи ги двете и натисни Смеси.", no: "Добре, ще почакам. Записах го в тетрадката.", mood: { yes: 4 }, every: 300 },
   { id: "trash", when: () => S.trash.length >= 3, q: "Ще махнеш ли боклуците? Моля те?", yes: "Благодаря! Чакам. И броя.", no: "Не?! Дева съм, не мога така!", mood: { no: -6 }, set: { yes: { promisedClean: () => Date.now() } }, every: 120 },
   { id: "keep", when: () => keptCount(S) > 0, q: () => `Да пазим ли ${elN(Object.keys(S.mat).find(k => cnt(k) > 0 && EL[k] && EL[k][3] === "made")).toLowerCase()} за спомен?`, yes: "Да! Ще го сложа на рафта. Подреден по големина.", no: "Добре, можеш да го продадеш, когато решиш.", every: 2880 },
   { id: "late", st: ["teen"], q: "Може ли да стоя буден до късно довечера?", yes: "Ееее! Ти си най-добрият!", no: "Пфф. Добре де. Никой не ме разбира.", mood: { yes: 8, no: -4 }, every: 1440 },
@@ -1022,7 +1040,9 @@ function react(ans) {
     if (S.trash.length >= 3) return say("", "Боклуците ме изнервят. Не мога да мисля така.");
     if (S.task) return say("", `Чакам да смесиш ${elN(S.task.a).toLowerCase()} и ${elN(S.task.b).toLowerCase()}.`);
     if (Math.random() < 0.5) return askNext(true);
-    return say("", pick(["Какво ли? Просто си плувам и мисля.", "Мисля за изобретения. Както винаги.", "Нищо. Броя мехурчетата. Пак."]));
+    return say("", pick(["Какво ли? Просто си плувам и мисля.", "Мисля за изобретения. Както винаги.", "Нищо особено. Гледам как светлината танцува във водата.",
+      "Чудя се дали камъкът има име. Мисля, че е Кирил.", "Мисля какво ще изобретя утре. Нещо голямо. Или мъничко.", "Слушам морето. Днес бълбука в ла минор.",
+      "Подреждам мислите си. Тази отляво, онази отдясно.", "Мечтая за сандвич. И за подредени чорапи.", "Чакам да ми хрумне нещо гениално. Още чакам."]));
   }
   if (ans === "scold") {
     S.mood = clamp(S.mood - 8); fx.hurt = performance.now(); save();
@@ -1239,7 +1259,8 @@ function catchUp(now) {
 const CHATTER = [
   ["🧐", "Проверявам винтчетата… пак."], ["📋", "Правя списък на списъците."], ["📐", "Всичко трябва да е под прав ъгъл."],
   ["🤓", "Обичам технологиите!"], ["🗂️", "Подредих мислите си по азбучен ред."], ["🔬", "Това трябва да се изследва."],
-  ["🫧", "Броя мехурчетата. 47… 48…"], ["🪨", "Този камък е малко крив. Дразни ме."],
+  ["🫧", "Броя мехурчетата. 47… 48…"], ["", "Днес водата е много синя. Харесва ми."], ["", "Някой да е виждал моя болт номер седем?"],
+  ["", "Ако бях риба, щях да съм подредена риба."], ["", "Мисля, че камъкът ме гледа."], ["", "Тананикам си песничка. Без думи. Само бълбук."], ["🪨", "Този камък е малко крив. Дразни ме."],
 ];
 let lastChat = 0, ideaFlash = 0;
 function chatter() {
@@ -1286,7 +1307,7 @@ function careAct(e) {
   switch (e) {
     case "🍕": case "🥦": case "🦐": case "🍣": case "🥕": case "🍪": case "🍲": case "🥞": case "🍳": case "🍮": { const h0 = S.hunger; eat(e, now); if (S.hunger < h0) { startEat(e); S.track.ate = S.track.ate || {}; S.track.ate[e] = (S.track.ate[e] || 0) + 1; } break; }
     case "😴":
-      if (S.energy > 60) { say("😤", "Не съм уморен, работя!"); break; }
+      if (S.energy > 60) { say("", pick(["Не съм уморен! Още не ми се спи.", "Сън? Сега? Още е рано за мен."])); break; }
       S.asleep = true; log("😴 Легна на дъното да спи."); say("😴", "Лека нощ…"); break;
     case "☀️":
       if (!S.asleep) { say("😎", "Буден съм!"); break; }
@@ -1379,14 +1400,17 @@ function worries() {
   if (S.energy < 25) w.push("😴 уморен съм");
   if (S.task) w.push(`💡 чакам да смесиш ${elN(S.task.a).toLowerCase()} и ${elN(S.task.b).toLowerCase()}`);
   const bad = YUCK.filter(k => cnt(k));
-  if (bad.length) w.push(`🦠 в торбата има развалени неща: ${bad.map(k => elN(k).toLowerCase()).join(", ")}`);
+  if (bad.length) w.push(`🦠 в сандъка има развалени неща: ${bad.map(k => elN(k).toLowerCase()).join(", ")}`);
   return w;
 }
 function tapEgg() {
   if (role !== "keeper" || S.hatched) return;
   eggShake = performance.now();
   const left = Math.ceil((STAGE_MIN.egg * MIN - (S.t - S.stageT)) / MIN);
-  if (left > 0) return say("", left > 30 ? "Яйцето е топло… още не е готово." : left > 5 ? "Мърда! Скоро ще се излюпи." : "Пука се! Само още малко…");
+  if (left > 0) {                                  // всяко докосване го стопля и времето намалява
+    if ((S.eggShave || 0) < 45) { S.stageT -= MIN; S.eggShave = (S.eggShave || 0) + 1; dirty = true; save(); }
+    return say("", left > 40 ? pick(["Яйцето е топло… Още!", "Нещо вътре слуша.", "Тук-тук. Топло е."]) : left > 15 ? pick(["Мърда! Още малко топлина!", "Чу ли? Почука отвътре!"]) : pick(["Пука се! Само още малко…", "Вече е съвсем топло!"]));
+  }
   S.taps = (S.taps || 0) + 1; dirty = true;
   if (S.taps >= 3) {
     S.hatched = true; S.born = S.t; S.stage = "baby"; S.stageT = S.t; S.grow = 0;
@@ -1479,7 +1503,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 22;
+const PAGE_V = 23;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1534,15 +1558,24 @@ function closeSheet() {
   $("sheet").classList.remove("open");
   $("scrim").classList.add("hidden");
 }
-$("scrim").onclick = closeSheet;
-$("handle").onclick = () => S && openSheet("stats");
+let dragEndAt = -1e9;
+$("scrim").onclick = () => { if (performance.now() - dragEndAt > 600) closeSheet(); };
 $("chatBtn").onclick = ev => { ev.stopPropagation(); if (S) togglePop(); };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#pop") && !ev.target.closest("#chatBtn")) closePop(); });
 function lastAsked() { return Math.max(0, ...Object.values(S.asked || {})); }
-let libTab = "found", mixSel = [], invPick = null, invDrag = null;
+let libPick = null, journalPage = 0, libTab = "found", mixSel = [], invPick = null, invDrag = null;
+function priceOf(k) {
+  let p2 = YUCK.includes(k) ? 0 : EL[k][4];
+  if (EL[k][3] === "junk" && has("recycler")) p2 *= 2;
+  if (has("trader")) p2 = Math.ceil(p2 * 1.25);
+  return p2;
+}
 function dropHover(x, y) {
   const el = x < 0 ? null : document.elementFromPoint(x, y);
   for (const id of ["binZone", "sellZone"]) $(id)?.classList.toggle("over", !!(el && el.closest("#" + id)));
+  const sz = $("sellZone");
+  if (sz) { const on = invDrag && el && el.closest("#sellZone"), sum = on ? priceOf(invDrag.k) * Math.min(invDrag.n, cnt(invDrag.k)) : 0;
+    sz.textContent = on ? (sum ? `◉ +${sum} ${CUR}` : "Никой не го купува") : "◉ Продай"; }
   $("mixbar").classList.toggle("over", !!(el && el.closest("#mixbar")));
 }
 function throwStack(k, n) {
@@ -1570,22 +1603,29 @@ function fillSheet(kind) {
       h += `<div class="sub">Книгата на откритията</div>`;
       const card = c => { const r = ingOf(c); return `<div><span>${elE(c)}</span><b>${esc(elN(c))}</b><small>${r ? esc(r.map(elN).join(" + ")) : ""}</small></div>`; };
       const small = S.found.filter(c => !MACHINES.includes(c)), big = S.found.filter(c => MACHINES.includes(c));
-      h += small.length ? `<div class="made">${small.map(card).join("")}</div>` : `<div class="sub">Още е празна. Смесвайте неща от торбата!</div>`;
+      h += small.length ? `<div class="made">${small.map(card).join("")}</div>` : `<div class="sub">Още е празна. Смесвайте неща от сандъка!</div>`;
       if (big.length) h += `<div class="sub grp">⚙️ Машини</div><div class="made">${big.map(card).join("")}</div>`;
       const sp = S.seen.filter(k => EL[k] && EL[k][3] === "spoiled");
       if (sp.length) h += `<div class="sub grp">Развалени, но полезни</div><div class="made">${sp.map(k => `<div><span>${elE(k)}</span><b>${esc(elN(k))}</b></div>`).join("")}</div>`;
     } else if (libTab === "notes") {
-      if (S.task) h += `<div class="idea"><div class="ie" style="font-size:30px;white-space:nowrap">${elE(S.task.a)}${elE(S.task.b)}</div><div><b>Задача за теб</b><div class="sub" style="margin:2px 0">Смеси ${esc(elN(S.task.a).toLowerCase())} и ${esc(elN(S.task.b).toLowerCase())} в торбата.</div></div></div>`;
+      if (S.task) h += `<div class="idea"><div class="ie" style="font-size:30px;white-space:nowrap">${elE(S.task.a)}${elE(S.task.b)}</div><div><b>Задача за теб</b><div class="sub" style="margin:2px 0">Смеси ${esc(elN(S.task.a).toLowerCase())} и ${esc(elN(S.task.b).toLowerCase())} в сандъка.</div></div></div>`;
       const fut = (S.future || []).filter(f => !S.found.includes(RECIPE[recKey(f.a, f.b)]));
       h += `<div class="sub grp">💡 Бъдещи идеи</div>` + (fut.length ? `<ul class="journal">${fut.map(f => `<li>${[f.a, f.b, ...(f.more || [])].map(k => elE(k) + " " + esc(elN(k))).join(" + ")} = ?${f.src && f.src !== "моя идея" ? ` <small>(от „${esc(f.src)}“)</small>` : ""}</li>`).join("")}</ul>` : `<div class="sub">Празно.</div>`);
       const nope = S.nope || [];
       h += `<div class="sub grp">✗ Не работи</div>` + (nope.length ? `<ul class="journal">${nope.slice(-40).reverse().map(x => `<li>${x.split("+").map(k => elE(k) + " " + esc(elN(k))).join(" + ")}: нищо</li>`).join("")}</ul>` : `<div class="sub">Още нищо не се е провалило. Подозрително.</div>`);
     } else if (libTab === "shelf") {
       const own = SHOP.filter(b => (S.lib || []).includes(b.id)), shop = SHOP.filter(b => !(S.lib || []).includes(b.id));
+      const COLS = ["#b5473a", "#3a6ea5", "#4f8a4b", "#8a5a9e", "#c9902e", "#2f7f86", "#a8553f", "#5a5fa8", "#7a8a3a", "#a83a66", "#3f5f3a"];
+      const spine = (b, shopB) => { const i = SHOP.indexOf(b), hh = 78 + (i * 37) % 30, read = (S.libRead || []).includes(b.id);
+        return `<span class="spine${libPick === b.id ? " sel" : ""}" data-b="${b.id}" style="height:${hh}%;background:${COLS[i % COLS.length]}"><em>${esc(b.n)}</em>${read ? "<i>✓</i>" : ""}${shopB ? `<u>◉${b.p}</u>` : ""}</span>`; };
       h += `<div class="sub">Прочел е ${S.books || 0} ${S.books === 1 ? "книга" : "книги"}.</div>`;
-      if (own.length) h += `<div class="sub grp">На рафта</div>` + own.map(b => `<div class="it"><span class="ii">📕</span><span class="in">${esc(b.n)}<small>${(S.libRead || []).includes(b.id) ? "прочетена ✓" : "още не е прочетена"}</small></span><span></span></div>`).join("");
-      h += `<div class="sub grp">Книжарницата на рифа <b class="cash">${money(S.pearls)}</b></div>` + (shop.length ? shop.map(b => `<div class="it"><span class="ii">📗</span><span class="in">${esc(b.n)}<small>${money(b.p)}</small></span>
-        ${role === "keeper" ? `<button class="sell buy" data-b="${b.id}" ${S.pearls < b.p ? "disabled" : ""}>Купи</button>` : "<span></span>"}</div>`).join("") : `<div class="sub">Купил е всички книги. Истински книжен плъх. Книжен октопод.</div>`);
+      h += `<div class="shelf"><div class="row">${own.length ? own.map(b => spine(b, false)).join("") : `<span class="empty">Рафтът още е празен</span>`}<span class="deco">🪴</span></div></div>`;
+      h += `<div class="sub grp">Книжарницата на рифа <b class="cash">${money(S.pearls)}</b></div>`;
+      h += shop.length ? `<div class="shelf shop"><div class="row">${shop.map(b => spine(b, true)).join("")}</div></div>` : `<div class="sub">Купил е всички книги. Истински книжен октопод.</div>`;
+      const pb = SHOP.find(b => b.id === libPick);
+      if (pb) { const mine = (S.lib || []).includes(pb.id), read = (S.libRead || []).includes(pb.id);
+        h += `<div class="pick"><span class="ii">${mine ? "📕" : "📗"}</span><span class="in">${esc(pb.n)}<small>${mine ? (read ? "прочетена ✓" : "още не е прочетена. Чети от менюто около него.") : money(pb.p)}</small></span>
+          <span class="btns">${!mine && role === "keeper" ? `<button class="sell buy" data-b="${pb.id}" ${S.pearls < pb.p ? "disabled" : ""}>Купи</button>` : ""}</span></div>`; }
     } else {
       if (!S.asleep) h += `<div class="lock">🔒<div>Личният дневник е заключен.<br><small>Пази го под пипалото си.</small></div></div>`;
       else h += `<div class="sub">Спи… Дневникът се е изплъзнал изпод пипалото му.</div><div class="sub grp">Какво мисля за теб</div><ul class="journal">${myThoughts().map(x => `<li>${esc(x)}</li>`).join("")}</ul>` +
@@ -1598,6 +1638,7 @@ function fillSheet(kind) {
       fillSheet("lib");
     });
     sh.querySelectorAll(".buy").forEach(b => b.onclick = () => buyBook(b.dataset.b));
+    sh.querySelectorAll(".spine").forEach(b => b.onclick = () => { libPick = libPick === b.dataset.b ? null : b.dataset.b; fillSheet("lib"); });
   } else if (kind === "bag") {
     // като инвентара в Minecraft: мрежа от полета, по най-много 20 в поле
     const ORDER = ["made", "food", "spoiled", "nature", "part", "junk"];
@@ -1630,7 +1671,7 @@ function fillSheet(kind) {
         if (invDrag.moved) { const gh = $("ghost"); gh.style.left = ev.clientX + "px"; gh.style.top = ev.clientY + "px"; dropHover(ev.clientX, ev.clientY); }
       };
       c.onpointerup = ev => {
-        const d = invDrag; invDrag = null; $("ghost")?.remove(); dropHover(-1, -1);
+        const d = invDrag; invDrag = null; $("ghost")?.remove(); dropHover(-1, -1); dragEndAt = performance.now();
         if (!d) return;
         if (!d.moved) { invPick = invPick === d.k ? null : d.k; return fillSheet("bag"); }
         const el = document.elementFromPoint(ev.clientX, ev.clientY);
@@ -1699,11 +1740,16 @@ function fillSheet(kind) {
       ((S.diary || []).length ? `<div class="sub" style="margin-top:10px">📔 Семейният дневник за теб:</div><ul class="journal">${S.diary.map(e => `<li>${esc(e.by)}: „${esc(e.x)}“${e.ok ? " ✓" : ""}</li>`).join("")}</ul>` : "") +
       "";
   } else if (kind === "journal") {
-    sh.innerHTML = head("📖 Дневник") + `<ul class="journal">${S.journal.slice(0, 60).map(j => {
-      const d = new Date(j.t);
-      const tm = d.toLocaleDateString("bg-BG", { day: "numeric", month: "short" }) + " " + d.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" });
-      return `<li><time>${tm}</time>${esc(j.x)}</li>`;
-    }).join("")}</ul>`;
+    const two = innerWidth > 640, per = 6, ent = S.journal.slice(0, 120), pages = Math.max(1, Math.ceil(ent.length / per));
+    const step = two ? 2 : 1; journalPage = Math.min(journalPage, Math.max(0, pages - 1)); journalPage -= journalPage % step;
+    const page = i => { const list = ent.slice(i * per, i * per + per);
+      return `<div class="pg">${list.map(j => { const d = new Date(j.t);
+        return `<p><time>${d.toLocaleDateString("bg-BG", { day: "numeric", month: "long" })}, ${d.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" })}</time>${esc(j.x.replace(NO_EMO, "").trim())}</p>`; }).join("") || "<p>&nbsp;</p>"}
+        <b class="pn">${i + 1}</b></div>`; };
+    sh.innerHTML = head("📖 Дневник") + `<div class="diary${two ? " two" : ""}">${page(journalPage)}${two ? page(journalPage + 1) : ""}</div>
+      <div class="row2"><button class="ans" id="jPrev" ${journalPage <= 0 ? "disabled" : ""}>◀ По-нови</button><button class="ans" id="jNext" ${journalPage + step >= pages ? "disabled" : ""}>По-стари ▶</button></div>`;
+    $("jPrev").onclick = () => { journalPage = Math.max(0, journalPage - step); fillSheet("journal"); };
+    $("jNext").onclick = () => { journalPage += step; fillSheet("journal"); };
   }
   $("sx").onclick = closeSheet;
 }
@@ -1822,7 +1868,7 @@ $("profBtn").onclick = ev => {
 };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#profMenu") && !ev.target.closest("#profBtn")) $("profMenu").classList.add("hidden"); });
 // ---------- Бутоните по екрана ----------
-$("side").innerHTML = [["bag", "🎒", "Торба"], ["lib", "📚", "Книги"], ["family", "🌳", "Род"], ["journal", "📖", "Дневник"]]
+$("side").innerHTML = [["bag", "🧰", "Сандък"], ["lib", "📚", "Книги"], ["family", "🌳", "Род"], ["journal", "📖", "Дневник"]]
   .map(([k, i, n]) => `<button data-k="${k}" title="${n}">${i}<small>${n}</small></button>`).join("");
 $("side").querySelectorAll("button").forEach(b => b.onclick = ev => { ev.stopPropagation(); if (S) openSheet(b.dataset.k); });
 $("hud").onclick = () => S && openSheet("stats");
@@ -2444,20 +2490,6 @@ if (canHover) addEventListener("mousemove", ev => {
   else if (ringOpen && d > ringR + 70) { if (!leaveTimer) leaveTimer = setTimeout(() => { leaveTimer = 0; closeRing(); }, 450); }
   else if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = 0; }
 });
-// плъзгане отдолу нагоре на телефона: „Как е“; отгоре надолу по панела: затваря
-let swipe = null;
-addEventListener("touchstart", ev => {
-  const t0 = ev.touches[0];
-  swipe = { x: t0.clientX, y: t0.clientY, onSheet: $("sheet").contains(ev.target), top: $("sheet").scrollTop };
-}, { passive: true });
-addEventListener("touchend", ev => {
-  if (!swipe || !inGame) return;
-  const t1 = ev.changedTouches[0], dx = t1.clientX - swipe.x, dy = t1.clientY - swipe.y;
-  if (!sheetKind && !drag && dy < -60 && Math.abs(dx) < 90 && swipe.y > H * 0.55 && !onOcto(swipe.x, swipe.y)) openSheet("stats");
-  else if (sheetKind && swipe.onSheet && swipe.top <= 0 && dy > 70) closeSheet();
-  swipe = null;
-}, { passive: true });
-
 // ---------- Таймер ----------
 let nextIdeaAt = Date.now() + 4 * MIN, parcelSaid = false, nextQGap = 12 * MIN, lastMinuteCheck = 0, nextHide = performance.now() + 4 * 60000;
 setInterval(() => {
