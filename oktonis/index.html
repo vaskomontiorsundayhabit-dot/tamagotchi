@@ -4092,8 +4092,8 @@ function ghostHtml(head) {
     (awake ? `<div class="sub">Рибата-дух идва само докато Октонис спи. Сега е буден.</div>` : "") : "") +
     `<div class="glog">${log}</div><form id="ghForm" class="gform"><input id="ghIn" maxlength="200" autocomplete="off" placeholder="${role === "viewer" ? "Напиши като рибата-дух…" : "Отговори на рибата-дух…"}"><button>Прати</button></form>`;
 }
-// ---------- Историята с крила (шестимата, които не обичат снимки) ----------
-const KRILL_THREATS = ["Спи с едно око отворено, осмоного!", "Крилът никога не забравя. Никога!", "Следващия път ще сме сто!", "Пази си болтовете… и шапката!", "Ще се върнем. С братовчедите."];
+// ---------- Историята с рачетата Крил (шестимата, които не обичат снимки) ----------
+const KRILL_THREATS = ["Спи с едно око отворено, осмоного!", "Рачетата Крил никога не забравят. Никога!", "Следващия път ще сме сто!", "Пази си болтовете… и шапката!", "Ще се върнем. С братовчедите."];
 const kr = () => (S.krill = S.krill || { st: 0, th: 0, next: 0, loot: [] });
 let krillSwarm = null, krillBlock = null;
 function krillPhoto() {                        // какво казват, като ги снимаш (според историята)
@@ -4102,7 +4102,7 @@ function krillPhoto() {                        // какво казват, ка�
   if (K.st === 1) { K.st = 2; dirty = true; return ["mad", "ПАК ЛИ?! Казахме: БЕЗ СНИМКИ! Шестимата сме бесни!"]; }
   if (K.st === 2) {
     const loot = Object.keys(S.mat).filter(k => cnt(k) > 0 && EL[k] && ["junk", "nature", "part", "food"].includes(EL[k][3]));
-    if (loot.length) { const k = pick(loot); takeMat(k); log(`🦐 Крилът открадна ${elN(k).toLowerCase()} от сандъка!`); setTimeout(() => say("", `Крилът ми открадна ${elN(k).toLowerCase()}! Шестимата крадци!`, 5500), 1800); }
+    if (loot.length) { const k = pick(loot); takeMat(k); log(`🦐 Рачетата Крил откраднаха ${elN(k).toLowerCase()} от сандъка!`); setTimeout(() => say("", `Рачетата Крил ми откраднаха ${elN(k).toLowerCase()}! Шестимата крадци!`, 5500), 1800); }
     K.st = 3; K.next = now + rnd(10, 25) * MIN; dirty = true; save(); return ["thief", "Това е за третата снимка! Вземаме си! Ще се върнем!"];
   }
   if (K.st === 3) { K.th++; dirty = true; return ["mad", pick(KRILL_THREATS)]; }
@@ -4130,13 +4130,13 @@ function krillTick(p) {
   } else if (K.st === 4) {                     // обграждат го
     krillSwarm = { at: p }; K.st = 5;
     setTimeout(() => say("", "Т-тошик!!! Т-ти ги снима! Сега са десет и ме обграждат! Помоооощ!", 8000), 1200);
-    setTimeout(() => say("", "Тошик, обещай ми, че вече няма да снимаш крил. Моля те.", 7000), 11000);
-    log("🦐 Десет крила обградиха Октонис.");
-    note("krillswarm", "Днес десет крила ме обградиха. Тошик ги беше снимал. Бях много уплашен. Тошик, ако четеш това… всъщност не, не го чети.");
+    setTimeout(() => say("", "Тошик, обещай ми, че вече няма да снимаш рачетата Крил. Моля те.", 7000), 11000);
+    log("🦐 Десет рачета Крил обградиха Октонис.");
+    note("krillswarm", "Днес десет рачета Крил ме обградиха. Тошик ги беше снимал. Бях много уплашен. Тошик, ако четеш това… всъщност не, не го чети.");
   } else if (K.st === 5) {                     // окупират сандъка
     krillBlock = { at: p, taps: 0 }; K.st = 6;
-    say("", "Крилът седна на сандъка! Не мога да го отворя! Махни ги, моля!", 7000);
-    log("🦐 Крилът окупира сандъка.");
+    say("", "Рачетата Крил седнаха на сандъка! Не мога да го отворя! Махни ги, моля!", 7000);
+    log("🦐 Рачетата Крил окупираха сандъка.");
   } else if (K.st === 6) {                     // крадат шапката или изобретение
     const what = S.hat ? { t: "hat", k: S.hat } : (S.placed || []).length ? { t: "inv", k: pick(S.placed) } : null;
     if (what) {
@@ -4148,7 +4148,7 @@ function krillTick(p) {
     K.st = 7;
   } else if (K.st === 7) {                     // писмо с откуп
     S.letter = { i: 0, x: rnd(0.3, 0.55), ransom: true }; K.st = 7.5;
-    say("", "Бутилка с писмо… Мирише на крил. Ох, не.", 6000);
+    say("", "Бутилка с писмо… Мирише на рачетата Крил. Ох, не.", 6000);
   } else if (K.st === 8) {                     // война
     krillBomb(3); krillVisit("Война! Бомбардировка с боклуци!"); K.wars = (K.wars || 0) + 1;
     say("", "Хвърлят боклуци по нас! Това е война!", 6000);
@@ -4174,7 +4174,7 @@ function drawKrillStory(t, s) {
       g.restore(); }
   }
   if (krillBlock && chestBox) {                // седят на сандъка
-    if (p - krillBlock.at > 180000) { krillBlock = null; say("", "Крилът си тръгна от сандъка. Най-после!", 5000); }
+    if (p - krillBlock.at > 180000) { krillBlock = null; say("", "Рачетата Крил си тръгнаха от сандъка. Най-после!", 5000); }
     else { const z = Math.max(30, 46 * s); for (let i = 0; i < 6; i++) { g.save(); g.translate(chestBox.x - chestBox.r * 0.7 + i * chestBox.r * 0.28, chestBox.y - chestBox.r * 0.75 + Math.sin(t * 4 + i) * 3); bugArt(g, "krill1", z, t + i, i % 2 ? 1 : -1); g.restore(); } }
   }
   if (vis && vis.id === "krill" && (vis.carry || vis.flag) && vis.hit) {    // носят откраднатото или бяло знаме
@@ -4185,7 +4185,7 @@ function drawKrillStory(t, s) {
 }
 function krillTap(x, y) {                       // докосвания по време на историята
   if (krillBlock && chestBox && Math.hypot(x - chestBox.x, y - chestBox.y) < chestBox.r * 1.3) {
-    if (++krillBlock.taps >= 5) { krillBlock = null; say("", "Избягаха! Сандъкът пак е наш!", 5000); log("🦐 Изгони крила от сандъка."); }
+    if (++krillBlock.taps >= 5) { krillBlock = null; say("", "Избягаха! Сандъкът пак е наш!", 5000); log("🦐 Изгони рачетата Крил от сандъка."); }
     else say("", pick(["Шшт! Махайте се!", "Още малко! Гъделичкай ги!", "Не мърдат! Пак!"]), 2500);
     return true;
   }
@@ -4197,12 +4197,12 @@ function krillTap(x, y) {                       // докосвания по в�
   return false;
 }
 function krillCarryLost() {                      // отнесоха го: пазят го до мира
-  if (vis && vis.id === "krill" && vis.carry) { kr().loot.push(vis.carry); log(`🦐 Крилът отнесе ${vis.carry.t === "hat" ? HATS[vis.carry.k][1].toLowerCase() : elN(vis.carry.k).toLowerCase()}.`); dirty = true; }
+  if (vis && vis.id === "krill" && vis.carry) { kr().loot.push(vis.carry); log(`🦐 Рачетата Крил отнесоха ${vis.carry.t === "hat" ? HATS[vis.carry.k][1].toLowerCase() : elN(vis.carry.k).toLowerCase()}.`); dirty = true; }
 }
 const RANSOM = "До осмоногия и неговия Тошик. Имаме нещо ваше. Искаме две храни. Оставете ги в бутилката. Ако не… ВОЙНА. Подпис: Шестимата (и братовчедите).";
 function krillHtml(head, kind) {
   if (kind === "ransom") return head("🍾 Писмо с откуп") + `<div class="letter">${esc(RANSOM)}</div>` + (role === "keeper" ? `<div class="row2"><button class="ans yes" id="krGive">Дай им две храни</button><button class="ans" id="krNo" style="color:#5a1d1d;border:2px solid #5a1d1d">Няма да дадем!</button></div>` : "");
-  return head("🦐 Преговори с крила") + `<div class="letter">Аз съм посланикът на Шестимата. Уморихме се от войната. Ако обещаете повече да не ни снимате ядосано, ще ви върнем всичко взето. Мир?</div>` +
+  return head("🦐 Преговори с рачетата Крил") + `<div class="letter">Аз съм посланикът на Шестимата. Уморихме се от войната. Ако обещаете повече да не ни снимате ядосано, ще ви върнем всичко взето. Мир?</div>` +
     (role === "keeper" ? `<div class="row2"><button class="ans yes" id="krPeace">Мир 🤝</button><button class="ans" id="krWar" style="color:#5a1d1d;border:2px solid #5a1d1d">Война ⚔️</button></div>` : "");
 }
 function krillPanel(kind) {
@@ -4211,13 +4211,13 @@ function krillPanel(kind) {
     const food = Object.keys(S.mat).filter(k => cnt(k) > 0 && EDIBLE[k]);
     if (food.length < 1) return say("", "Нямаме храна за откупа! Сега какво?", 5000);
     for (let i = 0; i < 2 && food.length; i++) { const k = food[i % food.length]; if (cnt(k)) takeMat(k); }
-    K.st = 9; K.next = Date.now() + rnd(10, 20) * MIN; closeSheet(); say("", "Дадохме им храната. Дано удържат на думата си…", 6000); log("🦐 Платихме откупа на крила."); save();
+    K.st = 9; K.next = Date.now() + rnd(10, 20) * MIN; closeSheet(); say("", "Дадохме им храната. Дано удържат на думата си…", 6000); log("🦐 Платихме откупа на рачетата Крил."); save();
   };
   if ($("krNo")) $("krNo").onclick = () => { K.st = 8; K.next = Date.now() + rnd(5, 12) * MIN; closeSheet(); say("", "Няма да се огъваме! …Тошик, сигурен ли си?", 6000); log("🦐 Отказахме откупа. Война!"); save(); };
   if ($("krPeace")) $("krPeace").onclick = () => {
     K.st = 10; krillReturnLoot(); S.pearls += 25; S.mood = clamp(S.mood + 15); fx.party = performance.now(); closeSheet();
-    say("", "Мир! Върнаха ни всичко и ни дадоха 25 перлинги! Вече сме приятели с крила!", 8000); log("🦐 Сключихме мир с крила. Върнаха всичко и дадоха 25 перлинги.");
-    note("krillpeace", "Днес сключихме мир с крила. Тошик беше смел. Аз също. Малко."); save(); render();
+    say("", "Мир! Върнаха ни всичко и ни дадоха 25 перлинги! Вече сме приятели с рачетата Крил!", 8000); log("🦐 Сключихме мир с рачетата Крил. Върнаха всичко и дадоха 25 перлинги.");
+    note("krillpeace", "Днес сключихме мир с рачетата Крил. Тошик беше смел. Аз също. Малко."); save(); render();
   };
   if ($("krWar")) $("krWar").onclick = () => { K.st = 8; K.wars = 0; K.next = Date.now() + rnd(5, 12) * MIN; closeSheet(); say("", "Война?! Добре… Ще строя укрепления от болтове.", 6000); save(); };
 }
