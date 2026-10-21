@@ -263,6 +263,9 @@
   .bookd { background: #fff7e6; color: #3a2410; border-radius: 10px; padding: 10px 12px; margin: 6px 0 10px; font-size: 14px; box-shadow: inset 0 0 0 2px #c99a3c; }
   .bookd .bch { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: #6b4a22; } .bookd .bin { margin-top: 8px; font-weight: 700; color: #7a3f12; }
   .bookd .bq p { font-family: Caveat, cursive; font-size: 19px; margin: 6px 0 0; color: #5a3a14; }
+  .pol .tier { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 800; background: #e8e2d4; color: #4a3a2a; }
+  .pol .tier.tr { background: #cfe8ff; color: #1d4f80; } .pol .tier.tv { background: #e6d4ff; color: #4b2a80; } .pol .tier.tl { background: linear-gradient(90deg, #ffe27a, #ffb347); color: #5a3000; }
+  .pol.leg { box-shadow: 0 0 0 3px #ffcf4a, 0 3px 10px rgba(255,180,0,.6); }
   .snap.go { left: calc(100% - 34px); top: 340px; transform: translate(-50%, -50%) scale(.12); opacity: .2; }
   @keyframes snapin { from { transform: translate(-50%, -50%) scale(.3) rotate(10deg); opacity: 0; } }
   #chatBtn.ping i { display: block; } #chatBtn.ping { animation: wig .6s infinite; }
@@ -556,7 +559,7 @@ function pickFloor(id, by) {
   const h = floorHits.find(f => f.id === id);
   addMat(it.k); poof(it.x, ti < 0, h && h.x, h && h.y); dirty = true;
   if (!quietPick) flyToChest(elE(it.k), h ? h.x : it.x * W, h ? h.y : H * 0.86);
-  if (by === "me") { S.lastCare = Date.now(); if (ti >= 0) { S.track.clean++; S.mood = clamp(S.mood + 4); } }
+  if (by === "me") { S.lastCare = Date.now(); if (ti >= 0) { S.track.clean++; S.mood = clamp(S.mood + 4); if (++cleanN === 4) note("cleanday", ["Днес изчисти цялото дъно. Мисля, че е тайно перфекционист като мен.", "Махна толкова боклуци днес! Водата е синя, а аз съм щастлив."]); } }
   return { it, junk: ti >= 0 };
 }
 function doPickTrash(id) {
@@ -925,11 +928,20 @@ function buyBook(id) {
   if ((S.lib || []).includes(id)) return;
   if (S.pearls < b.p) return say("", `Нямаме достатъчно перлинги. Трябват ${b.p}.`);
   S.pearls -= b.p; S.lib = [...(S.lib || []), id]; dirty = true;
+  note("book", [`Купи ми „${b.n}“! Харчи перлинги за мен. Значи съм важен.`, `Нова книга: „${b.n}“. Ще я чета внимателно, за да не го разочаровам.`]);
   log(`📗 Купи книгата „${b.n}“.`);
   say("", `Нова книга! „${b.n}“. Ще я прочета веднага, щом мога.`);
   save(); render();
 }
 // ---------- Личният дневник ----------
+// бележки за собственика: най-много по една от вид на ден
+function note(kind, lines) {
+  if (role !== "keeper" || !S || !S.hatched || S.stage === "baby") return;
+  const day = new Date().toDateString(); S.pnotes = S.pnotes || {};
+  if (S.pnotes[kind] === day) return;
+  S.pnotes[kind] = day; S.track[kind] = (S.track[kind] || 0) + 1;
+  pdiary(Array.isArray(lines) ? pick(lines) : lines);
+}
 function pdiary(x) { S.pdiary = [...(S.pdiary || []), { t: Date.now(), x }].slice(-50); dirty = true; }
 const PD = {   // какво си записва за разговорите (само по-интересните)
   "likesMe:yes": "Каза, че ме харесва. Записах го два пъти. Не, три.", "likesMe:no": "Каза, че не ме харесва. Ще се постарая. Дева никога не се отказва.",
@@ -953,6 +965,18 @@ function myThoughts() {
   else if ((k.pizza || 0) > (k.veg || 0) + 2) out.push("Дава ми много пица. Не се оплаквам.");
   if (S.found.length >= 5) out.push("Заедно открихме много неща. Добър асистент е.");
   if (f.inventor) out.push("Иска да стане изобретател. Ще го науча на всичко.");
+  if ((k.scold || 0) >= 3) out.push("Кара ми се понякога. Мисля, че ме обича, но е строг.");
+  if ((k.hugs || 0) >= 3) out.push("Прегръща ме много. Най-хубавото нещо на дъното.");
+  if ((k.dragwork || 0) >= 2) out.push("Дърпа ме, докато работя. Защо? Не знам. Но е упорит.");
+  if ((k.yuck || 0) >= 1) out.push("Веднъж ми даде развалена храна. Още помня вкуса. Простих му. Почти.");
+  if ((k.night || 0) >= 2) out.push("Идва посред нощ. Тези хора спят ли изобщо?");
+  if ((k.morning || 0) >= 2) out.push("Сутрин е първото нещо, което виждам. Хубаво е да започваш така деня.");
+  if ((k.photo || 0) >= 3) out.push("Снима всичко, което мине. Албумът става голям. Гордея се с него.");
+  if ((k.book || 0) >= 2) out.push("Купува ми книги. Значи вярва, че съм умен.");
+  if ((k.away || 0) >= 2) out.push("Понякога изчезва за дълго. Броя мехурчетата, докато се върне.");
+  if ((k.forgive || 0) >= 2) out.push("Скараме ли се, винаги се сдобряваме. Това е важно.");
+  if ((k.cleanday || 0) >= 3) out.push("Чисти без да го моля. Истински приятел на реда.");
+  if (Object.keys(S.album || {}).length >= 10) out.push("Имаме над десет снимки заедно. Всяка е спомен.");
   if (!out.length) out.push("Още го опознавам. Записвам всичко.");
   return out;
 }
@@ -967,6 +991,7 @@ function feed(k) {
     if (!S.sick) { S.sick = S.t; S.goodMin = 0; S.badMin = 0; }
     S.lastCare = Date.now(); dirty = true; fx.hurt = performance.now();
     log(`🤢 Изяде ${elN(k).toLowerCase()} и се разболя.`);
+    note("yuck", [`Даде ми ${elN(k).toLowerCase()}. Беше развалено. Мисля, че не е видял. Надявам се, че не е видял.`, "Днес ядох нещо развалено, защото той ми го даде. Следващия път ще помириша първо."]);
     say("", pick(["Фуу… Беше развалено. Коремчето ме боли.", "Ох. Не трябваше да го ям. Май се разболях.", "Блъгх. Това беше грешка. Не ми е добре."]), 6000);
     save(); return render();
   }
@@ -1289,7 +1314,8 @@ function react(ans) {
       "Подреждам мислите си. Тази отляво, онази отдясно.", "Мечтая за сандвич. И за подредени чорапи.", "Чакам да ми хрумне нещо гениално. Още чакам."]));
   }
   if (ans === "scold") {
-    S.mood = clamp(S.mood - 8); fx.hurt = performance.now(); save();
+    S.mood = clamp(S.mood - 8); fx.hurt = performance.now();
+    note("scold", ["Днес ми се скара. Не разбрах защо. Ще бъда по-добър. Може би.", "Скара ми се. Записвам го тук, за да не го забравя. Или за да го забравя.", "Днес беше строг с мен. Сигурно има лош ден."]); save();
     if (baby) return say("", "~Уааа! Бебо тъжен!");
     if (teen) return say("", pick(["Ама аз нищо не съм направил! Пфф.", "Защо все на мен се караш?!"]));
     if (S.trash.length >= 3) return say("", "Не съм ги хвърлил аз тези боклуци! Честно!");
@@ -1565,7 +1591,7 @@ function dreamTell() {
     `Сънувах, че ${elN(a).toLowerCase()} и ${elN(b).toLowerCase()} правят нещо голямо. Да пробваме ли някой ден?`]), 9000);
 }
 // ---------- Грижи ----------
-let spam = { e: "", n: 0, t: 0 };
+let spam = { e: "", n: 0, t: 0 }, hugN = 0, cleanN = 0;
 function careAct(e) {
   if (role !== "keeper" || !S.hatched) return;
   const now = Date.now();
@@ -1597,7 +1623,7 @@ function careAct(e) {
       if (S.energy < 30) { say("😪", "Още малко…"); break; }
       S.asleep = false; log("☀️ Събуди го."); say("🥱", "Добро утро!"); break;
     case "❤️": S.track.play++; S.mood = clamp(S.mood + 6); say(S.asleep ? "💤💗" : pick(["☺️", "🥰"]), S.asleep ? "" : pick(["О, не беше нужно…", "", "И аз те обичам. Точно 100%."])); break;
-    case "🤗": S.track.play++; S.mood = clamp(S.mood + 8); say("🤗", ""); break;
+    case "🤗": S.track.play++; S.mood = clamp(S.mood + 8); say("🤗", ""); hugN++; if (hugN === 5) note("hugs", ["Днес ме прегърна много пъти. Броих: пет. После спрях да броя.", "Толкова прегръдки днес! Пипалата ми още са топли."]); break;
     case "👍": S.mood = clamp(S.mood + 3); say("☺️", pick(["О, не беше нищо особено…", "Може и по-добре, но благодаря."])); break;
     case "😂": S.mood = clamp(S.mood + 4); say("🤣", ""); break;
     case "👋": S.mood = clamp(S.mood + 2); say("👋🐙", "Здрасти!"); break;
@@ -1855,6 +1881,7 @@ function afterLoad() {
   const steps = catchUp(Date.now());
   if (role === "keeper" && steps > 60 && S.hatched && stageIdx() >= 2 && !S.asleep) {          // докато те нямаше: крие се зад камъка
     scared = true; hideUntil = performance.now() + 10 * 60000;
+    if (steps > 600) note("away", ["Нямаше го дълго. Мислех, че ме е забравил. Но се върна.", "Днес се върна след много време. Престорих се, че не ми е липсвал. Лъжа.", "Дълго го нямаше. Брах мехурчетата. Стигнах до хиляда и после се обърках."]);
   }
   if (role === "keeper" && steps > 60 && S.hatched) {
     const w = worries();
@@ -2720,7 +2747,7 @@ function placeBubble() {
 }
 
 // ---------- Морето, камъкът и нещата по дъното ----------
-const cv = $("sea"), g = cv.getContext("2d");
+const cv = $("sea"); let g = cv.getContext("2d");
 let W = 0, H = 0, DPR = 1;
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -2755,7 +2782,8 @@ function startSulk(min, line) {
   log("😤 Сърди ти се.");
 }
 let sulkFace = -1e9;
-function forgive(line) { S.sulk = 0; S.sulkPets = 0; S.mood = clamp(S.mood + 4); dirty = true; say("", line || pick(["Добре… прощавам ти. Но само този път.", "Хмпф. Добре де. Вече не ти се сърдя."]), 4500); }
+function forgive(line) {
+  note("forgive", ["Сърдих му се, но после ме прегърна два пъти. Не мога да му се сърдя дълго.", "Днес се сдобрихме. Честно казано, и аз бях малко виновен."]); S.sulk = 0; S.sulkPets = 0; S.mood = clamp(S.mood + 4); dirty = true; say("", line || pick(["Добре… прощавам ти. Но само този път.", "Хмпф. Добре де. Вече не ти се сърдя."]), 4500); }
 const MOODY_PET = ["Не ме пипай! Ще ме измачкаш.", "Ръцете ти чисти ли са? Ще стана мръсен!", "Ей! Не съм бебе вече.", "Ох, стига. Неудобно ми е."];
 function octoMode() {
   const p = performance.now();
@@ -3019,22 +3047,10 @@ function drawAngler(t, s) {
   if (!angler) return;
   const a = (p - angler.at) / 28000; if (a > 1) { angler = null; return; }
   const sc = Math.max(0.5, s * 1.1), d = angler.dir, x = d > 0 ? -120 + a * (W + 240) : W + 120 - a * (W + 240), y = angler.y + Math.sin(a * 18) * 12;
-  const lx = x + d * 70 * sc, ly = y - 52 * sc;
-  const glow = g.createRadialGradient(lx, ly, 2, lx, ly, 120 * sc);
-  glow.addColorStop(0, "rgba(255,240,150,.55)"); glow.addColorStop(1, "rgba(255,240,150,0)");
-  g.fillStyle = glow; g.beginPath(); g.arc(lx, ly, 120 * sc, 0, Math.PI * 2); g.fill();
-  g.save(); g.translate(x, y); g.scale(d * sc, sc);
-  g.fillStyle = "#2a3247"; g.strokeStyle = "#11141f"; g.lineWidth = 3;
-  g.beginPath(); g.moveTo(-70, 0); g.lineTo(-100, -26); g.lineTo(-100, 26); g.closePath(); g.fill(); g.stroke();          // опашка
-  g.beginPath(); g.ellipse(0, 0, 62, 44, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-  g.fillStyle = "#fff"; for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(30 + i * 7, 14); g.lineTo(33 + i * 7, 24); g.lineTo(36 + i * 7, 14); g.fill(); }
-  g.fillStyle = "#e9f0ff"; g.beginPath(); g.arc(28, -12, 8, 0, Math.PI * 2); g.fill(); g.fillStyle = "#11141f"; g.beginPath(); g.arc(30, -12, 4, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = "#2a3247"; g.lineWidth = 3; g.beginPath(); g.moveTo(20, -40); g.quadraticCurveTo(50, -80, 70, -52); g.stroke();
-  g.restore();
-  g.fillStyle = `rgba(255,245,170,${0.8 + Math.sin(t * 6) * 0.2})`; g.beginPath(); g.arc(lx, ly, 8 * sc, 0, Math.PI * 2); g.fill();
+  anglerArt(x, y, sc, d, t); angler.hit = { x, y, r: 70 * sc };
 }
 // ---------- Морски обитатели: минават от време на време, докосваш ги и ги снимаш за албума ----------
-const SEA_CAT = [["fish", "🐟 Риби"], ["shark", "🦈 Акули и скатове"], ["mam", "🐬 Бозайници и птици"], ["moll", "🐙 Мекотели"], ["crust", "🦀 Ракообразни"], ["jelly", "🪼 Медузи и други"], ["rep", "🐢 Влечуги"]];
+const SEA_CAT = [["fish", "🐟 Риби"], ["shark", "🦈 Акули и скатове"], ["mam", "🐬 Бозайници и птици"], ["moll", "🐙 Мекотели"], ["crust", "🦀 Ракообразни"], ["jelly", "🪼 Медузи и други"], ["rep", "🐢 Влечуги"], ["guest", "👋 Гости"], ["leg", "✨ Легенди"]];
 // id: [емоджи или рисунка, име, категория, филтър, размер, движение, рядкост c/r/v, кога any/day/night, интересно]
 const SEA = {
   clown: ["🐠", "Риба-клоун", "fish", "", 1, "swim", "c", "any", "Живее в актиния и не се пари от нея."],
@@ -3067,17 +3083,17 @@ const SEA = {
   manta: ["@manta", "Манта", "shark", "", 2.6, "far", "r", "day", "Може да е широка колкото кола."],
   eray: ["@eray", "Електрически скат", "shark", "", 1.2, "glide", "r", "night", "Може да даде малък ток. Бззт!"],
   dolphin: ["🐬", "Делфин", "mam", "", 1.8, "jump", "c", "day", "Всеки делфин си има име, подсвирква го."],
-  whale: ["🐋", "Синият кит", "mam", "brightness(.85)", 4.5, "far", "v", "any", "Най-голямото животно, живяло някога."],
+  whale: ["🐋", "Синият кит", "mam", "brightness(.85)", 4.5, "far", "l", "any", "Най-голямото животно, живяло някога."],
   humpback: ["🐳", "Гърбат кит", "mam", "", 3.5, "far", "r", "day", "Пее песни, които се чуват надалеч."],
   orca: ["🐋", "Косатка", "mam", "grayscale(1) contrast(1.6)", 2.6, "slow", "r", "any", "Живее в голямо семейство. Баба им е водачът."],
   seal: ["🦭", "Тюлен", "mam", "", 1.5, "swim", "c", "day", "Под водата е много пъргав."],
   otter: ["🦦", "Морска видра", "mam", "", 1.2, "surface", "c", "day", "Държи се за ръце с другите, докато спи."],
   penguin: ["🐧", "Пингвин", "mam", "", 1.1, "fast", "c", "day", "Не може да лети във въздуха, но лети под водата."],
-  narwhal: ["@narwhal", "Нарвал", "mam", "", 2, "slow", "v", "night", "Еднорогът на морето."],
+  narwhal: ["@narwhal", "Нарвал", "mam", "", 2, "slow", "l", "night", "Еднорогът на морето."],
   sealion: ["🦭", "Морски лъв", "mam", "sepia(1) saturate(1.3)", 1.7, "swim", "r", "day", "Може да лае като куче."],
   manatee: ["🦭", "Ламантин", "mam", "grayscale(1) brightness(1.2)", 2.2, "slow", "r", "day", "Наричат го морска крава. Пасе водорасли."],
   squid: ["🦑", "Калмар", "moll", "", 1.1, "jet", "c", "night", "Плува назад, като пуска вода силно."],
-  giant: ["🦑", "Гигантски калмар", "moll", "brightness(.6) saturate(1.5)", 3.5, "far", "v", "night", "Има очи, големи колкото чиния."],
+  giant: ["🦑", "Гигантски калмар", "moll", "brightness(.6) saturate(1.5)", 3.5, "far", "l", "night", "Има очи, големи колкото чиния."],
   cuttle: ["🦑", "Сепия", "moll", "hue-rotate(50deg) saturate(.7)", 1, "slow", "c", "any", "Сменя цвета си за миг."],
   nautilus: ["🐚", "Наутилус", "moll", "hue-rotate(-15deg)", 1, "bob", "r", "night", "Живее в черупка, разделена на стаички."],
   mimic: ["🐙", "Октопод-мимик", "moll", "mimic", 1, "swim", "v", "any", "Преструва се на други животни. Братовчед ли е?"],
@@ -3104,14 +3120,38 @@ const SEA = {
   leather: ["🐢", "Кожеста костенурка", "rep", "grayscale(.9) brightness(.8)", 2.2, "slow", "r", "any", "Най-голямата костенурка. Яде медузи."],
   seasnake: ["🐍", "Морска змия", "rep", "hue-rotate(180deg) contrast(1.4)", 1.1, "wave", "r", "day", "Може да задържи въздуха си с часове."],
   iguana: ["🦎", "Морска игуана", "rep", "grayscale(.8)", 1.2, "swim", "r", "day", "Единствената игуана, която плува в морето."],
+  coelacanth: ["🐟", "Целакант", "fish", "grayscale(.4) hue-rotate(200deg) brightness(.7)", 1.6, "slow", "l", "night", "Жива вкаменелост. Плува тук от преди динозаврите."],
+  mermaid: ["🧜‍♀️", "Русалка", "leg", "", 1.4, "slow", "l", "night", "Казват, че пее на тези, които се грижат за морето."],
+  kraken: ["🐙", "Кракенът", "leg", "brightness(.45) saturate(1.6) hue-rotate(-20deg)", 5, "far", "l", "night", "Огромен като остров. Само минава. Надяваме се."],
+  goldfish: ["🐠", "Златната рибка", "leg", "sepia(1) saturate(4) brightness(1.2)", 0.9, "glow", "l", "any", "Ако я снимаш, можеш да си пожелаеш нещо. Тихичко."],
+  ghostjelly: ["🪼", "Призрачна медуза", "leg", "grayscale(1) brightness(1.8)", 1.6, "drift", "l", "night", "Прозрачна като спомен. Свети едва-едва."],
+  // гостите зад камъка и рибата-фенер (не минават сами, снимат се, когато дойдат)
+  g_crab: ["@g:crab", "Ракът", "guest", "", 1, "guest", "c", "day", "Все си търси щипката. А тя е на него."],
+  g_lobster: ["@g:lobster", "Омарът", "guest", "", 1, "guest", "c", "night", "Знае всички клюки за новия риф."],
+  g_turtle: ["@g:turtle", "Костенурката", "guest", "", 1, "guest", "c", "day", "Бавно, но сигурно. Винаги идва."],
+  g_fish: ["@g:fish", "Рибката", "guest", "", 1, "guest", "c", "day", "Все търси ятото си."],
+  g_mail: ["@g:mail", "Рибата-пощальон", "guest", "", 1, "guest", "c", "any", "Пощата е по-късно днес. Не питай."],
+  g_puffer: ["@g:puffer", "Балон-рибата", "guest", "", 1, "guest", "c", "any", "Не я плаши, ще се надуе."],
+  g_squid: ["@g:squid", "Калмарът", "guest", "", 1, "guest", "c", "night", "Винаги иска мастило назаем."],
+  g_jelly: ["@g:jelly", "Медузата", "guest", "", 1, "guest", "c", "night", "Не говори много. Но свети красиво."],
+  g_snail: ["@g:snail", "Охлювът", "guest", "", 1, "guest", "c", "morning", "Казва „добро утро“ и по обяд."],
+  g_shrimp: ["@g:shrimp", "Скаридата", "guest", "", 1, "guest", "c", "any", "Подозира всички, че искат да я изядат."],
+  g_angler: ["@angler", "Рибата-фенер", "guest", "", 1.2, "guest", "r", "night", "Носи си лампа. Нощем минава съвсем бавно."],
   croc: ["🐊", "Морски крокодил", "rep", "", 2.4, "slow", "v", "any", "Най-големият крокодил. Добре, че само минава."],
 };
 let seaForce = null, vis = null, nextVis = performance.now() + rnd(1, 2.5) * 60000, flashAt = -1e9, albTab = "fish", albPick = null;
-const THUMB = {};
+const THUMB = {}, TIER_W = { c: 10, r: 3, v: 1, l: 0.6 }, TIER_N = { c: "Обикновен", r: "Рядък", v: "Много рядък", l: "⭐ Легендарен" };
+function seaChance(id) {                    // колко вероятно е да го видиш (в проценти)
+  const c = SEA[id];
+  if (c[5] === "guest") return id === "g_angler" ? 60 : Math.round(100 / (Object.values(SEA).filter(x => x[5] === "guest").length - 1));
+  const tot = Object.values(SEA).filter(x => x[5] !== "guest").reduce((a, x) => a + TIER_W[x[6]], 0);
+  return TIER_W[c[6]] / tot * 100;
+}
+const pct = v => v >= 10 ? Math.round(v) + "%" : v >= 1 ? v.toFixed(1).replace(".", ",") + "%" : v.toFixed(2).replace(".", ",") + "%";
 function seaPick() {
   const dp = dayPart(), list = [];
   for (const [id, c] of Object.entries(SEA)) if (c[7] === "any" || c[7] === dp || (dp === "morning" && c[7] === "day"))
-    list.push([id, (c[6] === "c" ? 10 : c[6] === "r" ? 3 : 1) * (S.album && S.album[id] ? 0.6 : 1)]);
+    if (c[5] !== "guest") list.push([id, TIER_W[c[6]] * (S.album && S.album[id] ? 0.6 : 1)]);
   let r = Math.random() * list.reduce((a, b) => a + b[1], 0);
   for (const [id, w] of list) if ((r -= w) <= 0) return id;
   return list[0][0];
@@ -3161,7 +3201,24 @@ function drawSeaOne(ctx, id, x, y, z, t, dir, alpha = 1) {     // рисува �
   } else drawSeaArt(ctx, c[0].slice(1), z, t, dir);
   ctx.restore();
 }
+function anglerArt(x, y, sc, d, t) {
+  const lx = x + d * 70 * sc, ly = y - 52 * sc;
+  const glow = g.createRadialGradient(lx, ly, 2, lx, ly, 120 * sc);
+  glow.addColorStop(0, "rgba(255,240,150,.55)"); glow.addColorStop(1, "rgba(255,240,150,0)");
+  g.fillStyle = glow; g.beginPath(); g.arc(lx, ly, 120 * sc, 0, Math.PI * 2); g.fill();
+  g.save(); g.translate(x, y); g.scale(d * sc, sc);
+  g.fillStyle = "#2a3247"; g.strokeStyle = "#11141f"; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(-70, 0); g.lineTo(-100, -26); g.lineTo(-100, 26); g.closePath(); g.fill(); g.stroke();          // опашка
+  g.beginPath(); g.ellipse(0, 0, 62, 44, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  g.fillStyle = "#fff"; for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(30 + i * 7, 14); g.lineTo(33 + i * 7, 24); g.lineTo(36 + i * 7, 14); g.fill(); }
+  g.fillStyle = "#e9f0ff"; g.beginPath(); g.arc(28, -12, 8, 0, Math.PI * 2); g.fill(); g.fillStyle = "#11141f"; g.beginPath(); g.arc(30, -12, 4, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = "#2a3247"; g.lineWidth = 3; g.beginPath(); g.moveTo(20, -40); g.quadraticCurveTo(50, -80, 70, -52); g.stroke();
+  g.restore();
+  g.fillStyle = `rgba(255,245,170,${0.8 + Math.sin(t * 6) * 0.2})`; g.beginPath(); g.arc(lx, ly, 8 * sc, 0, Math.PI * 2); g.fill();
+  return [lx, ly];
+}
 function drawSeaArt(ctx, k, z, t, dir) {
+  if (k.startsWith("g:") || k === "angler") { const g0 = g; g = ctx; try { if (k === "angler") anglerArt(z * 0.1, z * 0.12, z / 150, dir > 0 ? 1 : -1, t); else drawCreature(k.slice(2), 0, 0, z / 90, t); } finally { g = g0; } return; }
   const L = "#2b2a33"; ctx.lineWidth = Math.max(2, z * 0.05); ctx.strokeStyle = L; ctx.lineJoin = "round";
   if (k === "ray" || k === "manta" || k === "eray") {
     const flap = Math.sin(t * 3) * 0.25, w = z * 0.9, h = z * 0.5;
@@ -3210,17 +3267,18 @@ function drawFlash() {
   if (a > 1) return;
   g.fillStyle = `rgba(255,255,255,${0.85 * (1 - a)})`; g.fillRect(0, 0, W, H);
 }
-function snapVis() {
-  const id = vis.id, c = SEA[id];
+function snapVis() { snapId(vis.id); if (SEA[vis.id][5] !== "sit") vis.vx *= 2.2; }
+function snapId(id) {
+  const c = SEA[id];
   flashAt = performance.now();
   S.album = S.album || {};
   const first = !S.album[id];
   S.album[id] = { t: first ? Date.now() : S.album[id].t, n: (first ? 0 : S.album[id].n) + 1 };
-  if (first) { log(`📸 Снимка: ${c[1].toLowerCase()}.`); S.albumNew = (S.albumNew || 0) + 1; }
+  if (first) { log(`📸 Снимка: ${c[1].toLowerCase()}.`); S.albumNew = (S.albumNew || 0) + 1;
+    note("photo", [`Днес направихме снимка: ${c[1]}. Той има много бързи пръсти. И добро око.`, `Нова снимка в албума: ${c[1]}! Беше толкова развълнуван. И аз.`]); }
   dirty = true; save(); renderAlbBadge();
   showSnap(id, first);
   setTimeout(() => say("", first ? pick([`${c[1]}! Снимахме я. Отива в албума.`, `Уау, ${c[1].toLowerCase()}! Имаме снимка!`, `Щрак! ${c[1]} е в албума.`]) : pick([`Пак ${c[1].toLowerCase()}. Още една снимка за албума.`, "Тази я имаме, но е толкова хубава!"]), 4000), 500);
-  if (c[5] !== "sit") vis.vx *= 2.2;        // уплаши се от светкавицата
 }
 function thumb(id) {            // малка снимка за албума
   if (THUMB[id]) return THUMB[id];
@@ -3247,9 +3305,9 @@ function albumHtml(head) {
   const ids = Object.keys(SEA).filter(id => SEA[id][2] === albTab && al[id]).sort((a, b) => al[a].t - al[b].t);
   if (albPick && al[albPick]) {
     const c = SEA[albPick];
-    h += `<div class="pol big"><img src="${thumb(albPick)}" alt=""><b>${esc(c[1])}</b><small>${new Date(al[albPick].t).toLocaleDateString("bg-BG")}${al[albPick].n > 1 ? " · снимки: " + al[albPick].n : ""}${c[6] !== "c" ? " · ★ рядко" : ""}</small><p>${esc(c[8])}</p></div>`;
+    h += `<div class="pol big"><img src="${thumb(albPick)}" alt=""><b>${esc(c[1])}</b><small>${new Date(al[albPick].t).toLocaleDateString("bg-BG")}${al[albPick].n > 1 ? " · снимки: " + al[albPick].n : ""}</small><div class="tier t${c[6]}">${TIER_N[c[6]]} · шанс да го видиш: ${pct(seaChance(albPick))}${c[7] === "night" ? " · само нощем" : ""}</div><p>${esc(c[8])}</p></div>`;
   }
-  h += ids.length ? `<div class="pols">${ids.map(id => `<div class="pol${albPick === id ? " sel" : ""}" data-p="${id}"><img src="${thumb(id)}" alt=""><b>${esc(SEA[id][1])}</b></div>`).join("")}</div>`
+  h += ids.length ? `<div class="pols">${ids.map(id => `<div class="pol${albPick === id ? " sel" : ""}${SEA[id][6] === "l" ? " leg" : ""}" data-p="${id}"><img src="${thumb(id)}" alt=""><b>${esc(SEA[id][1])}</b></div>`).join("")}</div>`
     : `<div class="sub">Още няма снимки тук. Когато някой мине покрай Октонис, докосни го!</div>`;
   return h;
 }
@@ -3381,7 +3439,10 @@ cv.addEventListener("pointerdown", ev => {
     hideUntil = 0; S.mood = clamp(S.mood + 3); dirty = true;
     return say("😄", pick(["Намери ме!", "Ееех, видя ме!", "Ку-ку!"]));
   }
-  if (guest && guest.box && Math.hypot(x - guest.box.x, y - guest.box.y) < guest.box.r) { guest.line = { x: pick(["Ей! Не пипай!", "Здрасти!", "Само минавам.", "Хи-хи!"]), at: performance.now() }; return; }
+  if (guest && guest.box && Math.hypot(x - guest.box.x, y - guest.box.y) < guest.box.r) {
+    if (SEA["g_" + guest.k] && performance.now() - flashAt > 1500) { snapId("g_" + guest.k); guest.line = { x: pick(["Ей! Снима ли ме?", "Чииийз!", "Ох, светкавица!", "Само от хубавата ми страна!"]), at: performance.now() }; return; }
+    guest.line = { x: pick(["Ей! Не пипай!", "Здрасти!", "Само минавам.", "Хи-хи!"]), at: performance.now() }; return; }
+  if (angler && angler.hit && Math.hypot(x - angler.hit.x, y - angler.hit.y) < angler.hit.r && performance.now() - flashAt > 1500) { closeRing(); return snapId("g_angler"); }
   if (onRock(x, y) && !onOcto(x, y)) {
     if (S.asleep || working || reading) return say("", pick(["Този камък е малко крив.", "Броих: камъкът има 14 дупчици."]));
     say("", pick(["Крия се! Не гледай!", "Камъкът! Отивам зад него.", "Шшт! Не съм тук."]));
@@ -3448,7 +3509,7 @@ function startDrag() {
   else say("😠💢", pick(["Пусни ме!", "Не сега!", "Не съм в настроение!", "Остави ме на мира!"]));
 }
 function endDrag(d) {
-  if (d.work && role === "keeper") { S.mood = clamp(S.mood - 6); S.track.play++; return startSulk(rnd(3, 5), pick(["Развали ми работата! Сърдя ти се.", "Всичко се обърка заради теб! Хмпф. Не говоря с теб."])); }
+  if (d.work && role === "keeper") { note("dragwork", ["Днес ме дръпна насред работа. Сместа се разля. Защо хората правят така?", "Работех, а той ме повлече. Ще му простя, но ще го запиша.", "Пак ме откъсна от масата. Изобретателите имат нужда от спокойствие!"]); S.mood = clamp(S.mood - 6); S.track.play++; return startSulk(rnd(3, 5), pick(["Развали ми работата! Сърдя ти се.", "Всичко се обърка заради теб! Хмпф. Не говоря с теб."])); }
   if (role === "keeper") { S.mood = clamp(S.mood + (d.mood === "wee" ? 3 : -3)); if (d.mood === "wee") S.track.play++; S.lastCare = Date.now(); dirty = true; save(); }
   if (d.mood === "wee") say("😆", pick(["Пак!", "Беше страхотно!", "Хи-хи!"]));
   else { say("😤", "Хмпф! Отивам да се скрия."); setTimeout(() => { hideUntil = performance.now() + 20000; }, 900); }
@@ -3494,6 +3555,9 @@ setInterval(() => {
       if (S.sleeps >= S.dreamAt && stageIdx() >= 2) { S.dreamAt = S.sleeps + Math.floor(rnd(6, 9)); setTimeout(dreamTell, 4000); }
     }
     wasAsleep = !!S.asleep;
+    if (p - ptr.t < 60000 && S.hatched && !S.asleep) { const hh = new Date().getHours();
+      if (hh < 5) note("night", ["Беше тук посред нощ. Не спи ли този човек?", "Нощно посещение! Аз съм по пижама, а той ме гледа."]);
+      else if (hh < 9) note("morning", ["Дойде рано сутринта. Първият, когото видях днес.", "Сутрешно посещение. Още не бях си подредил пипалата."]); }
     if (hadQ && !S.q) S.qDone = now;              // въпросът току-що свърши: следващият чака
     hadQ = !!S.q;
     if (S.moody && now > S.moody) { S.moody = 0; dirty = true; if (S.hatched && !S.asleep) say("", pick(["Ох… Добре де. Извинявай, че бях такъв.", "Май вече ми мина. Не знам какво ми стана."]), 5000); }
@@ -3570,7 +3634,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, thumbs: () => Object.keys(SEA).map(id => [id, thumb(id)]), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
