@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let NOPACI = false, CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
+let HUG = false, NOPACI = false, CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -42,13 +42,15 @@ function tentPts(T, t) {
   if (GROUND == null) amp *= 1.5;                       // във вода се полюшват повече
   let x = T.dx, y = 62;
   const armA = mode === "work" ? 1.15 + Math.sin(t * 13 + T.ph) * 0.25 : 0.55 + (A.cane ? 0.3 : 0);
-  let ang = T.kind === "arm" ? (s > 0 ? armA : Math.PI - armA) : Math.PI / 2 + -s * T.spread * (CUTE ? 1.6 : 1) * (mode === "sleep" ? 1.8 : 1);
+  const hug = HUG && T.kind === "arm";      // прегръща възглавницата: ръцете се увиват надолу и навътре
+  let ang = hug ? (s > 0 ? -0.35 : Math.PI + 0.35) : T.kind === "arm" ? (s > 0 ? armA : Math.PI - armA) : Math.PI / 2 + -s * T.spread * (CUTE ? 1.6 : 1) * (mode === "sleep" ? 1.8 : 1);
   const pts = [];
   for (let j = 0; j <= N; j++) {
     const k = j / N;
     pts.push([x, y, k]);
     let d = Math.sin(t * sp + T.ph - j * 0.18) * amp * (1 + k * 2);
-    if (T.kind === "arm") {
+    if (hug) d += s * (k < 0.35 ? 0.012 : 0.07);
+    else if (T.kind === "arm") {
       let up = A.cane ? 0.02 : 0.045;
       if (mode === "party" || mode === "wee") up = 0.075 + Math.sin(t * 9 + T.ph) * 0.03;
       if (mode === "angry") up = 0.06 + Math.sin(t * 14 + T.ph) * 0.04;
@@ -1080,7 +1082,8 @@ function drawReal(ctx, o) {
   if (o.skin) COL = { ...COL, ...o.skin };          // наследникът е оцветен според храната на родителя
   SP = A.speed || 1;
   const k = sc * (age === "egg" ? 0.9 : A.k);
-  LIE = !!o.lie && mode === "sleep" && age !== "egg";       // спи легнал на дъното
+  LIE = !!o.lie && mode === "sleep" && age !== "egg";
+  HUG = !!o.hug && mode === "sleep" && age !== "egg";       // спи легнал на дъното
   GROUND = o.ground == null || LIE ? null : (o.ground - o.y) / k;
   DROP = o.drop !== false;
   g.save(); g.translate(o.x, o.y); if (LIE) g.rotate(-1.45); g.scale(k, k);

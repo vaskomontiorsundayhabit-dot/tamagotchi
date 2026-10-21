@@ -629,7 +629,7 @@ function drawTramp(t, s, cx) {
   g.restore();
 }
 function bounce() { bounceT = performance.now(); if (S) { S.mood = clamp(S.mood + 3); S.track.play++; dirty = true; } say("", pick(["Уииии! Батутът работи!", "По-високо! По-високо!", "Летяяя!"])); }
-const BED_W = 440, BED_H = 150;
+const BED_W = 520, BED_H = 200;
 function drawPillow(s, ground, front) {
   if (!pillow || pillow.x == null) return;
   if (front && (STYLE === "sketch" || lastDraw !== "sleep")) return;
@@ -2894,16 +2894,15 @@ function loop() {
   if (mode !== lastMode) { lastMode = mode; modeAt = t; }
   const near = oct.py > ground - 260 * oct.sc && !(drag && drag.moved) && mode !== "swim" && !lie && !hop;
   if (S) drawFloor(t, s, true);            // плаващите боклуци са зад него
-  drawPillow(s, ground);
   if (S && S.hatched) drawPlaced(t, s);
   const sway = rocking ? Math.sin(t * 2.4) * 22 * s : 0;
   if (!hidden()) drawRock(t);                // камъкът е отзад, освен когато се крие зад него
+  drawPillow(s, ground);
   const info = Octo.draw(g, { paci: S && S.cry ? false : undefined, crack: S && !S.hatched ? (creating ? 1 : (S.eggP || 0) / EGG_MAX) : 0, x: oct.px + sway, y: oct.py - 46 * oct.sc - hop, s: oct.sc, skin: S && S.skin, age, mode, t, mt: t - modeAt, st, lie, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
-    ground: near || age === "egg" ? ground : null, drop: age === "egg", style: STYLE, dir: oct.dir,
+    hug: mode === "sleep" && !!pillow && pillow.x != null, ground: (near || age === "egg") && !(mode === "sleep" && pillow) ? ground : null, drop: age === "egg", style: STYLE, dir: oct.dir,
     lookAt: role === "keeper" && performance.now() - ptr.t < 3000 ? ptr : gaze && performance.now() < gaze.until ? gaze : null });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
   if (age === "egg") eggBox = { x: oct.px, y: ground - 60 * s, r: 80 * s };
-  drawPillow(s, ground, true);
   drawEggBar(s); drawCreation(t, s);
   if (departing && performance.now() - departing.at < 9000) {     // старият Октонис отплава нагоре
     const a = (performance.now() - departing.at) / 9000;
