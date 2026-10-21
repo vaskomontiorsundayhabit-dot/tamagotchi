@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let HAT = null, WORK = null, HUG = false, NOPACI = false, CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
+let PLASTER = false, HAT = null, WORK = null, HUG = false, NOPACI = false, CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -511,6 +511,10 @@ function body(t, mt, st) {
     if (((t * 0.4) % 1) < 0.12) { g.fillStyle = "#fffaf0"; g.strokeStyle = C.line; g.beginPath(); g.moveTo(0, 6); g.quadraticCurveTo(30, -30, 50, -10); g.lineTo(0, 54); g.closePath(); g.fill(); g.stroke(); }
     g.restore();
   }
+  if (PLASTER) {                                  // превръзка около главата с червен кръст
+    g.save(); g.translate(cx, cy - ry * 0.55); g.rotate(-0.08); g.fillStyle = "#fffaf0"; g.strokeStyle = C.line; g.lineWidth = 4;
+    g.beginPath(); g.moveTo(-118, 0); g.quadraticCurveTo(0, -26, 118, 0); g.lineTo(116, 24); g.quadraticCurveTo(0, 0, -116, 24); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = "#e5383b"; g.fillRect(-6, -14, 12, 30); g.fillRect(-15, -5, 30, 12); g.restore(); }
   if (HAT) drawHat(HAT, cx, cy, ry, t);
   if (TR.includes("adventure") && !TR.includes("trader") && !HAT) {     // изследователска шапка с перо
     g.save(); g.translate(cx - 6, cy - ry * 0.9); g.rotate(-0.12); g.scale(1.35, 1.35);
@@ -1125,7 +1129,7 @@ function drawReal(ctx, o) {
   const k = sc * (age === "egg" ? 0.9 : A.k);
   LIE = !!o.lie && mode === "sleep" && age !== "egg";
   HUG = !!o.hug && mode === "sleep" && age !== "egg";
-  HAT = o.hat || null;
+  HAT = o.hat || null; PLASTER = !!o.plaster;
   WORK = o.work && mode === "work" ? [(o.work[0] - o.x) / k, (o.work[1] - o.y) / k] : null;       // спи легнал на дъното
   GROUND = o.ground == null || LIE ? null : (o.ground - o.y) / k;
   DROP = o.drop !== false;
