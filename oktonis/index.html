@@ -153,6 +153,17 @@
   .mixbar .slot { height: 48px; border-radius: 12px; background: rgba(0,0,0,.3); border: 2px dashed rgba(255,255,255,.18); display: grid; place-items: center; font-size: 26px; cursor: pointer; }
   .mixbar .slot.full { border-style: solid; border-color: #b39ddb; }
   .mixbar .try { width: auto; padding: 12px; }
+  .inv { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; background: rgba(0,0,0,.25); padding: 6px; border-radius: 12px; }
+  .cell { aspect-ratio: 1; border-radius: 8px; background: rgba(255,255,255,.07); box-shadow: inset 0 2px 0 rgba(0,0,0,.35); display: grid; place-items: center;
+    font-size: 28px; position: relative; touch-action: none; }
+  .cell.full { background: rgba(255,255,255,.14); cursor: grab; } .cell.sel { outline: 3px solid var(--gold); } .cell.want { background: rgba(255,209,102,.35); }
+  .cell b { position: absolute; right: 3px; bottom: 0; font-size: 13px; font-weight: 800; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+  .cell .fr { position: absolute; left: 4px; top: 4px; width: 8px; height: 8px; border-radius: 50%; } .fr.g { background: #6fd3a0; } .fr.y { background: #ffd166; } .fr.r { background: #ff6b6b; }
+  .pick { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; padding: 8px 2px 0; }
+  .pick .ii { font-size: 30px; } .pick .in { display: flex; flex-direction: column; } .pick small { color: var(--muted); font-size: 12px; }
+  .zones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .zones span { border: 2px dashed rgba(255,255,255,.35); border-radius: 12px; padding: 12px; text-align: center; font-weight: 700; }
+  .zones span.over, #mixbar.over .slot:not(.full) { background: rgba(255,209,102,.45); }
   .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
   #bubble .t { font-size: 15px !important; }
   .life { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
@@ -238,6 +249,17 @@ const firebaseConfig = {
 };
 const KEEPER = "toshik";                    // грижи се; останалите само гледат
 const DEMO = new URLSearchParams(location.search).has("demo");
+const END_TEST = DEMO && new URLSearchParams(location.search).has("end"), LSKEY = END_TEST ? "oktonis_end" : "oktonis";
+if (END_TEST && new URLSearchParams(location.search).has("reset")) try { localStorage.removeItem(LSKEY); } catch {}
+function endWorld(now) {                    // проба: стар Октонис, на минути от края
+  const s = fresh(now);
+  Object.assign(s, { hatched: true, stage: "old", stageT: now - 6 * 1440 * MIN, grow: STAGE_MIN.old - 6, born: now - 50 * 1440 * MIN, glasses: true, books: 6, smarts: 6,
+    pearls: 140, hunger: 20, energy: 95, mood: 85, found: ["canphone", "lamp", "compass", "map", "radio", "sockfinder", "dreamlamp"],
+    facts: { likesMe: true, pizza: true, music: true, morning: false, seaside: true, inventor: true }, journal: [{ t: now, x: "🧪 Проба: Октонис е много стар." }] });
+  Object.assign(s.track, { lived: 70000, veg: 30, pizza: 10, clean: 40, play: 30, sold: 1 });
+  s.mat = { lamp: 1, compass: 1, sockfinder: 1, can: 3, bolt: 2 };
+  return s;
+}
 
 let fb = null;
 if (!DEMO) {
@@ -313,6 +335,22 @@ const REC = [
   ["yogurtbat", "cup", "teapot"], ["typewriter", "compass", "perfectometer"],
   ["sub", "map", "expedition"], ["disco", "lighthouse", "festival"], ["arm", "typewriter", "robokt"], ["treasure", "sub", "wreck"],
 ];
+Object.assign(EL, {             // ястия, които после влизат в менюто с храната
+  soup: ["🍲", "Рибена чорба", 1, "made", 14], pancake: ["🥞", "Палачинки", 1, "made", 12],
+  omelet: ["🍳", "Омлет", 1, "made", 12], pudding: ["🍮", "Коралов пудинг", 2, "made", 20],
+});
+REC.push(["fish", "weed", "soup"], ["milk", "egg", "pancake"], ["egg", "cheese", "omelet"], ["milk", "coral", "pudding"]);
+const FOODS = {   // емоджи → [име, глад, здраве, настроение, вид]
+  "🍕": ["Пица", 45, 0, 3, "junk"], "🥦": ["Броколи", 30, 6, 2, "veg"], "🦐": ["Скариди", 40, 2, 5, ""], "🍣": ["Суши", 40, 3, 6, ""],
+  "🥕": ["Морков", 25, 5, 1, "veg"], "🍪": ["Бисквитка", 20, -1, 8, "junk"],
+  "🍲": ["Рибена чорба", 50, 8, 6, "veg", "soup"], "🥞": ["Палачинки", 45, 1, 9, "junk", "pancake"], "🍳": ["Омлет", 45, 4, 5, "", "omelet"], "🍮": ["Коралов пудинг", 35, 2, 12, "junk", "pudding"],
+};
+const FOOD_SAY = {
+  "🍣": ["Суши! Подредено в редички. Красота.", "Оризът е перфектно навит."], "🥕": ["Морков! Хрупкав и оранжев като мен.", "Добро за очите. Важно за изобретател."],
+  "🍪": ["Бисквитка! Само една. Добре, две.", "Сладко! Не казвай на режима."], "🍲": ["Чорба! Като на баба октоподка.", "Топла и здравословна. Перфектно."],
+  "🥞": ["Палачинки! Кръгли и подредени една върху друга.", "Мммм! Още една. Само една."], "🍳": ["Омлет! Жълт като слънцето горе.", "Сам го измислихме. Двойно вкусен."],
+  "🍮": ["Коралов пудинг! Трепери като медуза.", "Сладко и розово. Обичам."],
+};
 const SECRET = ["wreck", "robokt", "fondue", "penicillin"];          // не се казват предварително
 const recKey = (a, b) => [a, b].sort().join("+");
 const RECIPE = Object.fromEntries(REC.map(([a, b, c]) => [recKey(a, b), c]));
@@ -325,7 +363,7 @@ const FLOOR = { junk: Object.keys(EL).filter(k => EL[k][3] === "junk"), other: O
 const SHOP = [
   { id: "b_tin", n: "Чудеса от консерви", p: 15, hints: ["canphone", "drum", "megaphone"] },
   { id: "b_light", n: "Светлина под водата", p: 20, hints: ["lamp", "glowcoral", "nightlight", "lighthouse"] },
-  { id: "b_kitchen", n: "Подводна кухня", p: 15, hints: ["sandwich", "shake", "fishburger", "cake"] },
+  { id: "b_kitchen", n: "Подводна кухня", p: 15, hints: ["sandwich", "shake", "fishburger", "soup", "pancake", "omelet"] },
   { id: "b_spoil", n: "Ползата от развалените неща", p: 25, hints: ["yogurtbat", "stinkbomb", "sharkbait", "cake"] },
   { id: "b_mech", n: "Механизми и моторчета", p: 30, hints: ["mech", "motor", "mixer", "arm"] },
   { id: "b_sound", n: "Звукът на океана", p: 30, hints: ["coil", "speaker", "radio", "disco"] },
@@ -492,6 +530,7 @@ function mixDone() {
     S.mood = clamp(S.mood + (first ? 18 : 5)); if (first) fx.party = performance.now();
     log(first ? `🎉 Откри ${elFull(c)}! (${name})` : `🔁 Направи пак ${elFull(c)}.`);
     say("", first ? `Работи! ${elN(c)}! Записвам го в Книгата на откритията.` : `Още един ${elN(c).toLowerCase()}. Точно като първия.`, 7000);
+    if (first && Object.values(FOODS).some(f => f[5] === c)) setTimeout(() => say("", `${elN(c)} вече е в менюто с храната! Мога да го ям, когато поискам.`, 7000), 7500);
     if (first && EL[c][2] >= 3) pdiary(`Днес открих ${elN(c)}. ${who === "me" ? "Ти го направи с мен. " : ""}Най-хубавият ден в лабораторията.`);
     if (first && Math.random() < 0.4) { setTimeout(() => say("", "Хм… може и по-добре. Полирам го още малко."), 7500); }
   } else {
@@ -538,7 +577,7 @@ function myThoughts() {
   if (!out.length) out.push("Още го опознавам. Записвам всичко.");
   return out;
 }
-const EDIBLE = { cheese: 22, banana: 18, fish: 28, bread: 22, egg: 20, milk: 15, bluecheese: 25, yogurt: 20, blackbanana: 12,
+const EDIBLE = { soup: 45, pancake: 40, omelet: 40, pudding: 30, cheese: 22, banana: 18, fish: 28, bread: 22, egg: 20, milk: 15, bluecheese: 25, yogurt: 20, blackbanana: 12,
   sandwich: 40, shake: 35, fishburger: 45, cake: 40, fondue: 50 };
 const YUCK = ["stinkyfish", "rottenegg", "moldbread"];
 function feed(k) {
@@ -826,6 +865,7 @@ function react(ans) {
   closePop();
   if (S.naming) return openSheet("chat");
   S.lastCare = Date.now(); dirty = true;
+  if (scared) return unscare();
   if (S.q && !S.asleep) return answer(ans);
   const baby = S.stage === "baby", teen = S.stage === "teen";
   if (CARE_OF[ans]) { chatPush("u", LABEL[ans]); return careAct(CARE_OF[ans]); }
@@ -963,7 +1003,7 @@ function grow(t, f = 1) {
   if (S.stage === "old" && !S.heirName && !S.naming && S.grow > STAGE_MIN.old * 0.85) {
     const opts = nameOptions(S);
     S.naming = { opts, from: S.name, pre: true };
-    chatPush("o", `Скоро ще отплавам към дълбокото… Да помислим как да се казва наследникът ми. ${opts[0]} или ${opts[1]}?`);
+    oSays(`Скоро ще отплавам към дълбокото… Да помислим как да се казва наследникът ми. ${opts[0]} или ${opts[1]}? Натисни балончето долу вляво.`, 12000);
   }
   if (S.grow >= STAGE_MIN[S.stage]) nextStage(t);
 }
@@ -1006,6 +1046,7 @@ let stageFlash = null, departing = null;
 // Една минута от живота му. offline = докато никой не гледа.
 function minute(t, offline, ev) {
   if (!S.hatched) return;
+  if (END_TEST) offline = false;
   const nt = night(t), f = offline ? (nt ? 0.15 : 0.35) : 1;    // без теб всичко тече по-бавно
   grow(t, offline ? (nt ? 0 : 0.35) : 1);
   if (!S.hatched) return;                      // току-що се е родило ново яйце
@@ -1098,7 +1139,7 @@ function careAct(e) {
     }
   }
   switch (e) {
-    case "🍕": case "🥦": case "🦐": eat(e, now); break;
+    case "🍕": case "🥦": case "🦐": case "🍣": case "🥕": case "🍪": case "🍲": case "🥞": case "🍳": case "🍮": eat(e, now); break;
     case "😴":
       if (S.energy > 60) { say("😤", "Не съм уморен, работя!"); break; }
       S.asleep = true; log("😴 Легна на дъното да спи."); say("😴", "Лека нощ…"); break;
@@ -1116,20 +1157,21 @@ function careAct(e) {
 }
 function eat(e, now) {
   if (S.hunger < (S.stage === "baby" ? 10 : 25)) { S.mood = clamp(S.mood - 2); return say("🙅", S.stage === "baby" ? "~Не! Пълно коремче!" : "Не съм гладен. Режимът си е режим! 📋"); }
-  if (S.stage === "baby" && e === "🥦" && Math.random() < 0.7) { S.mood = clamp(S.mood - 3); fx.hurt = performance.now(); return say("", pick(["~Бее! Зелено! Не ам!", "~Пфу! Не! Бебо не иска зелено!", "~Ъъъ! Дай пица!"])); }
-  if (S.stage === "baby" && e !== "🥦") { S.hunger = clamp(S.hunger - (e === "🦐" ? 40 : 45)); S.mood = clamp(S.mood + 6); S.meals = [...S.meals, { h: new Date(now).getHours(), d: new Date(now).toDateString() }].slice(-14); S.lastMeal = now; e === "🍕" && S.track.pizza++; log(`${e} Хапна.`); return say("", pick(["~Ам-ам! Още!", "~Мммм! Вкусно! Още ам-ам!", "~Ням-ням-ням!"])); }
+  if (S.stage === "baby" && FOODS[e][4] === "veg" && Math.random() < 0.7) { S.mood = clamp(S.mood - 3); fx.hurt = performance.now(); return say("", pick(["~Бее! Зелено! Не ам!", "~Пфу! Не! Бебо не иска зелено!", "~Ъъъ! Дай пица!"])); }
+  if (S.stage === "baby" && FOODS[e][4] !== "veg") { S.hunger = clamp(S.hunger - FOODS[e][1]); S.mood = clamp(S.mood + 6); S.meals = [...S.meals, { h: new Date(now).getHours(), d: new Date(now).toDateString() }].slice(-14); S.lastMeal = now; e === "🍕" && S.track.pizza++; log(`${e} Хапна.`); return say("", pick(["~Ам-ам! Още!", "~Мммм! Вкусно! Още ам-ам!", "~Ням-ням-ням!"])); }
   const d = new Date(now), h = d.getHours() + d.getMinutes() / 60, day = d.toDateString();
   const usual = S.meals.filter(m => m.d !== day && Math.abs(m.h - h) < 0.75).length >= 2;
   S.meals = [...S.meals, { h, d: day }].slice(-14);
   S.lastMeal = now;
-  if (e === "🥦") S.track.veg++; else if (e === "🍕") S.track.pizza++;
-  if (e === "🥦") { S.hunger = clamp(S.hunger - 30); S.health = clamp(S.health + 6); S.mood = clamp(S.mood + 2); }
-  else if (e === "🦐") { S.hunger = clamp(S.hunger - 40); S.mood = clamp(S.mood + 5); }
-  else { S.hunger = clamp(S.hunger - 45); S.mood = clamp(S.mood + 3); }
-  log(`${e} Хапна.`);
+  const [fname, fh, fhp, fm, fk] = FOODS[e];
+  if (fk === "veg") S.track.veg++; else if (fk === "junk") S.track.pizza++;
+  S.hunger = clamp(S.hunger - fh); S.health = clamp(S.health + fhp); S.mood = clamp(S.mood + fm);
+  if (S.sick && fk === "veg") S.goodMin = (S.goodMin || 0) + 10;
+  log(`${e} Хапна ${fname.toLowerCase()}.`);
   if (usual) { S.mood = clamp(S.mood + 6); return say("⏰😌", "Точно навреме! Обичам режим."); }
   if (e === "🥦") return say("🥦✅", "Здравословно! Одобрявам.");
   if (e === "🦐") return say("😋", "Скариди! Свежи са, проверих.");
+  if (FOOD_SAY[e]) return say("", pick(FOOD_SAY[e]));
   if (Math.random() < 0.35) return say("😋🧐", "Вкусно… но малко мазно.\nСледващия път нещо здравословно? 🥦");
   return say("😋", "Ммм, пица!");
 }
@@ -1219,13 +1261,15 @@ async function save(force) {
   if (!force && !dirty) return;
   if (!force && now - lastSave < 3000) { setTimeout(() => save(), 3100); return; }
   dirty = false; lastSave = now;
-  if (DEMO) { try { localStorage.setItem("oktonis", JSON.stringify(S)); } catch {} return; }
+  if (DEMO) { try { localStorage.setItem(LSKEY, JSON.stringify(S)); } catch {} return; }
   try { await fb.F.setDoc(docRef, { s: JSON.stringify(S), by: session, at: now }); } catch (e) { console.warn(e); }
 }
 async function load(user) {
   const now = Date.now();
   if (DEMO) {
-    try { S = JSON.parse(localStorage.getItem("oktonis")); } catch {}
+    try { S = JSON.parse(localStorage.getItem(LSKEY)); } catch {}
+    if (END_TEST) STAGE_MIN.egg = 3;
+    if (!S && END_TEST) S = endWorld(now);
     if (!S) S = fresh(now);
     return afterLoad();
   }
@@ -1273,10 +1317,13 @@ function afterLoad() {
   if (role === "viewer") viewBase = JSON.stringify(S);
   const before = S.journal.length ? S.journal[0].t : 0;
   const steps = catchUp(Date.now());
+  if (steps > 60 && S.hatched && stageIdx() >= 2 && !S.asleep) {          // докато те нямаше: крие се зад камъка
+    scared = true; hideUntil = performance.now() + 10 * 60000;
+  }
   if (role === "keeper" && steps > 60 && S.hatched) {
     const w = worries();
-    if (w.length) say("📋", "Докато те нямаше, записах:\n" + w.join("\n"), 9000);
-    else say("👋🐙", "Липсваше ми! Всичко е наред, проверих два пъти.", 5000);
+    const msg = w.length ? "Докато те нямаше, записах:\n" + w.join("\n") : "Липсваше ми! Всичко е наред, проверих два пъти.";
+    if (scared) scaredMsg = msg; else say("", msg, w.length ? 9000 : 5000);
     S.lastCare = Date.now();
   }
   save();
@@ -1286,7 +1333,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 20;
+const PAGE_V = 21;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1346,7 +1393,26 @@ $("handle").onclick = () => S && openSheet("stats");
 $("chatBtn").onclick = ev => { ev.stopPropagation(); if (S) togglePop(); };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#pop") && !ev.target.closest("#chatBtn")) closePop(); });
 function lastAsked() { return Math.max(0, ...Object.values(S.asked || {})); }
-let libTab = "found", mixSel = [];
+let libTab = "found", mixSel = [], invPick = null, invDrag = null;
+function dropHover(x, y) {
+  const el = x < 0 ? null : document.elementFromPoint(x, y);
+  for (const id of ["binZone", "sellZone"]) $(id)?.classList.toggle("over", !!(el && el.closest("#" + id)));
+  $("mixbar").classList.toggle("over", !!(el && el.closest("#mixbar")));
+}
+function throwStack(k, n) {
+  for (let i = 0; i < n; i++) takeMat(k);
+  log(`🗑️ Изхвърли ${n > 1 ? n + " × " : ""}${elN(k).toLowerCase()}.`); dirty = true;
+  say("", YUCK.includes(k) ? "Изхвърлено! Въздухът веднага стана по-чист." : pick(["Изхвърлено. Ред.", "В кофата. Без съжаление."]));
+  save(); render();
+}
+function sellStack(k, n) {
+  let sum = 0, done = 0;
+  for (let i = 0; i < n; i++) { if (!cnt(k)) break; const before = cnt(k); sum += sellMat(k, true); if (cnt(k) < before) done++; }
+  if (!done) return say("", "Това ми трябва за идеята! Не го продавай.");
+  log(sum ? `◉ Продаде ${done > 1 ? done + " × " : ""}${elN(k).toLowerCase()} за ${sum} ${CUR}.` : `🗑️ Изхвърли ${elN(k).toLowerCase()}.`);
+  say("", sum ? pick([`${sum} ${CUR}! Броих ги два пъти.`, `Продадено! ${sum} ${CUR} в касичката.`]) : "Никой не го купува. Изхвърлих го.");
+  save(); render();
+}
 function fillSheet(kind) {
   const sh = $("sheet");
   sh.classList.toggle("airy", kind === "stats");
@@ -1386,32 +1452,47 @@ function fillSheet(kind) {
     });
     sh.querySelectorAll(".buy").forEach(b => b.onclick = () => buyBook(b.dataset.b));
   } else if (kind === "bag") {
-    mixSel = mixSel.filter((k, i) => cnt(k) > mixSel.slice(0, i).filter(x => x === k).length);
-    const CATS = [["made", "Направени"], ["food", "Храна (разваля се)"], ["spoiled", "Развалени"], ["nature", "От природата"], ["part", "Части"], ["junk", "Боклуци"]];
-    const left = k => { const sp = EL[k][5], a = (S.age[k] || [])[0]; if (!sp || a == null) return ""; const m = sp[0] - (S.t - a) / MIN;
-      return ` · ${m < 60 ? "разваля се до час!" : "свежо още ~" + Math.round(m / 60) + " ч"}`; };
-    const canMix = role === "keeper" && S.hatched && S.stage !== "baby";
-    let h = head("🎒 Торба", `<b class="cash">${money(S.pearls)}</b> `);
-    if (canMix && S.task) h += `<div class="sub" style="margin:0 0 6px">Той иска: ${esc(elN(S.task.a))} + ${esc(elN(S.task.b))}</div>`;
-    let rows = "";
-    for (const [c, title] of CATS) {
-      const ks = Object.keys(S.mat).filter(k => cnt(k) > 0 && EL[k] && EL[k][3] === c);
-      if (!ks.length) continue;
-      rows += `<div class="sub grp">${title}</div>`;
-      for (const k of ks) {
-        const want = S.task && (S.task.a === k || S.task.b === k), yuck = YUCK.includes(k);
-        rows += `<div class="it${want ? " want" : ""}"><span class="ii">${elE(k)}</span><span class="in">${esc(elN(k))}<small>${cnt(k)} бр.${yuck ? " · не става за ядене" : " · по " + money(EL[k][4])}${left(k)}</small></span><span class="btns">
-          ${canMix ? `<button class="add" data-k="${k}">⊕</button>` : ""}${role === "keeper" && EDIBLE[k] ? `<button class="eat" data-k="${k}">Дай</button>` : ""}${role === "keeper" ? `<button class="sell" data-k="${k}">${yuck ? "Изхвърли" : "Продай"}</button>` : ""}</span></div>`;
-      }
+    // като инвентара в Minecraft: мрежа от полета, по най-много 20 в поле
+    const ORDER = ["made", "food", "spoiled", "nature", "part", "junk"];
+    const stacks = [];
+    for (const c of ORDER) for (const k of Object.keys(S.mat).filter(k => cnt(k) > 0 && EL[k] && EL[k][3] === c)) {
+      let n = cnt(k); while (n > 0) { stacks.push([k, Math.min(20, n)]); n -= 20; }
     }
-    const junk = Object.keys(S.mat).filter(k => cnt(k) && EL[k] && EL[k][3] === "junk");
-    h += rows || `<div class="sub">Торбата е празна. Събирай нещата по дъното.</div>`;
-    if (junk.length > 1 && role === "keeper") h += `<button class="try" id="sellJunk" style="margin-top:10px">♻️ Рециклирай всички боклуци</button>`;
+    const fresh = k => { const sp = EL[k][5], a = (S.age[k] || [])[0]; if (!sp || a == null) return null; return sp[0] - (S.t - a) / MIN; };
+    const total = Math.max(30, Math.ceil(stacks.length / 6) * 6);
+    let h = head("🧰 Сандък", `<b class="cash">${money(S.pearls)}</b> `);
+    h += `<div class="inv">${Array.from({ length: total }, (_, i) => { const st2 = stacks[i]; if (!st2) return `<span class="cell"></span>`;
+      const [k, n] = st2, f = fresh(k), dot = f == null ? "" : `<i class="fr ${f < 60 ? "r" : f < 180 ? "y" : "g"}"></i>`;
+      return `<span class="cell full${invPick === k ? " sel" : ""}${S.task && (S.task.a === k || S.task.b === k) ? " want" : ""}" data-k="${k}" data-n="${n}">${dot}${elE(k)}${n > 1 ? `<b>${n}</b>` : ""}</span>`; }).join("")}</div>`;
+    if (invPick && cnt(invPick)) {
+      const k = invPick, f = fresh(k), yuck = YUCK.includes(k);
+      h += `<div class="pick"><span class="ii">${elE(k)}</span><span class="in">${esc(elN(k))}<small>${cnt(k)} бр.${yuck ? "" : " · " + money(EL[k][4])}${f == null ? "" : f < 60 ? " · разваля се!" : " · свежо ~" + Math.round(f / 60) + " ч"}</small></span>
+        <span class="btns">${role === "keeper" && EDIBLE[k] ? `<button class="eat" data-k="${k}">Дай</button>` : ""}${canMixNow() ? `<button class="add" data-k="${k}">⊕</button>` : ""}</span></div>`;
+    }
+    if (role === "keeper") h += `<div class="zones"><span id="binZone">🗑️ Кофа</span><span id="sellZone">◉ Продай</span></div>`;
     sh.innerHTML = h;
     sh.querySelectorAll(".add").forEach(b => b.onclick = () => addToMix(b.dataset.k));
     sh.querySelectorAll(".eat").forEach(b => b.onclick = () => feed(b.dataset.k));
-    sh.querySelectorAll(".sell").forEach(b => b.onclick = () => sellMat(b.dataset.k));
-    if ($("sellJunk")) $("sellJunk").onclick = () => { let sum = 0; for (const k of junk) while (cnt(k)) sum += sellMat(k, true); log(`♻️ Рециклира боклуците за ${sum} ${CUR}.`); save(); render(); say("", "Рециклирах всичко! Чисто, подредено и с пари. Перфектно."); };
+    sh.querySelectorAll(".cell.full").forEach(c => {
+      c.onpointerdown = ev => { if (role !== "keeper") return; invDrag = { k: c.dataset.k, n: +c.dataset.n, sx: ev.clientX, sy: ev.clientY, moved: false, pid: ev.pointerId };
+        try { c.setPointerCapture(ev.pointerId); } catch {} };
+      c.onpointermove = ev => {
+        if (!invDrag || ev.pointerId !== invDrag.pid) return;
+        if (!invDrag.moved && Math.hypot(ev.clientX - invDrag.sx, ev.clientY - invDrag.sy) > 8) {
+          invDrag.moved = true; const gh = document.createElement("div"); gh.id = "ghost"; gh.textContent = elE(invDrag.k); document.body.appendChild(gh); }
+        if (invDrag.moved) { const gh = $("ghost"); gh.style.left = ev.clientX + "px"; gh.style.top = ev.clientY + "px"; dropHover(ev.clientX, ev.clientY); }
+      };
+      c.onpointerup = ev => {
+        const d = invDrag; invDrag = null; $("ghost")?.remove(); dropHover(-1, -1);
+        if (!d) return;
+        if (!d.moved) { invPick = invPick === d.k ? null : d.k; return fillSheet("bag"); }
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        if (el && el.closest("#mixbar")) addToMix(d.k);
+        else if (el && el.closest("#binZone")) throwStack(d.k, d.n);
+        else if (el && el.closest("#sellZone")) sellStack(d.k, d.n);
+      };
+      c.onpointercancel = () => { invDrag = null; $("ghost")?.remove(); dropHover(-1, -1); };
+    });
   } else if (kind === "stats") {
     const clean = Math.max(0, 100 - S.trash.length * 15);
     const bars = [["🍕", 100 - S.hunger, "#ffb36b"], ["⚡", S.energy, "#ffd166"], ["😊", S.mood, "#7cc8f2"], ["❤️", S.health, "#ff6b81"], ["🧹", clean, "#6fd3a0"]];
@@ -1495,7 +1576,7 @@ function toggleFull() {
 function ringItems() {
   const extra = [fullItem(), ["logout", "🚪", "Изход"]].filter(Boolean);
   if (role !== "keeper") return [];
-  if (ringPage === "food") return [["back", "↩️", "Назад"], ["e🍕", "🍕", "Пица"], ["e🥦", "🥦", "Броколи"], ["e🦐", "🦐", "Скариди"]];
+  if (ringPage === "food") return [["back", "↩️", "Назад"], ...Object.entries(FOODS).filter(([, f]) => !f[5] || S.found.includes(f[5])).map(([e, f]) => ["e" + e, e, f[0]])];
   return [["food", "🍕", "Нахрани"], ["e🤗", "🤗", "Погали"], ["play", "🙈", "Играй"], ["read", "📕", "Чети"], S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Сън"]];
 }
 function openRing() {
@@ -1517,7 +1598,7 @@ function paintRing() {
   const box = $("ring");
   box.innerHTML = "";
   const VW = innerWidth, VH = innerHeight;
-  ringR = Math.max(110, Math.min(oct.r * 0.95, Math.min(VW, VH) * 0.4));
+  ringR = Math.max(110, Math.min(oct.r * 0.95, Math.min(VW, VH) * 0.4)) * (items.length > 7 ? 1.25 : 1);
   const [cx, cy] = ringCenter;
   const want = S.asleep ? null : S.hunger > 70 ? "food" : S.task && canPair(S.task.a, S.task.b) ? "bag" : null;
   const a0 = -40 * Math.PI / 180, span = 260 * Math.PI / 180;    // горе (-140°…-40°) остава свободно за балончето
@@ -1558,6 +1639,7 @@ function renderHud() {
   if (!S || !inGame) return;
   const on = S.hatched;
   $("hud").classList.toggle("hidden", !on);
+  $("side").querySelector('[data-k="family"]').classList.toggle("hidden", !(S.family || []).length);
   if (!on) return;
   const clean = Math.max(0, 100 - S.trash.length * 15);
   const ms = [["🍕", 100 - S.hunger, "#ffb36b"], ["⚡", S.energy, "#ffd166"], ["😊", S.mood, "#7cc8f2"], ["❤️", S.health, "#ff6b81"], ["🧹", clean, "#6fd3a0"]];
@@ -1565,6 +1647,7 @@ function renderHud() {
   const dur = STAGE_MIN[S.stage] || 1, done = Math.min(1, (S.grow || 0) / dur);
   $("growFill").style.width = (done * 100).toFixed(1) + "%";
   $("hudName").textContent = S.name + (S.sick ? " 🤒" : "");
+  $("side").querySelector('[data-k="family"]').classList.toggle("hidden", !(S.family || []).length);
 }
 // ---------- Профилът горе вдясно ----------
 $("profBtn").onclick = ev => {
@@ -1702,6 +1785,8 @@ function showBubble(e, t, want) {
 }
 function updateBubble() {
   if (!inGame || performance.now() < bubbleUntil) return;
+  if (scared && hidden() && S.hatched) return showBubble("", pick(["Кой е? Кой е там?", "Кой е? Кой е?"]), true);
+  if (scared && !hidden()) scared = false;
   if (!S.hatched || S.asleep || hidden()) return $("bubble").classList.add("hidden");
   if (S.q) return showBubble("", S.q.text.replace(/^~/, ""), true);
   if (S.hunger > 70) return showBubble("🍕?", "Гладен съм…", true);
@@ -1740,7 +1825,12 @@ let floorHits = [], rockBox = null, eggBox = null, hideUntil = 0, lastMode = "",
 const hidden = () => performance.now() < hideUntil;
 function poof(xf, sparkle, px, py) { poofs.push({ x: px ?? xf * W, y: py != null ? py + 20 : H * 0.88 + 6, t0: performance.now(), sparkle }); }
 let quietPick = false;
-let sadUntil = -1e9, loadAt = -1e9;
+let sadUntil = -1e9, loadAt = -1e9, scared = false, scaredMsg = "";
+function unscare() {
+  scared = false; hideUntil = 0;
+  say("", pick(["А! Ти си! Добре… Излизам.", "Ох, ти си бил! Уплаши ме.", "А, ти си. Добре. Знаех си. Почти."]), 5000);
+  if (scaredMsg) { const m = scaredMsg; scaredMsg = ""; setTimeout(() => say("", m, 9000), 5200); }
+}
 function octoMode() {
   const p = performance.now();
   if (drag && drag.moved) return drag.mood;
@@ -1809,7 +1899,7 @@ function drawBubbles(t) {
 // големият камък вдясно
 const ROCK = Array.from({ length: 18 }, (_, i) => 1 + Math.sin(i * 2.3) * 0.06 + Math.cos(i * 1.7) * 0.05);
 function rockGeom() {
-  const rw = Math.min(W * 0.42, 360), rh = rw * 0.58, cx = W - rw * 0.55 - 6, base = H * 0.88 + 10;
+  const rw = Math.min(W * (W < 600 ? 0.55 : 0.42), 360), rh = rw * 0.58, cx = W < 600 ? W - rw * 0.3 : W - rw * 0.55 - 6, base = H * 0.88 + 10;
   return { rw, rh, cx, base, top: base - rh };
 }
 function drawRock(t) {
@@ -1964,7 +2054,7 @@ function drawGuest(t, s) {
     else guest.line = { x: S.asleep && idx > 0 ? "Шшш, той спи." : x, at: p };
   }
   const up = Math.min(1, e / 900, (guest.end - p) / 900), sz = Math.max(40, 95 * s);
-  const x = R.cx + R.rw * 0.18, y = R.top + sz * 0.5 - up * sz * 0.85 + Math.sin(t * 2) * 3;
+  const x = Math.min(R.cx + R.rw * 0.05, W - 50 * s), y = R.top + sz * 0.5 - up * sz * 0.85 + Math.sin(t * 2) * 3;
   g.save(); g.beginPath(); g.rect(0, 0, W, R.top + 14); g.clip();            // показва се само над камъка
   drawCreature(guest.k, x, y, sz / 90, t); g.restore();
   guest.box = { x, y, r: sz * 0.6 };
@@ -2034,7 +2124,7 @@ function loop() {
     else if (e < 5600) { tx = W * 0.4; k = 0.035; table.x = oct.px + 230 * s; }   // дърпа масата
     else { tx = oct.px; k = 0.035; table.x += (oct.px - table.x) * 0.08; }       // слага я пред себе си
   }
-  else if (hidden() && !(drag && drag.moved)) { scale = s * 0.55; tx = R.cx; ty = R.top + 40 * scale + Math.sin(t * 2) * 4; k = 0.05; mode = "idle"; }
+  else if (hidden() && !(drag && drag.moved)) { scale = s * 0.55; tx = Math.min(R.cx, W - 70 * s); ty = R.top + 40 * scale + Math.sin(t * 2) * 4; k = 0.05; mode = "idle"; }
   if ((ringOpen || sheetKind) && age !== "egg") { tx = oct.px; ty = oct.py; }
   if (oct.px == null) { oct.px = tx; oct.py = ty; }
   if (oct.sc == null) oct.sc = scale;
@@ -2087,11 +2177,16 @@ cv.addEventListener("pointerdown", ev => {
   if (chestBox && Math.hypot(x - chestBox.x, y - chestBox.y) < chestBox.r) { chestOpen = performance.now(); return openSheet("bag"); }
   if (!S.hatched) { if (eggBox && Math.hypot(x - eggBox.x, y - eggBox.y) < eggBox.r) tapEgg(); return; }
   if (hidden() && (onRock(x, y) || onOcto(x, y))) {
+    if (scared) return unscare();
     hideUntil = 0; S.mood = clamp(S.mood + 3); dirty = true;
     return say("😄", pick(["Намери ме!", "Ееех, видя ме!", "Ку-ку!"]));
   }
   if (guest && guest.box && Math.hypot(x - guest.box.x, y - guest.box.y) < guest.box.r) { guest.line = { x: pick(["Ей! Не пипай!", "Здрасти!", "Само минавам.", "Хи-хи!"]), at: performance.now() }; return; }
-  if (onRock(x, y) && !onOcto(x, y)) return say("🪨🧐", pick(["Този камък е малко крив.", "Зад камъка е хубаво място за криене.", "Броих: камъкът има 14 дупчици."]));
+  if (onRock(x, y) && !onOcto(x, y)) {
+    if (S.asleep || working || reading) return say("", pick(["Този камък е малко крив.", "Броих: камъкът има 14 дупчици."]));
+    say("", pick(["Крия се! Не гледай!", "Камъкът! Отивам зад него.", "Шшт! Не съм тук."]));
+    return setTimeout(() => { hideUntil = performance.now() + 15000; }, 600);
+  }
   if (!onOcto(x, y)) return;
   drag = { id: ev.pointerId, sx: x, sy: y, dx: oct.px - x, dy: oct.py - y, moved: false };
   try { cv.setPointerCapture(ev.pointerId); } catch {}
@@ -2193,7 +2288,7 @@ setInterval(() => {
     grumble(now);
     if (sickSay) { say("", sickSay === "well" ? "Оздравях! Благодаря, че се погрижи за мен." : "Не ми е добре… Май се разболях.", 7000); sickSay = false; }
     guestTick(p);
-    if (S.hatched && !S.asleep && !working && !S.q && !S.naming && now - lastAsked() > nextQGap && performance.now() - ptr.t < 120000 && !hidden()) {
+    if (S.hatched && !S.asleep && !working && !S.q && !S.naming && now - lastAsked() > nextQGap && performance.now() - ptr.t < 120000 && performance.now() - loadAt > 120000 && !hidden()) {
       nextQGap = rnd(25, 45) * MIN; askNext();
     }
     if (S.q && now - S.q.t > 2 * 60 * MIN) { chatPush("o", "Не ми отговори… Сигурно си бил зает. Ще те питам друг път."); S.q = null; }
@@ -2250,7 +2345,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
