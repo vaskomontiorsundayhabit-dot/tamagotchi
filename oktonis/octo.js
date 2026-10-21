@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 29;
+const VER = 30;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },

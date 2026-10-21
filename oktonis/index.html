@@ -222,6 +222,8 @@
   .diary .turn { position: absolute; bottom: 14px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; background: rgba(90,58,20,.85); color: #fbf3dc; font-size: 18px; padding: 0; }
   .diary .turn.l { left: 14px; } .diary .turn.r { right: 14px; } .diary .turn:disabled { opacity: .25; }
   .bphoto { width: 96px; height: 96px; border-radius: 10px; transform: rotate(-3deg); box-shadow: 0 4px 10px rgba(0,0,0,.4); margin: 8px auto 2px; display: block; }
+  #upd { position: fixed; top: calc(max(8px, env(safe-area-inset-top)) + 96px); left: 50%; transform: translateX(-50%); z-index: 9; background: #ffd166; color: #2a1730;
+    font-weight: 800; border: 3px solid var(--ink); border-radius: 999px; padding: 8px 16px; box-shadow: 0 4px 0 rgba(0,0,0,.3); white-space: nowrap; }
   .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
   #bubble .t { font-size: 15px !important; }
   .life { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
@@ -274,6 +276,7 @@
 <div id="side" class="hidden"></div>
 <div id="mixbar" class="hidden"></div>
 <div id="tut" class="hidden"></div>
+<button id="upd" class="hidden">✨ Има нова версия. Докосни за обновяване</button>
 <div id="ver" style="position:fixed;right:8px;bottom:max(6px,env(safe-area-inset-bottom));font-size:10px;color:rgba(255,255,255,.55);z-index:2;pointer-events:none"></div>
 <div id="hint" class="hidden">Докосни Октонис 🐙</div>
 <button id="chatBtn" class="hidden" title="Отговори">💬<i></i></button>
@@ -528,7 +531,7 @@ function drawEat() {
   let x = mx, y = my, sz = Math.max(26, oct.r * 0.32);
   if (a < 700) { const k = a / 700; x = sx + (mx - sx) * k; y = sy + (my - sy) * k - Math.sin(k * Math.PI) * 60; }
   else { const k = (a - 700) / 1900; sz *= Math.max(0.1, 1 - Math.floor(k * 4) / 4); }
-  g.font = `${sz}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(eatFx.e, x, y);
+  g.font = `${sz}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = "#000"; g.fillText(eatFx.e, x, y);
   if (a > 700) { g.fillStyle = "#e9c88a"; for (let i = 0; i < 4; i++) { const k = ((a / 300 + i * 0.25) % 1); g.beginPath(); g.arc(mx + (i - 1.5) * 10, my + 10 + k * 40, 3 * (1 - k), 0, 7); g.fill(); } }
 }
 function queueGrab(id, kind) {
@@ -586,7 +589,7 @@ function drawPlaced(t, s) {                   // сложените изобре
       g.fillStyle = lg; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.restore();
     }
     if (on) { g.save(); g.fillStyle = "rgba(255,230,140,.25)"; g.beginPath(); g.arc(x, y, sz * 0.7 + Math.sin(t * 3) * 3, 0, 7); g.fill(); g.restore(); }
-    g.save(); g.globalAlpha = on ? 1 : 0.6; g.textAlign = "center"; g.textBaseline = "middle"; g.font = `${sz}px system-ui, "Apple Color Emoji", sans-serif`;
+    g.save(); g.globalAlpha = on ? 1 : 0.6; g.fillStyle = "#000"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = `${sz}px system-ui, "Apple Color Emoji", sans-serif`;
     g.fillText(elE(k), x, y + (on && MUSIC.includes(k) ? Math.sin(t * 8) * 2 : 0)); g.restore();
     if (on && MUSIC.includes(k)) { g.font = `${Math.max(14, 28 * s)}px system-ui, sans-serif`; g.fillStyle = "#fff";
       for (let j = 0; j < 3; j++) { const a = ((t * 0.5 + j / 3) % 1); g.globalAlpha = 1 - a; g.fillText(j % 2 ? "♪" : "♫", x + Math.sin(a * 6 + j) * 14, y - 24 - a * 80); } g.globalAlpha = 1; }
@@ -1705,7 +1708,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 29;
+const PAGE_V = 30;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -2136,7 +2139,7 @@ function drawChest(t, s) {
     const f = flyers[i], a = (p - f.t0) / 650;
     if (a >= 1) { flyers.splice(i, 1); chestOpen = p; continue; }
     const fx2 = f.x + (c.x - f.x) * a, fy2 = f.y + (c.y - c.h * 0.6 - f.y) * a - Math.sin(a * Math.PI) * 80;
-    g.font = `${Math.max(22, 52 * s) * (1 - a * 0.5)}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.font = `${Math.max(22, 52 * s) * (1 - a * 0.5)}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = "#000";
     g.fillText(f.e, fx2, fy2);
   }
 }
@@ -2598,6 +2601,7 @@ function notice(it, tries = 0) {
 }
 const floats = {};
 function drawFloor(t, s, behind) {
+  g.globalAlpha = 1; g.shadowBlur = 0;
   if (behind) { floorHits = []; }
   else drawChest(t, s);
   const now = performance.now(), sandY = H * 0.88 + 4, sz = Math.max(26, 64 * s);
@@ -2613,7 +2617,8 @@ function drawFloor(t, s, behind) {
     if (!seen[it.id]) {
       seen[it.id] = now;
       const old = now - loadAt < 4000 || Date.now() - it.t > 5 * MIN;        // събрано, докато те нямаше
-      if (old) { seen[it.id] = now - 1e5; if (it.kind === "trash") floats[it.id] = { y: rnd(0.24, 0.78), ph: rnd(0, 6) }; }
+      if (it.kind === "trash") floats[it.id] = { y: rnd(0.24, 0.74), ph: rnd(0, 6), sp: rnd(0.6, 1.4) };   // боклуците плуват из водата
+      if (old) seen[it.id] = now - 1e5;
       else if (it.kind !== "parcel" && it.kind !== "letter") setTimeout(() => notice(it), 1800);
     }
     if (itemDrag && itemDrag.moved && itemDrag.id === it.id) continue;
@@ -2622,11 +2627,16 @@ function drawFloor(t, s, behind) {
     const age = (now - seen[it.id]) / 1000, fall = Math.min(1, age / 2.2), fl = floats[it.id];
     let x = it.x * W + Math.sin(age * 3) * 10 * (1 - fall);
     let y = H * 0.1 + (sandY - H * 0.1) * (1 - (1 - fall) * (1 - fall)) - sz * 0.3;
-    if (fl) { x = it.x * W + Math.sin(t * 0.25 + fl.ph) * 40; y = H * fl.y + Math.sin(t * 0.7 + fl.ph) * 10; }
+    if (fl) {                                  // бавно се носят насам-натам по целия екран
+      x = clamp(it.x * W + Math.sin(t * 0.06 * fl.sp + fl.ph) * W * 0.38 + Math.sin(t * 0.21 + fl.ph * 2) * 18, 24, W - 24);
+      const fy = H * fl.y + Math.sin(t * 0.13 * fl.sp + fl.ph) * H * 0.08 + Math.sin(t * 0.7 + fl.ph) * 8;
+      y = fall < 1 ? H * 0.05 + (fy - H * 0.05) * (1 - (1 - fall) * (1 - fall)) : fy;
+    }
     g.save(); g.translate(x, y); g.rotate(fl ? Math.sin(t * 0.4 + fl.ph) * 0.6 : it.kind === "trash" ? Math.sin(it.x * 40) * 0.5 : fall < 1 ? Math.sin(age * 2) * 0.1 : Math.sin(it.x * 40) * 0.12);
     g.font = `${sz}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
     if (STYLE === "sketch") g.globalAlpha = 0.92;
-    g.fillText(it.e, 0, 0); g.globalAlpha = 1;
+    if (fl) { g.shadowColor = "rgba(0,0,0,.55)"; g.shadowBlur = 8; g.shadowOffsetY = 3; }
+    g.fillStyle = "#000"; g.fillText(it.e, 0, 0); g.globalAlpha = 1;
     g.restore();
     if (it.kind === "part" || it.kind === "letter") {                       // блести, за да се забележи
       const tw = (Math.sin(now / 300 + it.x * 20) + 1) / 2;
@@ -2747,6 +2757,7 @@ function loop() {
   const night = S && S.hatched && S.asleep;
   if (STYLE === "sketch") drawPaperSea(t, night); else drawSea(t, night);
   drawBubbles(t);
+  if (S && S.trash.length > 2) { g.fillStyle = `rgba(70,120,30,${Math.min(0.32, (S.trash.length - 2) * 0.065)})`; g.fillRect(0, 0, W, H); }   // мръсна вода (само водата)
   const s = Math.min(H * 0.46 / 430, W * 0.8 / 560);
   const ground = H * 0.88 + 6, R = rockGeom();
   let mode = S ? octoMode() : "idle";
@@ -2822,7 +2833,6 @@ function loop() {
   if (hidden()) drawRock(t);
   drawGuest(t, s);
   if (S) drawFloor(t, s);
-  if (S && S.trash.length > 2) { g.fillStyle = `rgba(70,120,30,${Math.min(0.32, (S.trash.length - 2) * 0.065)})`; g.fillRect(0, 0, W, H); }   // мръсна вода
   if (night) { g.fillStyle = "rgba(10,10,40,.25)"; g.fillRect(0, 0, W, H); }
   if (S && S.hatched) drawCompassMark(t, s);
   if (STYLE !== "sketch") drawAngler(t, s);
@@ -2987,6 +2997,18 @@ setInterval(() => {
   updateBubble(); renderHud();
   if (S && !S.hatched && role === "keeper" && !creating && (S.eggP || 0) < EGG_MAX * EGG_WARM) { S.eggP = Math.min(EGG_MAX * EGG_WARM, (S.eggP || 0) + EGG_MAX / 5000); dirty = true; }
 }, 1000);
+// нова версия: проверява на всеки 3 минути и предлага обновяване (при vasko направо презарежда)
+async function checkUpdate() {
+  if (DEMO && !location.protocol.startsWith("http")) return;
+  try {
+    const txt = await (await fetch(location.pathname + "?v=" + Date.now(), { cache: "no-store" })).text();
+    const m = txt.match(/const PAGE_V = (\d+);/);
+    if (m && +m[1] > PAGE_V) { if (role === "viewer" && inGame) return location.reload(); $("upd").classList.remove("hidden"); }
+  } catch {}
+}
+$("upd").onclick = async () => { await save(true); location.reload(); };
+setInterval(checkUpdate, 3 * 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) { save(true); schedNotify(true); } });
 window.addEventListener("pagehide", () => save(true));
 
