@@ -283,7 +283,9 @@ const firebaseConfig = {
 const KEEPER = "toshik";                    // грижи се; останалите само гледат
 const DEMO = new URLSearchParams(location.search).has("demo");
 const END_TEST = DEMO && new URLSearchParams(location.search).has("end"), TUT_TEST = DEMO && new URLSearchParams(location.search).has("tut");
-const LSKEY = END_TEST ? "oktonis_end" : TUT_TEST ? "oktonis_tut" : "oktonis";
+const PLAY_TEST = DEMO && new URLSearchParams(location.search).has("play");
+const LSKEY = END_TEST ? "oktonis_end" : TUT_TEST ? "oktonis_tut" : PLAY_TEST ? "oktonis_play" : "oktonis";
+if (PLAY_TEST && new URLSearchParams(location.search).has("reset")) try { localStorage.removeItem(LSKEY); } catch {}
 if (TUT_TEST) try { localStorage.removeItem(LSKEY); localStorage.removeItem("okt_tut"); } catch {}
 if (END_TEST && new URLSearchParams(location.search).has("reset")) try { localStorage.removeItem(LSKEY); } catch {}
 function endWorld(now) {                    // проба: стар Октонис, на минути от края
@@ -1509,6 +1511,19 @@ async function load(user) {
     try { S = JSON.parse(localStorage.getItem(LSKEY)); } catch {}
     if (END_TEST) STAGE_MIN.egg = 3;
     if (!S && END_TEST) S = endWorld(now);
+    if (!S && PLAY_TEST) {                  // пробен свят: голям Октонис с пълен сандък
+      S = fresh(now);
+      Object.assign(S, { hatched: true, stage: "adult", stageT: now - 3 * 1440 * MIN, grow: 3 * 1440, born: now - 15 * 1440 * MIN, glasses: true, books: 4, smarts: 4,
+        hunger: 45, energy: 85, mood: 75, pearls: 200, found: ["lamp", "radio", "compass", "trampoline", "tidier", "canphone", "antenna", "drum"],
+        mat: { can: 3, wire: 2, bulb: 2, bat: 3, magnet: 2, gear: 2, bolt: 3, spring: 2, shell: 3, coral: 2, weed: 2, paper: 2, feather: 2, bottle: 2, plastic: 1, sock: 1, pebble: 2,
+          cheese: 2, bread: 1, milk: 2, egg: 2, fish: 1, banana: 2, bluecheese: 1, yogurt: 1, stinkyfish: 1, motor: 1,
+          lamp: 1, radio: 1, compass: 1, trampoline: 1, tidier: 1, canphone: 1, antenna: 1, drum: 1 },
+        lib: ["b_tin", "b_kitchen"], libRead: ["b_tin"], letter: { i: 0, x: 0.45 }, letterDay: new Date(now).toDateString() });
+      for (const k of ["cheese", "bread", "milk", "egg", "fish", "banana"]) S.age[k] = Array(S.mat[k]).fill(now - 60 * MIN);
+      S.trash = [{ id: "j1", k: "can", x: 0.3, t: now - 1e7 }, { id: "j2", k: "tire", x: 0.6, t: now - 1e7 }];
+      S.parts = [{ id: "p1", k: "star", x: 0.5, t: now - 1e7 }];
+      S.journal.unshift({ t: now, x: "🧪 Пробен свят: всичко е готово за пробване." });
+    }
     if (!S && TUT_TEST) { S = fresh(now); Object.assign(S, { hatched: true, stage: "kid", stageT: now, born: now - 1440 * MIN, hunger: 30, energy: 90, mood: 80 });
       S.parts = [{ id: "t1", k: "shell", x: 0.3, t: now - 1e7 }, { id: "t2", k: "bolt", x: 0.55, t: now - 1e7 }]; S.mat = { can: 2, wire: 1 }; }
     if (!S) S = fresh(now);
