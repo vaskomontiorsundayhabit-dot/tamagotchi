@@ -748,12 +748,12 @@ function spoil(t) {
     }
   }
 }
-function spawnFloor(t, f = 1) {
-  if (S.trash.length < 7 && Math.random() < f / 40) {
+function spawnFloor(t, f = 1, offline) {
+  if (S.trash.length < (offline ? 5 : 7) && Math.random() < f / 40) {
     S.trash.push({ id: uid(), k: pick(FLOOR.junk), x: S.nextX ?? rnd(0.08, 0.92), t }); S.nextX = rnd(0.08, 0.92);
     if (S.trash.length === 4) log("🗑️ Около него се събраха боклуци. Не може да ги гледа.", t);
   }
-  if (S.parts.length < 5 && Math.random() < f / 22) { S.parts.push({ id: uid(), k: pick(FLOOR.other), x: S.nextX ?? rnd(0.08, 0.92), t }); S.nextX = rnd(0.08, 0.92); }
+  if (S.parts.length < (offline ? 2 : 5) && Math.random() < f / (offline ? 90 : 22)) {   /* докато те няма: повечето са обикновени боклуци */ S.parts.push({ id: uid(), k: pick(FLOOR.other), x: S.nextX ?? rnd(0.08, 0.92), t }); S.nextX = rnd(0.08, 0.92); }
 }
 function pickFloor(id, by) {
   const ti = S.trash.findIndex(x => x.id === id), pi = S.parts.findIndex(x => x.id === id);
@@ -1725,7 +1725,7 @@ function minute(t, offline, ev) {
   const st = S.stage, drain = (st === "baby" ? 1.4 : st === "aging" ? 1.3 : st === "old" ? 1.5 : 1) * (has("chubby") ? 1.15 : 1);
   if (S.asleep) {
     S.energy = clamp(S.energy + 1.2);
-    if (S.energy >= 100 && (!night(t) || Math.random() < 0.02)) { S.asleep = false; log("☀️ Събуди се бодър.", t); }
+    if (S.energy >= 100 && !night(t)) { S.asleep = false; log("☀️ Събуди се бодър.", t); }
   } else {
     if (offline && nt && S.energy < 92) { S.asleep = true; log("😴 Нощ е. Легна да спи.", t); }
     S.energy = clamp(S.energy - (night(t) ? 0.25 : 1 / 6) * drain * f * (S.sick ? 1.3 : 1));
@@ -1744,7 +1744,7 @@ function minute(t, offline, ev) {
   if (S.hunger >= 95) S.health = clamp(S.health - 0.1);
   else if (S.hunger < 70) S.health = clamp(S.health + (S.hurt ? 0.03 * (S.plaster ? 3 : 1) * (S.asleep ? 2 : 1) * (active("medkit") ? 1.5 : 1) : 0.1));
   if (S.hurt && S.health >= 95) { S.hurt = 0; if (S.plaster) { S.plaster = 0; log("🩹 Махна пластира. Мина му."); } }
-  spawnFloor(t, f);
+  spawnFloor(t, f, offline);
   gadgetMinute(t);
   spoil(t);
   if (has("adventure") && !S.asleep && Math.random() < 1 / 240) {      // експедиция
@@ -1752,7 +1752,7 @@ function minute(t, offline, ev) {
     log(`🧭 Отплава на експедиция и донесе ${elN(k).toLowerCase()} и 5 перлинга.`, t); if (!offline) expedition = true;
   }
   const target = (has("chubby") ? 75 : 70) - (has("grumpy") ? 10 : 0) - (S.hunger > 70 ? 20 : 0) - Math.min(30, S.trash.length * (has("perfect") ? 9 : has("recycler") ? 3 : 6)) - (S.hurt ? 12 : 0) - (S.sick ? 15 : 0) - (S.energy < 20 ? 10 : 0);
-  S.mood = clamp(S.mood + Math.sign(target - S.mood) * 0.15);
+  S.mood = clamp(S.mood + Math.sign(target - S.mood) * 0.15 * (offline ? f : 1));   // без теб настроението се мени бавно
 }
 function catchUp(now) {
   const offline = now - S.t > 3 * MIN || (role === "keeper" && (document.hidden || performance.now() - ptr.t > 15 * 60000));
@@ -4566,7 +4566,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 9 * 60; i++) minute(t0 + i * MIN, true, {}); return { energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
