@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 28;
+const VER = 29;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
+let NOPACI = false, CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -409,7 +409,7 @@ function body(t, mt, st) {
     g.fillStyle = "#8fd3ff"; g.strokeStyle = C.line; g.lineWidth = 3;
     g.beginPath(); g.moveTo(hx - 60, ty - 12); g.quadraticCurveTo(hx - 52, ty, hx - 60, ty + 4); g.quadraticCurveTo(hx - 68, ty, hx - 60, ty - 12); g.fill(); g.stroke();
   }
-  if (A.paci && mode !== "party") {   // биберонче за бебето
+  if (A.paci && !NOPACI && mode !== "party") {   // биберонче за бебето
     g.fillStyle = "#7cc8f2"; g.strokeStyle = C.line; g.lineWidth = 4;
     g.beginPath(); g.ellipse(hx, my + 4, 22, 12, 0, 0, Math.PI * 2); g.fill(); g.stroke();
     g.beginPath(); g.arc(hx, my + 4, 6, 0, Math.PI * 2); g.fillStyle = "#ffd166"; g.fill(); g.stroke();
@@ -1051,7 +1051,7 @@ function drawArcade(ctx, o) {
 }
 function draw(ctx, o) { return o.style === "pixel" ? drawArcade(ctx, o) : o.style === "pixelsoft" ? drawPixel(ctx, o) : drawReal(ctx, o); }
 function drawReal(ctx, o) {
-  g = ctx; mode = o.mode || "idle"; SAD = mode === "sad"; EAT = mode === "eat"; CRACK = o.crack || 0; if (SAD) mode = "idle"; if (EAT) mode = "happy"; TR = o.traits || [];
+  g = ctx; mode = o.mode || "idle"; SAD = mode === "sad"; EAT = mode === "eat"; CRACK = o.crack || 0; NOPACI = o.paci === false; if (SAD) mode = "idle"; if (EAT) mode = "happy"; TR = o.traits || [];
   if (mode === "swim" && o.style !== "sketch") mode = "idle";
   const st = o.st || (o.st = {});
   st.parts = st.parts || [];

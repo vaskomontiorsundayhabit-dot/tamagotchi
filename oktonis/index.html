@@ -221,6 +221,7 @@
   .diary .bx { position: absolute; top: -8px; right: -8px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; background: #fbf3dc; color: #5a3a14; border: 3px solid #5a3418; font-size: 18px; }
   .diary .turn { position: absolute; bottom: 14px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; background: rgba(90,58,20,.85); color: #fbf3dc; font-size: 18px; padding: 0; }
   .diary .turn.l { left: 14px; } .diary .turn.r { right: 14px; } .diary .turn:disabled { opacity: .25; }
+  .bphoto { width: 96px; height: 96px; border-radius: 10px; transform: rotate(-3deg); box-shadow: 0 4px 10px rgba(0,0,0,.4); margin: 8px auto 2px; display: block; }
   .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
   #bubble .t { font-size: 15px !important; }
   .life { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
@@ -309,8 +310,9 @@ const firebaseConfig = {
 const KEEPER = "toshik";                    // грижи се; останалите само гледат
 const DEMO = new URLSearchParams(location.search).has("demo");
 const END_TEST = DEMO && new URLSearchParams(location.search).has("end"), TUT_TEST = DEMO && new URLSearchParams(location.search).has("tut");
-const PLAY_TEST = DEMO && new URLSearchParams(location.search).has("play"), EGG_TEST = DEMO && new URLSearchParams(location.search).has("egg");
-const LSKEY = END_TEST ? "oktonis_end" : TUT_TEST ? "oktonis_tut" : PLAY_TEST ? "oktonis_play" : EGG_TEST ? "oktonis_egg" : "oktonis";
+const PLAY_TEST = DEMO && new URLSearchParams(location.search).has("play"), EGG_TEST = DEMO && new URLSearchParams(location.search).has("egg"), BABY_TEST = DEMO && new URLSearchParams(location.search).has("baby");
+const LSKEY = END_TEST ? "oktonis_end" : TUT_TEST ? "oktonis_tut" : PLAY_TEST ? "oktonis_play" : EGG_TEST ? "oktonis_egg" : BABY_TEST ? "oktonis_baby" : "oktonis";
+if (BABY_TEST) try { localStorage.removeItem(LSKEY); } catch {}
 if (EGG_TEST) try { localStorage.removeItem(LSKEY); } catch {}
 if (PLAY_TEST && new URLSearchParams(location.search).has("reset")) try { localStorage.removeItem(LSKEY); } catch {}
 if (TUT_TEST) try { localStorage.removeItem(LSKEY); localStorage.removeItem("okt_tut"); } catch {}
@@ -1134,6 +1136,9 @@ function react(ans) {
   if (S.naming) return openSheet("chat");
   S.lastCare = Date.now(); dirty = true;
   if (scared) return unscare();
+  if (S.cry && (ans === "wave" || ans === "love")) { chatPush("u", LABEL[ans]); return calmBaby(); }
+  if (ans === "love" && isBaby() && learnWord()) return;
+  if (ans === "scold" && isBaby()) makeCry();
   if (S.q && !S.asleep) return answer(ans);
   const baby = S.stage === "baby", teen = S.stage === "teen";
   if (CARE_OF[ans]) { chatPush("u", LABEL[ans]); return careAct(CARE_OF[ans]); }
@@ -1281,6 +1286,7 @@ function grow(t, f = 1) {
 function nextStage(t) {
   const i = stageIdx();
   if (S.stage === "old") return farewell(t);
+  if (S.stage === "baby") { babyPhoto(); S.cry = false; bgame = bottle = rocking = null; }
   S.stage = STAGES[i + 1]; S.stageT = t; S.grow = 0; dirty = true;
   const msg = { kid: "Порасна! Вече е малък и почва да събира части.", teen: "Стана тийнейджър! Малко е капризен.",
     adult: "Порасна напълно! Сега е истински изобретател.", aging: "Почва да остарява. Мъдър е, но се уморява по-бързо.",
@@ -1299,7 +1305,7 @@ function farewell(t) {
     healthy: "отплава бодър към топлите води", chubby: "отплава бавничко към сладкарницата на рифа",
     grumpy: "отплава мърморейки, но тайно доволен" }[main] || "отплава към дълбокото";
   S.family = S.family || [];
-  S.family.push({ gen: S.gen, name: S.name, title: genName(S.gen), born: S.born, died: t, traits: tr, made: S.found.length, end });
+  S.family.push({ gen: S.gen, name: S.name, title: genName(S.gen), born: S.born, died: t, traits: tr, made: S.found.length, end, photo: S.babyPhoto || null, art: S.babyArt || [], words: S.words || [] });
   log(`🌊 ${S.name} ${end}. На дъното остави яйце.`, t);
   const keep = { gen: S.gen + 1, family: S.family, pearls: S.pearls, mat: S.mat, age: S.age, seen: S.seen, found: S.found, nope: S.nope, future: S.future, lib: S.lib, libRead: S.libRead, hints: S.hints, journal: S.journal, inherit: main, parent: S.name,
     diary: writeDiary(S) };
@@ -1626,6 +1632,8 @@ async function load(user) {
       S.parts = [{ id: "p1", k: "star", x: 0.5, t: now - 1e7 }];
       S.journal.unshift({ t: now, x: "🧪 Пробен свят: всичко е готово за пробване." });
     }
+    if (!S && BABY_TEST) { S = fresh(now); Object.assign(S, { hatched: true, stage: "baby", stageT: now, born: now, hunger: 40, energy: 70, mood: 75 });
+      S.trash = [{ id: "b1", k: "sock", x: 0.55, t: now - 1e7 }]; S.parts = [{ id: "b2", k: "shell", x: 0.4, t: now - 1e7 }, { id: "b3", k: "star", x: 0.7, t: now - 1e7 }]; }
     if (!S && TUT_TEST) { S = fresh(now); Object.assign(S, { hatched: true, stage: "kid", stageT: now, born: now - 1440 * MIN, hunger: 30, energy: 90, mood: 80 });
       S.parts = [{ id: "t1", k: "shell", x: 0.3, t: now - 1e7 }, { id: "t2", k: "bolt", x: 0.55, t: now - 1e7 }]; S.mat = { can: 2, wire: 1 }; }
     if (!S) S = fresh(now);
@@ -1697,7 +1705,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 28;
+const PAGE_V = 29;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1916,6 +1924,7 @@ function fillSheet(kind) {
       <div class="who">${esc(S.name)}<small>${S.hatched ? STAGE_NAME[S.stage] : ""}</small></div>
       <div class="meters">${bars.map(([i, v, c]) => `<div class="mt" style="--v:${v.toFixed(0)};--c:${c}"><span>${i}</span></div>`).join("")}</div>
       <div class="feel">${stt.join(" · ")}</div>
+      ${S.babyPhoto ? `<img class="bphoto" src="${S.babyPhoto}" alt=""><div class="feel" style="font-size:12px">Бебешка снимка</div>` : ""}
       ${role === "viewer" ? `<div class="feel">toshik беше при него ${ago(S.lastCare)}.</div>` : ""}
       <button id="logoutBtn" class="ghost">Изход (${esc(myNick)})</button>`;
     $("logoutBtn").onclick = logout;
@@ -1943,7 +1952,8 @@ function fillSheet(kind) {
         <div class="sub" style="margin:2px 0">${traitsOf().map(k => TRAITS[k].n).join(", ") || "Още се оформя какъв ще стане."}</div></div>` +
       (fam.length ? fam.map(f => `<div class="fam"><b>${esc(f.name)}</b> <small>${new Date(f.born).toLocaleDateString("bg-BG")} – ${new Date(f.died).toLocaleDateString("bg-BG")}</small>
         <div class="sub" style="margin:2px 0">${f.traits.map(k => TRAITS[k].n).join(", ") || "Обикновен и мил"} · изобретения: ${f.made}</div>
-        <div class="sub" style="margin:0">Накрая ${esc(f.end)}.</div></div>`).join("")
+        <div class="sub" style="margin:0">Накрая ${esc(f.end)}.</div>${f.photo ? `<img class="bphoto" src="${f.photo}" alt="">` : ""}
+        ${(f.words || []).length ? `<div class="sub" style="margin:0">Първи думи: ${esc(f.words.join(", "))}</div>` : ""}${(f.art || []).map(a => `<div class="sub" style="margin:0">🖍️ ${esc(a)}</div>`).join("")}</div>`).join("")
         : "") +
       ((S.diary || []).length ? `<div class="sub" style="margin-top:10px">📔 Семейният дневник за теб:</div><ul class="journal">${S.diary.map(e => `<li>${esc(e.by)}: „${esc(e.x)}“${e.ok ? " ✓" : ""}</li>`).join("")}</ul>` : "") +
       "";
@@ -1989,6 +1999,8 @@ function toggleFull() {
 function ringItems() {
   const extra = [fullItem(), ["logout", "🚪", "Изход"]].filter(Boolean);
   if (role !== "keeper") return [];
+  if (ringPage === "bplay") return [["back", "↩️", "Назад"], ["g_bubbles", "🫧", "Мехурчета"], ["g_peek", "🙈", "Ку-ку"], ["g_fish", "🐟", "Рибка"]];
+  if (isBaby() && ringPage === "main") return [["bottle", "🍼", "Шише"], ["e🤗", "🤗", "Погали"], ["bplay", "🎈", "Игри"], ...(S.cry ? [["paci", "👶", "Биберон"]] : []), S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Нани"]];
   if (ringPage === "food") return [["back", "↩️", "Назад"], ...Object.entries(FOODS).filter(([, f]) => !f[5] || S.found.includes(f[5])).map(([e, f]) => ["e" + e, e, f[0]])];
   return [["food", "🍕", "Нахрани"], ["e🤗", "🤗", "Погали"], ["play", "🙈", "Играй"], ["read", "📕", "Чети"], S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Сън"]];
 }
@@ -2035,7 +2047,11 @@ function playHide() {                      // криеница
   setTimeout(() => { hideUntil = performance.now() + 25000; }, 1200);
 }
 function ringAction(id) {
-  if (id === "talk" || id === "food") { ringPage = id; return paintRing(); }
+  if (id === "talk" || id === "food" || id === "bplay") { ringPage = id; return paintRing(); }
+  if (id === "bottle") { closeRing(); return startBottle(); }
+  if (id.startsWith("g_")) { closeRing(); return babyPlay(id.slice(2)); }
+  if (id === "paci") { closeRing(); return calmBaby("paci"); }
+  if (id === "sleep" && isBaby()) { closeRing(); return startRock(); }
   if (id === "back") { ringPage = "main"; return paintRing(); }
   if (["lib", "bag", "stats", "family", "journal"].includes(id)) return openSheet(id);
   if (id === "read") { closeRing(); return readBook(); }
@@ -2222,6 +2238,174 @@ function tutEnd() {
   try { localStorage.setItem("okt_tut", S && S.wid || "1"); } catch {}
 }
 
+// ---------- Само докато е бебе: игри, шише, приспиване, биберон, думи ----------
+const isBaby = () => S && S.hatched && S.stage === "baby";
+let bgame = null, bottle = null, rocking = null, bdown = false, pendingWord = null;
+const BWORDS = ["ма-ма", "та-та", "мехур", "ка-мък", "ам-ам", "нани", "риб-ка", "бо-бо"];
+const BART = ["Нарисува те с осем ръце. Като него.", "Нарисува мехурче, по-голямо от теб.", "Нарисува камъка и написа отгоре „ка-мък“.",
+  "Нарисува себе си с огромна усмивка.", "Нарисува рибка. Или облак. Не е ясно.", "Нарисува вас двамата, хванати за ръце. И пипала."];
+function babyPlay(k) {
+  if (S.asleep) return say("", "Шшш… спи.");
+  const p = performance.now(); S.track.play++; S.mood = clamp(S.mood + 3); S.lastCare = Date.now(); dirty = true;
+  if (k === "bubbles") { bgame = { k, t0: p, list: [], popped: 0 }; say("", "~Мехур! Мехур! Пук!", 3000); }
+  if (k === "peek") { bgame = { k, t0: p, round: 0, score: 0, phase: "hide", until: p + 1500 }; say("", "~Ку-ку… Къде е бебо?", 2500); }
+  if (k === "fish") { bgame = { k, t0: p, fx: W * 0.7, fy: H * 0.4, caught: 0, drag: false }; say("", "~Риб-ка! Риб-ка! Дай!", 3000); }
+}
+function startBottle() {
+  if (S.asleep) return say("", "Шшш… спи.");
+  if (S.hunger < 10) return say("", "~Не! Пълно коремче!");
+  bottle = { level: 100, t0: performance.now() }; say("", "~Шише! Дръж! Дръж го!", 3000);
+}
+function startRock() {
+  if (S.asleep) return say("", "Шшш… спи.");
+  if (S.energy > 85) return say("", "~Не нани! Игра!");
+  rocking = { swings: 0, lastX: null, dir: 0, t0: performance.now() }; say("", "~Нани… Люлей бебо…", 3000);
+}
+function calmBaby(how) { if (!S.cry) return false; S.cry = false; S.mood = clamp(S.mood + 8); dirty = true; say("", how === "paci" ? "~Ммм… Бибе-рон…" : "~Хи… Ти! Ти тук!", 3500); save(); return true; }
+function makeCry(why) { if (!isBaby() || S.cry || S.asleep) return; S.cry = true; dirty = true; say("", "~Уааа! Уааа!", 4000); }
+// докосвания по време на игрите; връща true, ако е хванато
+function babyInput(type, x, y) {
+  if (!isBaby()) { bgame = bottle = rocking = null; return false; }
+  const p = performance.now();
+  if (type === "down") bdown = true;
+  if (type === "up") bdown = false;
+  if (bottle) return type === "down" || type === "up" || type === "move";
+  if (rocking) {
+    if (type === "move" && bdown) {
+      if (rocking.lastX == null) rocking.lastX = x;
+      const dx = x - rocking.lastX, d = Math.sign(dx);
+      if (Math.abs(dx) > 25) { if (d && d !== rocking.dir) { rocking.swings++; rocking.dir = d; } rocking.lastX = x; }
+    }
+    return true;
+  }
+  if (!bgame) return false;
+  if (bgame.k === "bubbles" && type === "down") {
+    const b = bgame.list.find(q => !q.pop && Math.hypot(q.x - x, q.y - y) < q.r + 12);
+    if (b) { b.pop = p; bgame.popped++; S.mood = clamp(S.mood + 1); if (bgame.popped % 3 === 0) say("", pick(["~Хи-хи! Пук!", "~Пак! Пак!", "~Ииии!"]), 1500); }
+    return true;
+  }
+  if (bgame.k === "peek" && type === "down") {
+    if (bgame.phase === "peek") { bgame.score++; S.mood = clamp(S.mood + 2); say("", pick(["~Ку-ку! Хи-хи-хи!", "~Ха! Видя бебо!", "~Ку-ку! Пак!"]), 1500); bgame.phase = "hide"; bgame.round++; bgame.until = p + rnd(1200, 2600); }
+    else say("", "~Ъ? Бебо се крие!", 1200);
+    return true;
+  }
+  if (bgame.k === "fish") {
+    if (type === "down") bgame.drag = true;
+    if (type === "up") bgame.drag = false;
+    if (bgame.drag && (type === "move" || type === "down")) { bgame.fx = x; bgame.fy = Math.min(y, H * 0.8); }
+    return true;
+  }
+  return false;
+}
+// ход на игрите всеки кадър; може да насочи накъде да плува
+function babyTick(t, s) {
+  if (!isBaby()) { bgame = bottle = rocking = null; return null; }
+  const p = performance.now();
+  if (bottle) {
+    if (bdown) { bottle.level -= 0.7; S.hunger = clamp(S.hunger - 0.32); dirty = true; if (S.cry && S.hunger < 50) calmBaby(); }
+    if (bottle.level <= 0) { bottle = null; S.mood = clamp(S.mood + 6); log("🍼 Изпи си шишето."); say("", "~Ам! Пъ-лно! …Ъп!", 3500); startEat("🍼"); save(); }
+    else if (p - bottle.t0 > 30000) { bottle = null; say("", "~Сти-га…", 2000); }
+  }
+  if (rocking) {
+    if (rocking.swings >= 8) { rocking = null; S.asleep = true; log("😴 Приспа го с люлеене."); say("", "~Нани… хрр…", 3000); save(); }
+    else if (p - rocking.t0 > 25000) { rocking = null; say("", "~Не нани! Игра!", 2000); }
+  }
+  if (!bgame) return null;
+  const e = p - bgame.t0;
+  if (bgame.k === "bubbles") {
+    if (e < 9000 && bgame.list.length < 12 && Math.random() < 0.05) bgame.list.push({ x: rnd(0.12, 0.8) * W, y: H * 0.9, r: rnd(18, 30) * Math.max(0.7, s * 1.5), v: rnd(0.8, 1.6), ph: rnd(0, 6) });
+    if (e > 15000) { say("", bgame.popped >= 6 ? "~Мно-го мехури! Хи-хи!" : "~Още? Още мехур?", 3000); bgame = null; return null; }
+    return null;
+  }
+  if (bgame.k === "peek") {
+    if (p > bgame.until) { if (bgame.phase === "hide") { bgame.phase = "peek"; bgame.until = p + 900; } else { bgame.phase = "hide"; bgame.round++; bgame.until = p + rnd(1200, 2600); } }
+    if (bgame.round >= 6) { say("", bgame.score >= 3 ? "~Пак ку-ку! Обичам ку-ку!" : "~Хи-хи… Бебо уморен.", 3000); bgame = null; }
+    return null;
+  }
+  if (bgame.k === "fish") {
+    if (!bgame.drag) { bgame.fx += Math.sin(t * 0.9) * 2.5; bgame.fy += Math.cos(t * 1.3) * 1.5; bgame.fx = clamp(bgame.fx, 40, W - 40); bgame.fy = clamp(bgame.fy, H * 0.2, H * 0.78); }
+    if (Math.hypot(oct.x - bgame.fx, oct.cy - bgame.fy) < oct.r * 0.45) {
+      bgame.caught++; S.mood = clamp(S.mood + 3); say("", pick(["~Хва-нах! Хи-хи!", "~Риб-ка! Мой-та!", "~Пак! Пак!"]), 1500);
+      bgame.fx = rnd(0.15, 0.85) * W; bgame.fy = rnd(0.25, 0.7) * H;
+      if (bgame.caught >= 3) { say("", "~Бебо хва-на три! Браво бебо!", 3000); bgame = null; return null; }
+    }
+    return [bgame.fx, bgame.fy + oct.r * 0.15];
+  }
+  return null;
+}
+function drawBaby(t, s) {
+  if (!isBaby()) return;
+  const p = performance.now();
+  if (bgame && bgame.k === "bubbles") for (let i = bgame.list.length - 1; i >= 0; i--) {
+    const b = bgame.list[i];
+    if (b.pop) { const a = (p - b.pop) / 300; if (a > 1) { bgame.list.splice(i, 1); continue; }
+      g.strokeStyle = `rgba(255,255,255,${1 - a})`; g.lineWidth = 3; for (let k = 0; k < 8; k++) { const an = k * 0.785; g.beginPath(); g.moveTo(b.x + Math.cos(an) * b.r * (0.6 + a), b.y + Math.sin(an) * b.r * (0.6 + a)); g.lineTo(b.x + Math.cos(an) * b.r * (1 + a), b.y + Math.sin(an) * b.r * (1 + a)); g.stroke(); } continue; }
+    b.y -= b.v; b.x += Math.sin(t * 2 + b.ph) * 0.6; if (b.y < H * 0.12) { bgame.list.splice(i, 1); continue; }
+    const gr = g.createRadialGradient(b.x - b.r * 0.3, b.y - b.r * 0.3, 2, b.x, b.y, b.r);
+    gr.addColorStop(0, "rgba(255,255,255,.9)"); gr.addColorStop(0.6, `hsla(${(b.ph * 60) % 360},90%,80%,.35)`); gr.addColorStop(1, "rgba(255,255,255,.15)");
+    g.fillStyle = gr; g.strokeStyle = "rgba(255,255,255,.95)"; g.lineWidth = 3; g.beginPath(); g.arc(b.x, b.y, b.r, 0, 7); g.fill(); g.stroke();
+  }
+  if (bgame && bgame.k === "peek" && bgame.phase === "hide") {         // пипалцата пред очите
+    for (const sd of [-1, 1]) { const x = oct.x + sd * oct.r * 0.2, y = oct.cy + oct.r * 0.02;
+      g.fillStyle = "#fba383"; g.strokeStyle = "#2b2a33"; g.lineWidth = 4; g.beginPath(); g.ellipse(x, y, oct.r * 0.17, oct.r * 0.13, sd * 0.3, 0, 7); g.fill(); g.stroke(); }
+  }
+  if (bgame && bgame.k === "fish") drawCreature("fish", bgame.fx, bgame.fy, Math.max(0.35, s * 0.6), t);
+  if (bottle) {                                // шишето до устата и колко е останало
+    const x = oct.x + oct.r * 0.28, y = oct.cy + oct.r * 0.12;
+    g.save(); g.translate(x, y); g.rotate(bdown ? -0.9 : -0.4); const k = Math.max(0.6, s * 1.4);
+    g.fillStyle = "rgba(255,255,255,.85)"; g.strokeStyle = "#2b2a33"; g.lineWidth = 3; g.beginPath(); g.roundRect ? g.roundRect(-12 * k, -40 * k, 24 * k, 50 * k, 8 * k) : g.rect(-12 * k, -40 * k, 24 * k, 50 * k); g.fill(); g.stroke();
+    g.fillStyle = "#fffdf4"; g.fillRect(-10 * k, -38 * k + 46 * k * (1 - bottle.level / 100), 20 * k, 46 * k * bottle.level / 100);
+    g.fillStyle = "#ffb3c7"; g.beginPath(); g.ellipse(0, 16 * k, 8 * k, 9 * k, 0, 0, 7); g.fill(); g.stroke(); g.restore();
+    if (!bdown) { g.fillStyle = "#fff"; g.font = "700 13px system-ui, sans-serif"; g.textAlign = "center"; g.fillText("Задръж пръста, за да пие", oct.x, oct.cy + oct.r * 0.75); }
+  }
+  if (rocking) { g.fillStyle = "#fff"; g.font = `${Math.max(16, 30 * s)}px system-ui, sans-serif`; g.textAlign = "center";
+    for (let j = 0; j < 3; j++) { const a = ((t * 0.4 + j / 3) % 1); g.globalAlpha = 1 - a; g.fillText("♪", oct.x + Math.sin(a * 5 + j) * 40, oct.top - a * 60); }
+    g.globalAlpha = 1; g.font = "700 13px system-ui, sans-serif"; g.fillText(`Люлей го с пръст наляво и надясно (${rocking.swings}/8)`, oct.x, oct.cy + oct.r * 0.75); }
+  if (S.toy && !bgame && !bottle) { g.font = `${Math.max(16, 30 * s)}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(elE(S.toy), oct.x - oct.r * 0.42, oct.cy + oct.r * 0.35); }
+}
+// бебето всяка секунда: думи, рисунки, плач
+let nextWord = performance.now() + 90000, nextArt = performance.now() + 240000;
+function babySecond(p, now) {
+  if (!isBaby() || S.asleep || role !== "keeper") return;
+  if (pendingWord && p - pendingWord.t > 10000) pendingWord = null;
+  if (!bgame && !bottle && !rocking && p > nextWord && p - ptr.t < 60000) {
+    nextWord = p + rnd(150, 240) * 1000;
+    const w = BWORDS.find(x => !(S.words || []).includes(x));
+    if (w) { pendingWord = { w, t: p }; say("", `~${w[0].toUpperCase() + w.slice(1)}? ${w[0].toUpperCase() + w.slice(1)}…`, 5000); }
+  }
+  if (p > nextArt) {
+    nextArt = p + rnd(360, 600) * 1000;
+    const a = pick(BART.filter(x => !(S.babyArt || []).includes(x)));
+    if (a) { S.babyArt = [...(S.babyArt || []), a].slice(-4); log(`🖍️ ${a}`); dirty = true; }
+  }
+  if (!S.cry && (S.hunger > 78 || p - ptr.t > 6 * 60000)) makeCry();
+}
+function learnWord() {                       // сърце веднага след новата дума: запомня я
+  if (!pendingWord) return false;
+  const w = pendingWord.w; pendingWord = null;
+  S.words = [...(S.words || []), w]; dirty = true;
+  log(`🗣️ Научи нова дума: „${w}“.`);
+  if (S.words.length === 1) pdiary(`Първата ми дума беше „${w}“. Ти ме научи.`);
+  say("", `~${w}! ${w}! ${w}!`, 3500); save(); return true;
+}
+function showToy(k) {                         // показваш му нещо от дъното
+  if (!isBaby()) return false;
+  gaze = { x: oct.x, y: oct.cy - 40, until: performance.now() + 2000 };
+  if (!S.toy) { S.toy = k; log(`🧸 Първата му играчка: ${elN(k).toLowerCase()}.`); say("", `~Ова? О-ва! Мо-е! ${elN(k)}! Мо-е!`, 4000); }
+  else say("", pick([`~Ова? Кво е ова?`, "~Ооо! Лъс-ка-во!", "~Ам? Не ам?"]), 3000);
+  return true;
+}
+function babyPhoto() {                        // бебешка снимка в края на бебешкото време
+  try {
+    const c = document.createElement("canvas"); c.width = c.height = 200; const x = c.getContext("2d");
+    const gr = x.createLinearGradient(0, 0, 0, 200); gr.addColorStop(0, "#5fd0e0"); gr.addColorStop(1, "#2a8fbf"); x.fillStyle = gr; x.fillRect(0, 0, 200, 200);
+    x.fillStyle = "#e9d39c"; x.fillRect(0, 168, 200, 32);
+    Octo.draw(x, { x: 100, y: 128, s: 0.62, age: "baby", mode: "happy", t: 1, st: {}, style: STYLE === "sketch" ? "goggles" : STYLE, skin: S.skin, glasses: false });
+    x.strokeStyle = "#fff"; x.lineWidth = 10; x.strokeRect(5, 5, 190, 190);
+    S.babyPhoto = c.toDataURL("image/jpeg", 0.72); log("📷 Направихме му бебешка снимка.");
+  } catch {}
+}
+
 // ---------- Говорене (балончето следва Октонис) ----------
 let bubbleUntil = 0;
 function say(e, t = "", ms = 4500) { bubbleUntil = performance.now() + ms; lastLine = { t: performance.now(), x: t }; showBubble(e, babify(String(t), e), false); }
@@ -2295,7 +2479,7 @@ function octoMode() {
   if (p - fx.party < 4000) return "party";
   if (S.asleep) return "sleep";
   if (S.hurt || S.sick || p - fx.hurt < 2500) return "hurt";
-  if (p < sadUntil || (S.trash.length >= 4 && S.hatched)) return "sad";
+  if (S.cry || p < sadUntil || (S.trash.length >= 4 && S.hatched)) return "sad";
   if (S.mood > 70) return "happy";
   return "idle";
 }
@@ -2439,7 +2623,7 @@ function drawFloor(t, s, behind) {
     let x = it.x * W + Math.sin(age * 3) * 10 * (1 - fall);
     let y = H * 0.1 + (sandY - H * 0.1) * (1 - (1 - fall) * (1 - fall)) - sz * 0.3;
     if (fl) { x = it.x * W + Math.sin(t * 0.25 + fl.ph) * 40; y = H * fl.y + Math.sin(t * 0.7 + fl.ph) * 10; }
-    g.save(); g.translate(x, y); g.rotate(fl ? Math.sin(t * 0.4 + fl.ph) * 0.6 : it.kind === "trash" ? Math.sin(it.x * 40) * 0.5 : Math.sin(age * 2) * 0.1);
+    g.save(); g.translate(x, y); g.rotate(fl ? Math.sin(t * 0.4 + fl.ph) * 0.6 : it.kind === "trash" ? Math.sin(it.x * 40) * 0.5 : fall < 1 ? Math.sin(age * 2) * 0.1 : Math.sin(it.x * 40) * 0.12);
     g.font = `${sz}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
     if (STYLE === "sketch") g.globalAlpha = 0.92;
     g.fillText(it.e, 0, 0); g.globalAlpha = 1;
@@ -2597,6 +2781,9 @@ function loop() {
     }
   }
   else if (hidden() && !(drag && drag.moved)) { scale = s * 0.55; tx = Math.min(R.cx, W - 70 * s); ty = R.top + 40 * scale + Math.sin(t * 2) * 4; k = 0.05; mode = "idle"; }
+  const bt2 = S ? babyTick(t, s) : null;
+  if (bt2 && !(drag && drag.moved)) { tx = bt2[0]; ty = bt2[1]; k = 0.035; }
+  if (rocking) { tx = oct.px; ty = oct.py; }
   if ((ringOpen || sheetKind) && age !== "egg") { tx = oct.px; ty = oct.py; }
   if (oct.px == null) { oct.px = tx; oct.py = ty; }
   if (oct.sc == null) oct.sc = scale;
@@ -2615,7 +2802,9 @@ function loop() {
   if (S) drawFloor(t, s, true);            // плаващите боклуци са зад него
   drawPillow(s, ground);
   if (S && S.hatched) drawPlaced(t, s);
-  const info = Octo.draw(g, { crack: S && !S.hatched ? (creating ? 1 : (S.eggP || 0) / EGG_MAX) : 0, x: oct.px, y: oct.py - 46 * oct.sc - hop, s: oct.sc, skin: S && S.skin, age, mode, t, mt: t - modeAt, st, lie, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
+  const sway = rocking ? Math.sin(t * 2.4) * 22 * s : 0;
+  if (!hidden()) drawRock(t);                // камъкът е отзад, освен когато се крие зад него
+  const info = Octo.draw(g, { paci: S && S.cry ? false : undefined, crack: S && !S.hatched ? (creating ? 1 : (S.eggP || 0) / EGG_MAX) : 0, x: oct.px + sway, y: oct.py - 46 * oct.sc - hop, s: oct.sc, skin: S && S.skin, age, mode, t, mt: t - modeAt, st, lie, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
     ground: near || age === "egg" ? ground : null, drop: age === "egg", style: STYLE, dir: oct.dir,
     lookAt: role === "keeper" && performance.now() - ptr.t < 3000 ? ptr : gaze && performance.now() < gaze.until ? gaze : null });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
@@ -2628,8 +2817,9 @@ function loop() {
     g.globalAlpha = 1;
   }
   drawEat();
+  if (S) drawBaby(t, s);
   drawTable(s, ground + 4);
-  drawRock(t);
+  if (hidden()) drawRock(t);
   drawGuest(t, s);
   if (S) drawFloor(t, s);
   if (S && S.trash.length > 2) { g.fillStyle = `rgba(70,120,30,${Math.min(0.32, (S.trash.length - 2) * 0.065)})`; g.fillRect(0, 0, W, H); }   // мръсна вода
@@ -2648,6 +2838,7 @@ let drag = null, noHover = false;
 cv.addEventListener("pointerdown", ev => {
   if (!inGame || !S || sheetKind || role !== "keeper") return;
   const x = ev.clientX, y = ev.clientY;
+  if (babyInput("down", x, y)) { closeRing(); return; }
   const hit = floorHits.find(h => Math.hypot(h.x - x, h.y - y) < h.r);
   if (hit && role === "keeper") { closeRing();
     if (hit.kind === "parcel") return openParcel();
@@ -2677,6 +2868,7 @@ cv.addEventListener("pointerdown", ev => {
 let itemDrag = null;
 function slotAt(x, y) { const el = document.elementFromPoint(x, y); return el && (el.closest("#mixbar .slot") || el.closest("#mixbar")); }
 cv.addEventListener("pointermove", ev => {
+  if (role === "keeper" && S && (bgame || bottle || rocking) && babyInput("move", ev.clientX, ev.clientY)) return;
   if (itemDrag && ev.pointerId === itemDrag.pid) {
     if (!itemDrag.moved && Math.hypot(ev.clientX - itemDrag.sx, ev.clientY - itemDrag.sy) > 10) {
       itemDrag.moved = true; const it = [...S.trash, ...S.parts].find(q => q.id === itemDrag.id);
@@ -2691,11 +2883,14 @@ cv.addEventListener("pointermove", ev => {
   if (drag.moved) { const s = Math.min(H * 0.46 / 430, W * 0.8 / 560); oct.px = ev.clientX + drag.dx; oct.py = Math.min(ev.clientY + drag.dy, H * 0.88 + 6 - 195 * s); }
 });
 cv.addEventListener("pointerup", ev => {
+  if (role === "keeper" && S && (bgame || bottle || rocking) && babyInput("up", ev.clientX, ev.clientY)) return;
+  bdown = false;
   if (itemDrag && ev.pointerId === itemDrag.pid) {
     const d = itemDrag; itemDrag = null; $("ghost")?.remove();
     document.querySelectorAll("#mixbar .slot").forEach(e => e.classList.remove("over"));
     if (!d.moved) return d.kind === "trash" ? pickTrash(d.id) : pickPart(d.id);
     const it = [...S.trash, ...S.parts].find(q => q.id === d.id); if (!it) return;
+    if (isBaby() && onOcto(ev.clientX, ev.clientY)) { quietPick = true; d.kind === "trash" ? pickTrash(d.id) : pickPart(d.id); quietPick = false; showToy(it.k); return; }
     if (slotAt(ev.clientX, ev.clientY) && canMixNow() && mixSel.length < 5) {
       quietPick = true; d.kind === "trash" ? pickTrash(d.id) : pickPart(d.id); quietPick = false;
       addToMix(it.k); return;
@@ -2755,6 +2950,7 @@ setInterval(() => {
     if (S.parcel && !parcelSaid) { parcelSaid = true; say("", "Пощата! Рибата-пощальон остави колет! Отвори го, моля, отвори го!", 8000); }
     if (departing && performance.now() - departing.at < 3000) say("", `Сбогом! Грижи се за яйцето.\nТо е моят наследник.`, 6000);
     grumble(now);
+    babySecond(p, now);
     if (placedAny(MUSIC) && S.hatched && !S.asleep && !working && p > nextDance) { nextDance = p + rnd(3, 6) * 60000; danceUntil = p + 6000; say("", pick(["Обичам тази песен!", "Бълбук-бълбук, танцувам!", "Не гледай. Танцувам."])); }
     if (sickSay) { say("", sickSay === "well" ? "Оздравях! Благодаря, че се погрижи за мен." : "Не ми е добре… Май се разболях.", 7000); sickSay = false; }
     guestTick(p);
