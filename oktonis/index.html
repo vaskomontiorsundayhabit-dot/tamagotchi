@@ -1228,7 +1228,7 @@ function answer(ans) {
   const nq = S.q;
   if (r && huff) r += huff;
   setTimeout(() => { if (r) oSays(r); render(); if (nq) setTimeout(() => { if (S.q === nq) oSays(nq.text, 9000); }, r ? 6000 : 0); }, 700);
-  if (!next && !path.length && root.next && root.next[ans]) { S.followUp = root.next[ans]; setTimeout(() => { if (!S.q && performance.now() > bubbleUntil) askNext(); }, rnd(60, 120) * 1000); }
+  if (!next && !path.length && root.next && root.next[ans]) { S.followUp = root.next[ans]; setTimeout(() => { if (!S.q) askNext(); }, 7000); }   // продължението идва веднага, като разговор
   save();
 }
 function careEffect(ans) {                 // сърце, смях и махане все пак му действат
