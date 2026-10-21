@@ -1994,6 +1994,17 @@ function doctorHeal() {
   setTimeout(() => say("", "Докторът ми даде лекарство. Вече ми е по-добре!", 5000), 800);
   save();
 }
+// аксесоарите, които идват с растежа: могат да се свалят и слагат от шкафа
+const ACC = { glasses: ["👓", "Изобретателски очила", "Пристигнаха с колета."], adventure: ["🤠", "Изследователска шапка", "Защото обича да играе и да изследва."],
+  trader: ["🎩", "Цилиндър", "Защото е търговец по душа."], healthy: ["🌱", "Листенце", "Защото се храни здравословно."] };
+const accOff = a => (S && S.accOff || []).includes(a);
+const myAccs = () => Object.keys(ACC).filter(a => a === "glasses" ? S.glasses : [...traitsOf(), S.inherit].includes(a));
+function toggleAcc(a) {
+  if (role !== "keeper") return;
+  const off = accOff(a); S.accOff = off ? S.accOff.filter(x => x !== a) : [...(S.accOff || []), a]; dirty = true;
+  say("", off ? pick(["Ето, пак съм си аз.", "Слагам го. Липсваше ми."]) : a === "glasses" ? "Без очила… всичко е малко размазано. Но изглеждам интересно." : pick(["Свалих го. За малко.", "Нов стил!"]), 4000);
+  save(); render();
+}
 function wearHat(h) {
   if (role !== "keeper") return;
   S.hat = S.hat === h ? null : h; dirty = true;
@@ -2404,14 +2415,15 @@ function fillSheet(kind) {
       ${ingOf(k) && canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(ingOf(k)) ? "" : "disabled"}>Направи${cnt(k) || placed(k) ? " още" : " пак"}</button>` : ""}
       ${placed(k) ? `<small class="st">${k === "trampoline" || active(k) ? "✓ на дъното, работи" : "на дъното, изключено (докосни го там)"}</small>` : ""}
       ${ACTS[k] && role === "keeper" ? `<button class="tg" data-k="${k}">${placed(k) ? "Прибери" : "Сложи"}</button>` : ""}</div>`;
-    const hats = S.hats || [];
+    const hats = S.hats || [], accs = myAccs();
     const tabs = `<div class="tabs">${[["inv", "⚙️ Изобретения"], ["wear", "🎩 Дрехи"]].map(([k, n]) => `<button data-c="${k}" class="${cabTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
-    sh.innerHTML = head("🗄️ Шкаф") + tabs + (cabTab === "wear" ? (hats.length ? `<div class="cab">${hats.map(h => `<div class="gd${S.hat === h ? " on" : ""}"><span>${HATS[h][0]}</span><b>${esc(HATS[h][1])}</b>${role === "keeper" ? `<button class="tg hat" data-h="${h}">${S.hat === h ? "Свали" : "Сложи"}</button>` : ""}</div>`).join("")}</div>`
+    sh.innerHTML = head("🗄️ Шкаф") + tabs + (cabTab === "wear" ? (hats.length || accs.length ? `<div class="cab">${hats.map(h => `<div class="gd${S.hat === h ? " on" : ""}"><span>${HATS[h][0]}</span><b>${esc(HATS[h][1])}</b>${role === "keeper" ? `<button class="tg hat" data-h="${h}">${S.hat === h ? "Свали" : "Сложи"}</button>` : ""}</div>`).join("")}${accs.map(a => `<div class="gd${accOff(a) ? "" : " on"}"><span>${ACC[a][0]}</span><b>${esc(ACC[a][1])}</b><small>${esc(ACC[a][2])}</small>${role === "keeper" ? `<button class="tg acc" data-a="${a}">${accOff(a) ? "Сложи" : "Свали"}</button>` : ""}</div>`).join("")}</div>`
       : `<div class="sub">Още няма дрехи. Понякога рибата-пощальон носи подаръци…</div>`) : made.length ? `<div class="cab">${act.map(card).join("")}${rest.map(card).join("")}</div>`
       : `<div class="sub">Шкафът е празен. Тук ще стоят изобретенията.</div>`);
-    sh.querySelectorAll(".tg:not(.hat)").forEach(b => b.onclick = () => togglePlace(b.dataset.k));
+    sh.querySelectorAll(".tg:not(.hat):not(.acc)").forEach(b => b.onclick = () => togglePlace(b.dataset.k));
     sh.querySelectorAll(".rm").forEach(b => b.onclick = () => remake(b.dataset.k));
     sh.querySelectorAll(".hat").forEach(b => b.onclick = () => wearHat(b.dataset.h));
+    sh.querySelectorAll(".acc").forEach(b => b.onclick = () => toggleAcc(b.dataset.a));
     sh.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { cabTab = b.dataset.c; fillSheet("cab"); });
   } else if (kind === "cook") {
     const foods = S.found.filter(c => EDIBLE[c]);
@@ -4340,7 +4352,7 @@ function loop() {
   const sway = rocking ? Math.sin(t * 2.4) * 22 * s : 0;
   if (!hidden()) drawRock(t);                // камъкът е отзад, освен когато се крие зад него
   drawPillow(s, ground);
-  const info = Octo.draw(g, { paci: S && S.cry ? false : undefined, crack: S && !S.hatched ? (creating ? 1 : (S.eggP || 0) / EGG_MAX) : 0, x: oct.px + sway, y: oct.py - 46 * oct.sc - hop, s: oct.sc, skin: S && S.skin, age, mode, t, mt: t - modeAt, st, lie, hat: S && S.hat, plaster: S && S.hurt && S.plaster, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
+  const info = Octo.draw(g, { paci: S && S.cry ? false : undefined, crack: S && !S.hatched ? (creating ? 1 : (S.eggP || 0) / EGG_MAX) : 0, x: oct.px + sway, y: oct.py - 46 * oct.sc - hop, s: oct.sc, skin: S && S.skin, age, mode, t, mt: t - modeAt, st, lie, hat: S && S.hat, plaster: S && S.hurt && S.plaster, glasses: S ? !!S.glasses && !accOff("glasses") : true, traits: S ? [...traitsOf(), S.inherit].filter(x => x && !accOff(x)) : [],
     hug: mode === "sleep" && !!pillow && pillow.x != null, work: table && table.x != null ? [table.x, ground + 4 - 120 * s - 40 * s] : null, ground: (near || age === "egg") && !(mode === "sleep" && pillow) ? ground : null, drop: age === "egg", style: STYLE, dir: oct.dir,
     lookAt: role === "keeper" && performance.now() - ptr.t < 3000 ? ptr : gaze && performance.now() < gaze.until ? gaze : null });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
