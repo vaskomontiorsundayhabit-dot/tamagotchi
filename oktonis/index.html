@@ -271,6 +271,8 @@
   .glog { max-height: 42vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
   .gm { padding: 7px 11px; border-radius: 14px; max-width: 85%; font-size: 15px; background: rgba(185,246,255,.25); align-self: flex-start; }
   .gm.t { align-self: flex-end; background: rgba(255,179,107,.3); }
+  .gq { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; } .gq button { padding: 7px 10px; border-radius: 12px; font-size: 13px; text-align: left; background: rgba(185,246,255,.18); color: inherit; border: 1px solid rgba(185,246,255,.4); }
+  .gq.snd button { background: rgba(255,120,120,.18); border-color: rgba(255,150,150,.5); }
   .gform { display: flex; gap: 6px; } .gform input { flex: 1; padding: 10px 12px; border-radius: 12px; border: 2px solid rgba(0,0,0,.2); font-size: 16px; } .gform button { padding: 10px 14px; border-radius: 12px; font-weight: 700; }
   .snap.go { left: calc(100% - 34px); top: 340px; transform: translate(-50%, -50%) scale(.12); opacity: .2; }
   @keyframes snapin { from { transform: translate(-50%, -50%) scale(.3) rotate(10deg); opacity: 0; } }
@@ -2209,7 +2211,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 38;
+const PAGE_V = 39;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -2475,7 +2477,9 @@ function fillSheet(kind) {
     if (keepTxt) $("ghIn").value = keepTxt; if (hadFocus) $("ghIn").focus();
     const lg = sh.querySelector(".glog"); if (lg) lg.scrollTop = lg.scrollHeight;
     if ($("ghOn")) $("ghOn").onclick = () => { if (!ghost.on && !S.asleep) return; ghostSend({ t: ghost.on ? "off" : "on" }); fillSheet("ghost"); };
-    $("ghForm").onsubmit = ev => { ev.preventDefault(); const x = $("ghIn").value.trim(); if (!x) return;
+    sh.querySelectorAll("[data-gl]").forEach(b => b.onclick = () => { ghostSend({ t: "msg", x: GHOST_LINES[+b.dataset.gl] }); fillSheet("ghost"); });
+    sh.querySelectorAll("[data-gs]").forEach(b => b.onclick = () => { ghostSend({ t: "sound", k: b.dataset.gs }); });
+    if ($("ghForm")) $("ghForm").onsubmit = ev => { ev.preventDefault(); const x = $("ghIn").value.trim(); if (!x) return; if (role === "viewer" && !ghost.on) return;
       ghostSend({ t: role === "viewer" ? "msg" : "reply", x }); $("ghIn").value = ""; fillSheet("ghost"); setTimeout(() => $("ghIn")?.focus(), 50); };
   } else if (kind === "ransom" || kind === "krill") {
     sh.innerHTML = krillHtml(head, kind); krillPanel(kind);
@@ -3480,6 +3484,7 @@ const SEA = {
   g_jelly: ["@g:jelly", "Медузата", "guest", "", 1, "guest", "c", "night", "Не говори много. Но свети красиво."],
   g_snail: ["@g:snail", "Охлювът", "guest", "", 1, "guest", "c", "morning", "Казва „добро утро“ и по обяд."],
   g_shrimp: ["@g:shrimp", "Скаридата", "guest", "", 1, "guest", "c", "any", "Подозира всички, че искат да я изядат."],
+  ghostfish: ["@ghostfish", "Рибата-дух", "leg", "", 1.3, "guest", "l", "night", "Появява се само в най-тъмните нощи. Никой не знае откъде идва."],
   g_angler: ["@angler", "Рибата-фенер", "guest", "", 1.2, "guest", "r", "night", "Носи си лампа. Нощем минава съвсем бавно."],
   croc: ["@m:croc", "Морски крокодил", "rep", "", 2.4, "slow", "v", "any", "Най-големият крокодил. Добре, че само минава."],
 };
@@ -3898,6 +3903,7 @@ function anglerArt(x, y, sc, d, t) {
 }
 function drawSeaArt(ctx, k, z, t, dir) {
   if (k.startsWith("f:")) { ctx.scale(dir > 0 ? 1 : -1, 1); return seaFish(ctx, k.slice(2), z, t, dir); }
+  if (k === "ghostfish") { ctx.globalAlpha *= 0.75; ctx.shadowColor = "#b9f6ff"; ctx.shadowBlur = 24; ctx.lineWidth = Math.max(2, z * 0.035); ctx.strokeStyle = "#9fe6f5"; fishBody(ctx, { l: 1.1, h: 0.55, c: "#e8fdff", b: "#bdf1ff", tail: "round", fin: "tall" }, z * 0.9, t, "#9fe6f5"); return; }
   if (k.startsWith("b:")) return bugArt(ctx, k.slice(2), z, t, dir);
   if (k.startsWith("m:")) return mamArt(ctx, k.slice(2), z, t, dir);
   if (k.startsWith("g:") || k === "angler") { const g0 = g; g = ctx; try { if (k === "angler") anglerArt(z * 0.1, z * 0.12, z / 150, dir > 0 ? 1 : -1, t); else drawCreature(k.slice(2), 0, 0, z / 90, t); } finally { g = g0; } return; }
@@ -4022,7 +4028,7 @@ function albumHtml(head) {
   const ids = Object.keys(SEA).filter(id => SEA[id][2] === albTab && al[id]).sort((a, b) => al[a].t - al[b].t);
   if (albPick && al[albPick]) {
     const c = SEA[albPick];
-    h += `<div class="pol big"><img src="${thumb(albPick)}" alt=""><b>${esc(c[1])}</b><small>${new Date(al[albPick].t).toLocaleDateString("bg-BG")}${al[albPick].n > 1 ? " · снимки: " + al[albPick].n : ""}</small><div class="tier t${c[6]}">${TIER_N[c[6]]} · шанс да го видиш: ${pct(seaChance(albPick))}${c[7] === "night" ? " · само нощем" : ""}</div><p>${esc(c[8])}</p></div>`;
+    h += `<div class="pol big"><img src="${thumb(albPick)}" alt=""><b>${esc(c[1])}</b><small>${new Date(al[albPick].t).toLocaleDateString("bg-BG")}${al[albPick].n > 1 ? " · снимки: " + al[albPick].n : ""}</small><div class="tier t${c[6]}">${albPick === "ghostfish" ? "👻 Само в най-тъмните нощи" : `${TIER_N[c[6]]} · шанс да го видиш: ${pct(seaChance(albPick))}${c[7] === "night" ? " · само нощем" : ""}`}</div><p>${esc(c[8])}</p></div>`;
   }
   h += ids.length ? `<div class="pols">${ids.map(id => `<div class="pol${albPick === id ? " sel" : ""}${SEA[id][6] === "l" ? " leg" : ""}" data-p="${id}"><img src="${thumb(id)}" alt=""><b>${esc(SEA[id][1])}</b></div>`).join("")}</div>`
     : `<div class="sub">Още няма снимки тук. Когато някой мине покрай Октонис, докосни го!</div>`;
@@ -4042,15 +4048,19 @@ function ghostApply(m) {
     ghost.on = true; ghost.at = performance.now(); ghost.x = W * 0.2; ghost.y = H * 0.35;
     if (role === "keeper" && S.hatched) setTimeout(() => { sleepTalking = true; say("", pick(["Хрр… риба… светеща риба… хрр…", "Мм… кой е там… прозрачен… хрр…"]), 5000); sleepTalking = false; }, 900);
   }
-  if (m.t === "off" && ghost.on) ghost.on = false;
+  if (m.t === "off" && ghost.on) { ghost.on = false; renderGhostBtn(); }
+  if (m.t === "sound" && ghost.on) {                            // страшен звук
+    if (!m.local || role === "viewer") ghostSound(m.k);
+    if (role === "keeper" && S.hatched) setTimeout(() => { sleepTalking = true; say("", pick(["Хрр… к-кой е там… хрр…", "Мм… страх ме е… хрр…", "…мамо… хрр…"]), 4000); sleepTalking = false; }, 1500);
+    return;
+  }
   if (m.t === "msg" || m.t === "reply") {
     if (!m.local && m.by === role) return;                        // моето вече е показано
     ghost.msgs.push({ who: m.t === "msg" ? "g" : "t", x: String(m.x || "").slice(0, 200), at: m.at || Date.now() });
     ghost.msgs = ghost.msgs.slice(-200);
     if (role === "viewer") try { localStorage.setItem("okt_ghost_" + ghostTopic(), JSON.stringify(ghost.msgs)); } catch {}   // при vasko се помни
     if (m.t === "msg") ghost.last = { x: String(m.x || "").slice(0, 200), at: performance.now() };
-    if (m.t === "msg" && !ghost.on) ghostApply({ t: "on" });
-    if (m.t === "msg" && !ghost.on) return;                      // буден е: духът не идва
+    if (m.t === "msg" && !ghost.on) { ghost.msgs.pop(); return; }   // пише се само докато духът е тук
     if (sheetKind === "ghost") fillSheet("ghost");
     renderGhostBtn(m.t === "msg" && role === "keeper" || m.t === "reply" && role === "viewer");
   }
@@ -4075,7 +4085,8 @@ async function ghostPoll() {
 setInterval(() => { if (!document.hidden) ghostPoll(); }, 8000);
 function renderGhostBtn(ping) {
   const b = $("side") && $("side").querySelector('[data-k="ghost"]'); if (!b) return;
-  b.classList.toggle("hidden", role !== "viewer" && !ghost.on && !ghost.msgs.length);
+  b.classList.toggle("hidden", role !== "viewer" && !ghost.on);     // toshik има чат само докато духът е тук
+  if (role !== "viewer" && !ghost.on && sheetKind === "ghost") closeSheet();
   if (ping) b.classList.add("ping");
 }
 function drawGhost(t, s) {
@@ -4097,12 +4108,34 @@ function drawGhost(t, s) {
   g.restore();
   if (ghost.last && p - ghost.last.at < 9000) talkBubble(ghost.x, ghost.y - z * 0.45, ghost.last.x);
 }
+const GHOST_LINES = ["Бууууу… аз съм рибата-дух…", "Чувам те как дишаш… хи-хи-хи…", "Под камъка има нещо… и то те гледа…", "Не поглеждай зад себе си…", "Тази нощ водата е студена… като мен…",
+  "Някога и аз бях октопод… преди сто години…", "Шшшт… ако кажеш името ми, ще се върна…", "Броя пипалата ти… едно… две… липсва едно!", "Сандъкът ти скърца нощем… знаеш ли защо?", "Ще дойда пак… когато луната е пълна…"];
+const GHOST_SOUNDS = [["wail", "👻 Вой"], ["wind", "🌬️ Вятър"], ["heart", "💓 Сърце"], ["creak", "🚪 Скърцане"], ["bell", "🔔 Камбана"], ["laugh", "😈 Смях"]];
+let actx = null;
+addEventListener("pointerdown", () => { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); } catch {} });
+function ghostSound(k) {                        // страшни звуци (синтезирани)
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
+  const a = actx, t0 = a.currentTime, out = a.createGain(); out.gain.value = 0.35; out.connect(a.destination);
+  const osc = (type, f, st, dur, g0 = 0.6) => { const o = a.createOscillator(), gg = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, st); gg.gain.setValueAtTime(0, st); gg.gain.linearRampToValueAtTime(g0, st + 0.05); gg.gain.exponentialRampToValueAtTime(0.001, st + dur); o.connect(gg); gg.connect(out); o.start(st); o.stop(st + dur + 0.05); return o; };
+  const noise = (st, dur, freq, q = 1, g0 = 0.6) => { const b = a.createBuffer(1, a.sampleRate * dur, a.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = a.createBufferSource(), f = a.createBiquadFilter(), gg = a.createGain(); src.buffer = b; f.type = "bandpass"; f.frequency.value = freq; f.Q.value = q;
+    gg.gain.setValueAtTime(0, st); gg.gain.linearRampToValueAtTime(g0, st + dur * 0.4); gg.gain.linearRampToValueAtTime(0, st + dur); src.connect(f); f.connect(gg); gg.connect(out); src.start(st); return f; };
+  if (k === "wail") { const o = osc("sine", 220, t0, 2.6, 0.5); o.frequency.linearRampToValueAtTime(420, t0 + 1); o.frequency.linearRampToValueAtTime(180, t0 + 2.6);
+    const l = a.createOscillator(), lg = a.createGain(); l.frequency.value = 6; lg.gain.value = 12; l.connect(lg); lg.connect(o.frequency); l.start(t0); l.stop(t0 + 2.7); }
+  if (k === "wind") { const f = noise(t0, 3, 500, 2, 0.8); f.frequency.linearRampToValueAtTime(1400, t0 + 1.5); f.frequency.linearRampToValueAtTime(400, t0 + 3); }
+  if (k === "heart") for (let i = 0; i < 4; i++) { osc("sine", 60, t0 + i * 0.8, 0.18, 0.9); osc("sine", 50, t0 + i * 0.8 + 0.22, 0.2, 0.7); }
+  if (k === "creak") { const o = osc("sawtooth", 90, t0, 1.6, 0.25); for (let i = 0; i < 8; i++) o.frequency.setValueAtTime(80 + Math.random() * 60, t0 + i * 0.2); }
+  if (k === "bell") for (let i = 0; i < 3; i++) { osc("sine", 330, t0 + i * 1.1, 1.6, 0.5); osc("sine", 660 * 1.01, t0 + i * 1.1, 1.0, 0.2); }
+  if (k === "laugh") for (let i = 0; i < 6; i++) { const o = osc("square", 180 - i * 8, t0 + i * 0.22, 0.16, 0.18); o.frequency.linearRampToValueAtTime(120 - i * 8, t0 + i * 0.22 + 0.16); }
+}
 function ghostHtml(head) {
   const log = ghost.msgs.map(m => `<div class="gm ${m.who}"><b>${m.who === "g" ? "👻" : "🐙"}</b> ${esc(m.x)}</div>`).join("") || `<div class="sub">${role === "viewer" ? "Пусни рибата-дух и пиши. Toshik ще вижда съобщенията ти над нея." : "Рибата-дух още мълчи…"}</div>`;
   const awake = !S.asleep && !ghost.on;
   return head("👻 Рибата-дух") + (role === "viewer" ? `<div class="row2"><button class="ans ${ghost.on ? "" : "yes"}" id="ghOn" ${awake ? "disabled" : ""}>${ghost.on ? "Скрий рибата-дух" : "Покажи рибата-дух"}</button></div>` +
     (awake ? `<div class="sub">Рибата-дух идва само докато Октонис спи. Сега е буден.</div>` : "") : "") +
-    `<div class="glog">${log}</div><form id="ghForm" class="gform"><input id="ghIn" maxlength="200" autocomplete="off" placeholder="${role === "viewer" ? "Напиши като рибата-дух…" : "Отговори на рибата-дух…"}"><button>Прати</button></form>`;
+    `<div class="glog">${log}</div>` + (role === "viewer" && ghost.on ? `<div class="sub">Бързи страшни фрази:</div><div class="gq">${GHOST_LINES.map((x, i) => `<button data-gl="${i}">${esc(x)}</button>`).join("")}</div>
+      <div class="sub">Страшни звуци:</div><div class="gq snd">${GHOST_SOUNDS.map(([k, n]) => `<button data-gs="${k}">${n}</button>`).join("")}</div>` : "") +
+    (role === "viewer" && !ghost.on ? `<div class="sub">Пиши, след като покажеш рибата-дух.</div>` : `<form id="ghForm" class="gform"><input id="ghIn" maxlength="200" autocomplete="off" placeholder="${role === "viewer" ? "Напиши като рибата-дух…" : "Отговори на рибата-дух…"}"><button>Прати</button></form>`);
 }
 // ---------- Историята с рачетата Крил (шестимата, които не обичат снимки) ----------
 const KRILL_THREATS = ["Спи с едно око отворено, осмоного!", "Рачетата Крил никога не забравят. Никога!", "Следващия път ще сме сто!", "Пази си болтовете… и шапката!", "Ще се върнем. С братовчедите."];
@@ -4360,6 +4393,8 @@ cv.addEventListener("pointerdown", ev => {
   const x = ev.clientX, y = ev.clientY;
   if (babyInput("down", x, y)) { closeRing(); return; }
   if (krillTap(x, y)) return;
+  if (ghost.on && Math.hypot(x - ghost.x, y - ghost.y) < Math.max(60, oct.r * 0.5) && performance.now() - flashAt > 1500) {   // снимка на духа
+    closeRing(); snapId("ghostfish"); ghost.last = { x: pick(["Мислиш, че ще ме хванеш на снимка?… Хи-хи-хи…", "Светкавица… Духовете не излизат на снимки… обикновено…", "Бууу! Сега съм в албума ти завинаги…"]), at: performance.now() }; return; }
   if (vis && vis.hit && Math.hypot(x - vis.hit.x, y - vis.hit.y) < vis.hit.r && performance.now() - flashAt > 1500) { closeRing(); return snapVis(); }
   const hit = floorHits.find(h => Math.hypot(h.x - x, h.y - y) < h.r);
   if (hit && role === "keeper") { closeRing();
