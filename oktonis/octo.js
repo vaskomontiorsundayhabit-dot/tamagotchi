@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let HUG = false, NOPACI = false, CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
+let WORK = null, HUG = false, NOPACI = false, CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -512,9 +512,9 @@ function body(t, mt, st) {
   g.restore();
 
   // ефекти
-  const cloudY = 62 + 150 * A.tL;
+  const cloudY = WORK ? WORK[1] : 62 + 150 * A.tL, cloudX = WORK ? WORK[0] : 0;
   if (mode === "work") {
-    brawl(0, cloudY, t);
+    if (WORK) { g.save(); g.translate(cloudX, cloudY); g.scale(0.7, 0.7); brawl(0, 0, t); g.restore(); } else brawl(0, cloudY, t);
     if (Math.random() < 0.09) {
       const side = pick([-1, 1]);
       st.parts.push({ x: side * rnd(40, 120), y: cloudY - rnd(20, 70), vx: side * rnd(2, 5.5), vy: rnd(-9, -5), l: 90,
@@ -1083,7 +1083,8 @@ function drawReal(ctx, o) {
   SP = A.speed || 1;
   const k = sc * (age === "egg" ? 0.9 : A.k);
   LIE = !!o.lie && mode === "sleep" && age !== "egg";
-  HUG = !!o.hug && mode === "sleep" && age !== "egg";       // спи легнал на дъното
+  HUG = !!o.hug && mode === "sleep" && age !== "egg";
+  WORK = o.work && mode === "work" ? [(o.work[0] - o.x) / k, (o.work[1] - o.y) / k] : null;       // спи легнал на дъното
   GROUND = o.ground == null || LIE ? null : (o.ground - o.y) / k;
   DROP = o.drop !== false;
   g.save(); g.translate(o.x, o.y); if (LIE) g.rotate(-1.45); g.scale(k, k);
