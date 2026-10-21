@@ -1756,11 +1756,11 @@ function fillSheet(kind) {
     sh.querySelectorAll(".add").forEach(b => b.onclick = () => addToMix(b.dataset.k));
     sh.querySelectorAll(".eat").forEach(b => b.onclick = () => feed(b.dataset.k));
     sh.querySelectorAll(".cell.full").forEach(c => {
-      c.onpointerdown = ev => { if (role !== "keeper") return; invDrag = { k: c.dataset.k, n: +c.dataset.n, sx: ev.clientX, sy: ev.clientY, moved: false, pid: ev.pointerId };
+      c.onpointerdown = ev => { invDrag = { k: c.dataset.k, n: +c.dataset.n, sx: ev.clientX, sy: ev.clientY, moved: false, pid: ev.pointerId };
         try { c.setPointerCapture(ev.pointerId); } catch {} };
       c.onpointermove = ev => {
         if (!invDrag || ev.pointerId !== invDrag.pid) return;
-        if (!invDrag.moved && Math.hypot(ev.clientX - invDrag.sx, ev.clientY - invDrag.sy) > 8) {
+        if (role === "keeper" && !invDrag.moved && Math.hypot(ev.clientX - invDrag.sx, ev.clientY - invDrag.sy) > 8) {
           invDrag.moved = true; const gh = document.createElement("div"); gh.id = "ghost"; gh.textContent = elE(invDrag.k); document.body.appendChild(gh); }
         if (invDrag.moved) { const gh = $("ghost"); gh.style.left = ev.clientX + "px"; gh.style.top = ev.clientY + "px"; dropHover(ev.clientX, ev.clientY); }
       };
