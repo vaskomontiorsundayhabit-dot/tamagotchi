@@ -1093,6 +1093,7 @@ function mix(a, b, who, more = []) {
   if (S.asleep) return say("", "Шшш… спи.");
   if (S.energy < 12) return say("", "Нямам сили. Първо да поспя.");
   if (S.stage === "baby") return say("", "Ба-бу! Още съм малък за това.");
+  if (noGlasses()) return say("", pick(["Без очилата не виждам кое е болт и кое е бонбон. Сложи ми ги от шкафа, моля.", "Не мога да майсторя без очилата! Всичко е размазано. Те са в шкафа."]), 6000);
   const tk = [a, b, ...more].sort().join("+");
   if ((S.nope || []).includes(tk)) return say("", `Вече пробвахме ${[a, b, ...more].map(k => elN(k).toLowerCase()).join(" и ")}. Не става. Нещо друго?`, 5000);
   working = performance.now(); mixing = { a, b, who, more }; closeSheet(); closeRing(); table = { x: null, a: 0 };
@@ -1923,6 +1924,7 @@ function readBook() {
   if (role !== "keeper" || !S.hatched || reading || working) return;
   if (S.asleep) return say("", "Шшш… спи.");
   if (S.stage === "baby") return say("", pick(["Не мога да чета още! Ама картинките са хубави.", "Ба… бу… кни-га?"]));
+  if (noGlasses()) return say("", pick(["Буквите танцуват… Без очилата не мога да чета. Сложи ми ги от шкафа.", "Чета ли? Без очила виждам само петна. Очилата са в шкафа."]), 6000);
   if (Date.now() - (S.lastRead || 0) < 4 * MIN) return say("", "Главата ми е пълна. После пак.");
   if (S.energy < 15) return say("", "Буквите ми се размазват… Нека първо поспя.");
   const own = SHOP.find(b => (S.lib || []).includes(b.id) && !(S.libRead || []).includes(b.id));
@@ -1997,6 +1999,7 @@ function doctorHeal() {
 // аксесоарите, които идват с растежа: могат да се свалят и слагат от шкафа
 const ACC = { glasses: ["👓", "Изобретателски очила", "Пристигнаха с колета."], adventure: ["🤠", "Изследователска шапка", "Защото обича да играе и да изследва."],
   trader: ["🎩", "Цилиндър", "Защото е търговец по душа."], healthy: ["🌱", "Листенце", "Защото се храни здравословно."] };
+const noGlasses = () => S && S.glasses && stageIdx() >= 4 && accOff("glasses");    // голям е и без очила: не вижда за четене и майсторене
 const accOff = a => (S && S.accOff || []).includes(a);
 const myAccs = () => Object.keys(ACC).filter(a => a === "glasses" ? S.glasses : [...traitsOf(), S.inherit].includes(a));
 function toggleAcc(a) {
