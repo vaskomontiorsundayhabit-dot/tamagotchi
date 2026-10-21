@@ -134,7 +134,7 @@
   .it .in { display: flex; flex-direction: column; font-size: 15px; } .it .in small { color: var(--muted); font-size: 12px; }
   .sell { background: #ffd166; color: #2a1730; font-weight: 700; padding: 8px 12px; }
   .grp { margin: 12px 0 2px; font-weight: 700; color: #ffe7a8; }
-  .tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 10px; }
+  .tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; margin-bottom: 10px; }
   .tabs button { padding: 8px 2px; font-size: 13px; } .tabs button.on { background: var(--peach); color: #2a1730; font-weight: 700; }
   .lock { display: flex; gap: 14px; align-items: center; font-size: 44px; background: rgba(0,0,0,.25); border-radius: 14px; padding: 16px; }
   .lock div { font-size: 15px; } .lock small { color: var(--muted); }
@@ -196,6 +196,8 @@
   .gd { background: rgba(255,240,215,.12); border: 2px solid rgba(0,0,0,.25); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 3px; }
   .gd.on { background: rgba(255,209,102,.25); border-color: var(--gold); } .gd span { font-size: 30px; } .gd small { color: #f1dfc4; font-size: 11px; line-height: 1.25; flex: 1; }
   .gd .st { color: #ffe7a8 !important; flex: 0 !important; }
+  .gd .rc { color: #fff7e6 !important; flex: 0 !important; font-weight: 600; } .gd.zero { opacity: .62; }
+  .gd .rm, .gd .eat2 { margin-top: 4px; padding: 6px; font-weight: 700; background: #8fd18b; color: #1d3a1a; } .gd .rm:disabled { opacity: .45; } .gd .eat2 { background: #ffd166; color: #2a1730; }
   .gd .tg { margin-top: 4px; padding: 6px; font-weight: 700; background: #ffd166; color: #2a1730; } .gd.on .tg { background: rgba(255,255,255,.2); color: #fff; }
   /* панелите като предмети от играта */
   #sheet.wood { background: repeating-linear-gradient(0deg, rgba(0,0,0,.12) 0 2px, transparent 2px 46px), linear-gradient(90deg, #9a6337, #b07440 50%, #9a6337);
@@ -802,6 +804,12 @@ function ideaNo() {
 // ---------- Смесване ----------
 let working = 0, mixing = null, table = null;
 const WORK_MS = 13500;          // 2.5 с за масата, 3 с влачене, очила, после майстори
+const recLine = c => { const r = ingOf(c); return r ? r.map(k => elE(k) + " " + elN(k)).join(" + ") : ""; };
+function remake(c) {                         // прави пак нещо по рецептата
+  const r = ingOf(c); if (!r || !canMixNow()) return;
+  if (!haveAll(r)) return say("", `Нямам всичко за ${elN(c).toLowerCase()}. Трябват ми ${r.map(k => elN(k).toLowerCase()).join(" и ")}.`, 5000);
+  closeSheet(); mix(r[0], r[1], "me", r.slice(2));
+}
 function haveAll(list) { const c = {}; for (const k of list) c[k] = (c[k] || 0) + 1; return Object.entries(c).every(([k, n]) => cnt(k) >= n); }
 function mix(a, b, who, more = []) {
   if (role !== "keeper" || working || reading) return say("", "Чакай, зает съм!");
@@ -842,7 +850,7 @@ function mixDone() {
     S.mood = clamp(S.mood + (first ? 18 : 5)); if (first) fx.party = performance.now();
     log(first ? `🎉 Откри ${elFull(c)}! (${name})` : `🔁 Направи пак ${elFull(c)}.`);
     say("", first ? `Работи! ${elN(c)}! Записвам го в Книгата на откритията.` : `Още един ${elN(c).toLowerCase()}. Точно като първия.`, 7000);
-    if (first && Object.values(FOODS).some(f => f[5] === c)) setTimeout(() => say("", `${elN(c)} вече е в менюто с храната! Мога да го ям, когато поискам.`, 7000), 7500);
+    if (first && Object.values(FOODS).some(f => f[5] === c)) setTimeout(() => say("", `${elN(c)} отива при храната. Рецептата я записах, можем да го правим пак!`, 7000), 7500);
     if (first && ACTS[c]) setTimeout(() => say("", `Сложих ${elN(c).toLowerCase()} в шкафа. Извади го оттам и ще заработи!`, 7000), 7500);
     if (first && EL[c][2] >= 3) pdiary(`Днес открих ${elN(c)}. ${who === "me" ? "Ти го направи с мен. " : ""}Най-хубавият ден в лабораторията.`);
     if (first && Math.random() < 0.4) { setTimeout(() => say("", "Хм… може и по-добре. Полирам го още малко."), 7500); }
@@ -896,7 +904,14 @@ const YUCK = ["stinkyfish", "rottenegg", "moldbread"];
 function feed(k) {
   if (role !== "keeper" || !S.hatched || !cnt(k)) return;
   if (S.asleep) return say("", "Шшш… спи.");
-  if (YUCK.includes(k)) { S.mood = clamp(S.mood - 2); return say("", pick(["Фуу! Това е развалено. Изхвърли го, моля!", "Не! Мирише ужасно. Само за изобретения става."])); }
+  if (YUCK.includes(k)) {                   // яде го, но се разболява
+    takeMat(k); startEat(elE(k)); S.hunger = clamp(S.hunger - 15); S.mood = clamp(S.mood - 8); S.health = clamp(S.health - 12);
+    if (!S.sick) { S.sick = S.t; S.goodMin = 0; S.badMin = 0; }
+    S.lastCare = Date.now(); dirty = true; fx.hurt = performance.now();
+    log(`🤢 Изяде ${elN(k).toLowerCase()} и се разболя.`);
+    say("", pick(["Фуу… Беше развалено. Коремчето ме боли.", "Ох. Не трябваше да го ям. Май се разболях.", "Блъгх. Това беше грешка. Не ми е добре."]), 6000);
+    save(); return render();
+  }
   if (!EDIBLE[k]) return;
   if (S.hunger < 20) return say("", "Не съм гладен. Режимът си е режим!");
   takeMat(k); startEat(elE(k)); S.hunger = clamp(S.hunger - EDIBLE[k]); S.mood = clamp(S.mood + (EL[k][3] === "made" ? 8 : 3)); S.lastCare = Date.now(); dirty = true;
@@ -1831,7 +1846,7 @@ $("scrim").onclick = () => { if (performance.now() - dragEndAt > 600) closeSheet
 $("chatBtn").onclick = ev => { ev.stopPropagation(); if (S) togglePop(); };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#pop") && !ev.target.closest("#chatBtn")) closePop(); });
 function lastAsked() { return Math.max(0, ...Object.values(S.asked || {})); }
-let libPick = null, journalPage = 0, libTab = "found", mixSel = [], invPick = null, invDrag = null;
+let libPick = null, journalPage = 0, libTab = "shelf", mixSel = [], invPick = null, invDrag = null;
 function priceOf(k) {
   let p2 = YUCK.includes(k) ? 0 : EL[k][4];
   if (EL[k][3] === "junk" && has("recycler")) p2 *= 2;
@@ -1864,12 +1879,13 @@ function sellStack(k, n) {
 function fillSheet(kind) {
   const sh = $("sheet");
   sh.classList.toggle("airy", kind === "stats");
-  sh.classList.toggle("wood", ["bag", "cab", "lib", "family", "album"].includes(kind));
+  sh.classList.toggle("wood", ["bag", "cab", "lib", "family", "album", "cook"].includes(kind));
   sh.classList.toggle("paper", ["notify", "letter"].includes(kind));
   sh.classList.toggle("bare", kind === "journal");
   const head = (title, extra = "") => `<h2>${title} <span>${extra}<button class="x" id="sx">✕</button></span></h2>`;
   if (kind === "lib") {
-    const tabs = [["found", "📗 Открития"], ["notes", "📓 Тетрадка"], ["shelf", "📚 Рафт"], ["secret", "🔒 Личен"]];
+    const tabs = [["shelf", "📚 Рафт"], ["notes", "📓 Тетрадка"], ["secret", "🔒 Личен"]];
+    if (libTab === "found") libTab = "shelf";
     let h = head("📚 Библиотека") + `<div class="tabs">${tabs.map(([k, n]) => `<button data-t="${k}" class="${libTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
     if (libTab === "found") {
       h += `<div class="sub">Книгата на откритията</div>`;
@@ -1928,7 +1944,7 @@ function fillSheet(kind) {
     if (invPick && cnt(invPick)) {
       const k = invPick, f = fresh(k), yuck = YUCK.includes(k);
       h += `<div class="pick"><span class="ii">${elE(k)}</span><span class="in">${esc(elN(k))}<small>${cnt(k)} бр.${yuck ? "" : " · " + money(EL[k][4])}${f == null ? "" : f < 60 ? " · разваля се!" : " · свежо ~" + Math.round(f / 60) + " ч"}</small></span>
-        <span class="btns">${role === "keeper" && EDIBLE[k] ? `<button class="eat" data-k="${k}">Дай</button>` : ""}${canMixNow() ? `<button class="add" data-k="${k}">⊕</button>` : ""}</span></div>`;
+        <span class="btns">${role === "keeper" && (EDIBLE[k] || YUCK.includes(k)) ? `<button class="eat" data-k="${k}">Дай</button>` : ""}${canMixNow() ? `<button class="add" data-k="${k}">⊕</button>` : ""}</span></div>`;
     }
     if (role === "keeper") h += `<div class="zones"><span id="binZone">🗑️ Кофа</span><span id="sellZone">◉ Продай</span></div>`;
     sh.innerHTML = h;
@@ -1955,14 +1971,25 @@ function fillSheet(kind) {
       c.onpointercancel = () => { invDrag = null; $("ghost")?.remove(); dropHover(-1, -1); };
     });
   } else if (kind === "cab") {
-    const made = Object.keys(S.mat).filter(k => cnt(k) > 0 && EL[k] && EL[k][3] === "made" && !EDIBLE[k]);
-    const act = made.filter(k => ACTS[k]), rest = made.filter(k => !ACTS[k]);
-    const card = k => `<div class="gd${placed(k) ? " on" : ""}"><span>${elE(k)}</span><b>${esc(elN(k))}</b><small>${ACTS[k] ? esc(ACTS[k]) : "Стои в шкафа за красота."}</small>
+    const made = [...new Set([...S.found, ...Object.keys(S.mat).filter(k => cnt(k) > 0)])].filter(k => EL[k] && EL[k][3] === "made" && !EDIBLE[k]);
+    const act = made.filter(k => ACTS[k] && (cnt(k) || placed(k))), rest = made.filter(k => !act.includes(k));
+    const card = k => `<div class="gd${placed(k) ? " on" : ""}${cnt(k) || placed(k) ? "" : " zero"}"><span>${elE(k)}</span><b>${esc(elN(k))}${cnt(k) > 1 ? ` ×${cnt(k)}` : ""}</b><small>${ACTS[k] ? esc(ACTS[k]) : "Стои в шкафа за красота."}</small>
+      ${ingOf(k) ? `<small class="rc">${esc(recLine(k))}</small>` : ""}${!cnt(k) && !placed(k) ? `<small class="st">Няма го в момента</small>` : ""}
+      ${ingOf(k) && canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(ingOf(k)) ? "" : "disabled"}>Направи${cnt(k) || placed(k) ? " още" : " пак"}</button>` : ""}
       ${placed(k) ? `<small class="st">${k === "trampoline" || active(k) ? "✓ на дъното, работи" : "на дъното, изключено (докосни го там)"}</small>` : ""}
       ${ACTS[k] && role === "keeper" ? `<button class="tg" data-k="${k}">${placed(k) ? "Прибери" : "Сложи"}</button>` : ""}</div>`;
     sh.innerHTML = head("🗄️ Шкаф") + (made.length ? `<div class="cab">${act.map(card).join("")}${rest.map(card).join("")}</div>`
       : `<div class="sub">Шкафът е празен. Тук ще стоят изобретенията.</div>`);
     sh.querySelectorAll(".tg").forEach(b => b.onclick = () => togglePlace(b.dataset.k));
+    sh.querySelectorAll(".rm").forEach(b => b.onclick = () => remake(b.dataset.k));
+  } else if (kind === "cook") {
+    const foods = S.found.filter(c => EDIBLE[c]);
+    sh.innerHTML = head("📖 Рецепти") + (foods.length ? `<div class="cab">${foods.map(k => `<div class="gd${cnt(k) ? "" : " zero"}"><span>${elE(k)}</span><b>${esc(elN(k))}${cnt(k) ? ` ×${cnt(k)}` : ""}</b>
+      <small class="rc">${esc(recLine(k))}</small>${cnt(k) ? "" : `<small class="st">Свърши</small>`}
+      ${canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(ingOf(k) || ["x"]) ? "" : "disabled"}>Сготви</button>` : ""}${cnt(k) && role === "keeper" ? `<button class="eat2" data-k="${k}">Дай</button>` : ""}</div>`).join("")}</div>`
+      : `<div class="sub">Още няма рецепти. Смесвайте храни!</div>`);
+    sh.querySelectorAll(".rm").forEach(b => b.onclick = () => remake(b.dataset.k));
+    sh.querySelectorAll(".eat2").forEach(b => b.onclick = () => { closeSheet(); feed(b.dataset.k); });
   } else if (kind === "notify") {
     const tp = ntfyTopic();
     sh.innerHTML = head("🔔 Известия на телефона") + `<div class="ntf"><div class="sub">1. Свали приложението <b>ntfy</b> (има го за iPhone и Android).</div>
@@ -2073,7 +2100,9 @@ function ringItems() {
   if (role !== "keeper") return [];
   if (ringPage === "bplay") return [["back", "↩️", "Назад"], ["g_bubbles", "🫧", "Мехурчета"], ["g_peek", "🙈", "Ку-ку"], ["g_fish", "🐟", "Рибка"]];
   if (isBaby() && ringPage === "main") return [["bottle", "🍼", "Шише"], ["e🤗", "🤗", "Погали"], ["bplay", "🎈", "Игри"], ...(S.cry ? [["paci", "👶", "Биберон"]] : []), S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Нани"]];
-  if (ringPage === "food") return [["back", "↩️", "Назад"], ...Object.entries(FOODS).filter(([, f]) => !f[5] || S.found.includes(f[5])).map(([e, f]) => ["e" + e, e, f[0]])];
+  if (ringPage === "food") { const made = Object.keys(S.mat).filter(k => cnt(k) > 0 && EDIBLE[k] && EL[k] && EL[k][3] === "made");
+    return [["back", "↩️", "Назад"], ...Object.entries(FOODS).filter(([, f]) => !f[5]).map(([e, f]) => ["e" + e, e, f[0]]),
+      ...made.map(k => ["f:" + k, elE(k), `${elN(k)} ×${cnt(k)}`]), ...(S.found.some(c => EDIBLE[c]) ? [["cook", "📖", "Рецепти"]] : [])]; }
   return [["food", "🍕", "Нахрани"], ["e🤗", "🤗", "Погали"], ["play", "🙈", "Играй"], ["read", "📕", "Чети"], S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Сън"]];
 }
 function openRing() {
@@ -2121,6 +2150,8 @@ function playHide() {                      // криеница
 function ringAction(id) {
   if (id === "talk" || id === "food" || id === "bplay") { ringPage = id; return paintRing(); }
   if (id === "bottle") { closeRing(); return startBottle(); }
+  if (id.startsWith("f:")) { closeRing(); return feed(id.slice(2)); }
+  if (id === "cook") return openSheet("cook");
   if (id.startsWith("g_")) { closeRing(); return babyPlay(id.slice(2)); }
   if (id === "paci") { closeRing(); return calmBaby("paci"); }
   if (id === "sleep" && isBaby()) { closeRing(); return startRock(); }
@@ -2798,9 +2829,9 @@ function drawFloor(t, s, behind) {
     let x = it.x * W + Math.sin(age * 3) * 10 * (1 - fall);
     let y = H * 0.1 + (sandY - H * 0.1) * (1 - (1 - fall) * (1 - fall)) - sz * 0.3;
     if (fl) {                                  // бавно се носят насам-натам по целия екран
-      x = clamp(it.x * W + Math.sin(t * 0.06 * fl.sp + fl.ph) * W * 0.38 + Math.sin(t * 0.21 + fl.ph * 2) * 18, 24, W - 24);
+      x = clamp(it.x * W + Math.sin(t * 0.06 * fl.sp + fl.ph) * W * 0.38 + Math.sin(t * 0.21 + fl.ph * 2) * 18, 70, W - 90);   // далеч от бутоните отстрани
       const fy = H * fl.y + Math.sin(t * 0.13 * fl.sp + fl.ph) * H * 0.08 + Math.sin(t * 0.7 + fl.ph) * 8;
-      y = fall < 1 ? H * 0.05 + (fy - H * 0.05) * (1 - (1 - fall) * (1 - fall)) : fy;
+      y = fall < 1 ? H * 0.05 + (fy - H * 0.05) * (1 - (1 - fall) * (1 - fall)) : clamp(fy, 140, H - 170);
     }
     g.save(); g.translate(x, y); g.rotate(fl ? Math.sin(t * 0.4 + fl.ph) * 0.6 : it.kind === "trash" ? Math.sin(it.x * 40) * 0.5 : fall < 1 ? Math.sin(age * 2) * 0.1 : Math.sin(it.x * 40) * 0.12);
     g.font = `${sz}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
@@ -3444,7 +3475,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, thumbs: () => Object.keys(SEA).map(id => [id, thumb(id)]), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, thumbs: () => Object.keys(SEA).map(id => [id, thumb(id)]), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
