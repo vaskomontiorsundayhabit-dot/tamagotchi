@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let WORK = null, HUG = false, NOPACI = false, CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
+let HAT = null, WORK = null, HUG = false, NOPACI = false, CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -182,6 +182,46 @@ function star(x, y, r) {
 }
 const PUFFS = [[-125, 4, 36], [-82, -24, 40], [-30, -36, 42], [25, -34, 40], [80, -24, 40], [126, 2, 36],
   [85, 16, 36], [30, 22, 38], [-30, 22, 38], [-85, 16, 36], [0, 0, 44]];
+function drawHat(k, cx, cy, ry, t) {          // шапките от подаръците
+  g.save(); g.strokeStyle = C.line; g.lineWidth = 5; g.lineJoin = "round";
+  if (k === "beanie") {
+    g.translate(cx, cy - ry * 0.78); g.rotate(-0.06);
+    g.fillStyle = "#e5383b"; g.beginPath(); g.moveTo(-70, 10); g.quadraticCurveTo(-66, -62, 0, -64); g.quadraticCurveTo(66, -62, 70, 10); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = "#fffaf0"; g.beginPath(); g.roundRect(-74, -6, 148, 24, 10); g.fill(); g.stroke();
+    g.strokeStyle = "rgba(255,255,255,.5)"; g.lineWidth = 3; for (let i = -2; i <= 2; i++) { g.beginPath(); g.moveTo(i * 24, -6); g.lineTo(i * 20, -52); g.stroke(); }
+    g.strokeStyle = C.line; g.lineWidth = 5; g.fillStyle = "#fffaf0"; g.beginPath(); g.arc(0, -70, 16 + Math.sin(t * 3) * 1.5, 0, 7); g.fill(); g.stroke();
+  } else if (k === "straw") {
+    g.translate(cx, cy - ry * 0.85); g.rotate(0.08);
+    g.fillStyle = "#e8c96a"; g.beginPath(); g.ellipse(0, 6, 110, 20, 0, 0, 7); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(-50, 6); g.quadraticCurveTo(-48, -46, 0, -48); g.quadraticCurveTo(48, -46, 50, 6); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = "#4f8ff0"; g.beginPath(); g.rect(-50, -12, 100, 14); g.fill(); g.stroke();
+    g.fillStyle = "#ff8ab0"; g.beginPath(); g.arc(40, -6, 10, 0, 7); g.fill(); g.stroke();
+  } else if (k === "pirate") {
+    g.translate(cx, cy - ry * 0.85); g.rotate(-0.05);
+    g.fillStyle = "#2b2a33"; g.beginPath(); g.moveTo(-100, 10); g.quadraticCurveTo(-60, -20, -40, -50); g.quadraticCurveTo(0, -80, 40, -50); g.quadraticCurveTo(60, -20, 100, 10); g.quadraticCurveTo(0, -10, -100, 10); g.fill(); g.stroke();
+    g.strokeStyle = "#e9c46a"; g.lineWidth = 4; g.beginPath(); g.moveTo(-90, 4); g.quadraticCurveTo(0, -16, 90, 4); g.stroke();
+    g.fillStyle = "#fffaf0"; g.strokeStyle = C.line; g.lineWidth = 3; g.beginPath(); g.arc(0, -36, 12, 0, 7); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(-14, -20); g.lineTo(14, -12); g.moveTo(14, -20); g.lineTo(-14, -12); g.stroke();
+  } else if (k === "captain") {
+    g.translate(cx, cy - ry * 0.88);
+    g.fillStyle = "#fffaf0"; g.beginPath(); g.ellipse(0, -26, 80, 26, 0, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = "#1f3b70"; g.beginPath(); g.roundRect(-60, -18, 120, 26, 6); g.fill(); g.stroke();
+    g.fillStyle = "#2b2a33"; g.beginPath(); g.moveTo(-58, 8); g.quadraticCurveTo(0, 30, 58, 8); g.quadraticCurveTo(0, 16, -58, 8); g.fill(); g.stroke();
+    g.fillStyle = "#e9c46a"; g.beginPath(); g.arc(0, -8, 10, 0, 7); g.fill(); g.stroke();
+  } else if (k === "party") {
+    g.translate(cx + 14, cy - ry * 0.85); g.rotate(0.18);
+    g.fillStyle = "#7d5cff"; g.beginPath(); g.moveTo(-46, 6); g.lineTo(0, -110); g.lineTo(46, 6); g.closePath(); g.fill(); g.stroke();
+    g.save(); g.beginPath(); g.moveTo(-46, 6); g.lineTo(0, -110); g.lineTo(46, 6); g.closePath(); g.clip();
+    for (const [x, y, col] of [[-16, -20, "#ffd23f"], [14, -46, "#ff5d8a"], [-4, -74, "#7fd3ff"], [20, -6, "#7cc256"]]) { g.fillStyle = col; g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); }
+    g.restore(); g.fillStyle = "#ffd23f"; g.beginPath(); g.arc(0, -114, 12, 0, 7); g.fill(); g.stroke();
+  } else if (k === "shellcrown") {
+    g.translate(cx, cy - ry * 0.88);
+    g.fillStyle = "#ffcf3a"; g.beginPath(); g.moveTo(-64, 6); g.lineTo(-64, -34); g.lineTo(-34, -12); g.lineTo(0, -52); g.lineTo(34, -12); g.lineTo(64, -34); g.lineTo(64, 6); g.closePath(); g.fill(); g.stroke();
+    for (const [x, col] of [[-36, "#ffd9c2"], [0, "#ffb0c8"], [36, "#ffd9c2"]]) { g.fillStyle = col; g.beginPath(); g.arc(x, -6, 11, Math.PI, 0); g.lineTo(x, 4); g.closePath(); g.fill(); g.stroke(); }
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(0, -52, 7, 0, 7); g.fill(); g.stroke();
+  }
+  g.restore();
+}
 function brawl(cx, cy, t) {
   const pts = PUFFS.map(([x, y, r], i) => [cx + x + Math.sin(t * 17 + i * 2.1) * 6, cy + y + Math.cos(t * 15 + i * 1.3) * 6,
     r + Math.sin(t * 21 + i) * 5]);
@@ -471,7 +511,8 @@ function body(t, mt, st) {
     if (((t * 0.4) % 1) < 0.12) { g.fillStyle = "#fffaf0"; g.strokeStyle = C.line; g.beginPath(); g.moveTo(0, 6); g.quadraticCurveTo(30, -30, 50, -10); g.lineTo(0, 54); g.closePath(); g.fill(); g.stroke(); }
     g.restore();
   }
-  if (TR.includes("adventure") && !TR.includes("trader")) {     // изследователска шапка с перо
+  if (HAT) drawHat(HAT, cx, cy, ry, t);
+  if (TR.includes("adventure") && !TR.includes("trader") && !HAT) {     // изследователска шапка с перо
     g.save(); g.translate(cx - 6, cy - ry * 0.9); g.rotate(-0.12); g.scale(1.35, 1.35);
     g.fillStyle = "#d8b878"; g.strokeStyle = C.line; g.lineWidth = 5;
     g.beginPath(); g.ellipse(0, 4, 78, 15, 0, 0, Math.PI * 2); g.fill(); g.stroke();
@@ -480,7 +521,7 @@ function body(t, mt, st) {
     g.fillStyle = "#e5383b"; g.beginPath(); g.moveTo(30, -10); g.quadraticCurveTo(60, -60, 44, -78); g.quadraticCurveTo(36, -40, 26, -12); g.closePath(); g.fill(); g.stroke();
     g.restore();
   }
-  if (TR.includes("trader")) {
+  if (TR.includes("trader") && !HAT) {
     g.save(); g.translate(cx + 10, cy - ry * 0.98); g.rotate(0.12);
     g.fillStyle = "#2b2a33"; g.strokeStyle = "#111"; g.lineWidth = 4;
     g.beginPath(); g.ellipse(0, 0, 62, 13, 0, 0, Math.PI * 2); g.fill(); g.stroke();
@@ -1084,6 +1125,7 @@ function drawReal(ctx, o) {
   const k = sc * (age === "egg" ? 0.9 : A.k);
   LIE = !!o.lie && mode === "sleep" && age !== "egg";
   HUG = !!o.hug && mode === "sleep" && age !== "egg";
+  HAT = o.hat || null;
   WORK = o.work && mode === "work" ? [(o.work[0] - o.x) / k, (o.work[1] - o.y) / k] : null;       // спи легнал на дъното
   GROUND = o.ground == null || LIE ? null : (o.ground - o.y) / k;
   DROP = o.drop !== false;

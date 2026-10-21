@@ -504,6 +504,7 @@ const IART = (() => {
   const poly = pts => pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y));
   const eye = (x, y, r) => { F("#fff", () => c.arc(x, y, r, 0, 7)); c.fillStyle = L; c.beginPath(); c.arc(x + r * 0.2, y, r * 0.5, 0, 7); c.fill(); };
   const stink = () => { c.save(); c.strokeStyle = "#7fae3a"; c.lineWidth = 0.03; for (const dx of [-0.15, 0, 0.15]) { c.beginPath(); c.moveTo(dx, -0.2); c.bezierCurveTo(dx - 0.06, -0.28, dx + 0.06, -0.34, dx, -0.44); c.stroke(); } c.restore(); };
+  const M = (k, x, y, sc) => { c.save(); c.translate(x, y); c.scale(sc, sc); A[k](); c.restore(); st(); };   // нещо в нещо
   const fly = () => { c.save(); c.fillStyle = L; c.beginPath(); c.arc(0.28, -0.32, 0.025, 0, 7); c.fill(); c.strokeStyle = "rgba(43,42,51,.6)"; c.lineWidth = 0.015; c.beginPath(); ell(0.26, -0.36, 0.03, 0.015, -0.5); c.stroke(); c.beginPath(); ell(0.31, -0.36, 0.03, 0.015, 0.5); c.stroke(); c.restore(); };
   const A = {
     can: () => { F("#c7ccd3", () => rr(-0.22, -0.28, 0.44, 0.56, 0.06)); F("#e8463a", () => rr(-0.22, -0.14, 0.44, 0.28, 0)); c.fillStyle = "#fff"; c.beginPath(); ell(0, 0, 0.1, 0.07); c.fill();
@@ -562,6 +563,109 @@ const IART = (() => {
       c.beginPath(); c.moveTo(0.15, -0.09); c.lineTo(0.25, 0.01); c.moveTo(0.25, -0.09); c.lineTo(0.15, 0.01); c.stroke(); stink(); },
     moldbread: () => { A.bread(); c.fillStyle = "#6f9a4a"; for (const [x, y, r] of [[-0.2, -0.12, 0.07], [0.1, -0.18, 0.06], [0.2, 0.05, 0.08], [-0.1, 0.08, 0.05]]) { c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); } stink(); },
     rottenegg: () => { F("#e9e2b8", () => ell(0, 0.02, 0.24, 0.32)); c.beginPath(); poly([[-0.2, -0.05], [-0.08, 0.04], [0.02, -0.06], [0.12, 0.04], [0.22, -0.04]]); c.stroke(); stink(); },
+    // ---- изобретенията ----
+    canphone: () => { c.strokeStyle = "#8a6a3a"; c.lineWidth = 0.025; c.beginPath(); c.moveTo(-0.2, -0.05); c.quadraticCurveTo(0, 0.2, 0.2, -0.05); c.stroke(); st(); M("can", -0.24, 0.05, 0.5); M("can", 0.24, 0.05, 0.5); },
+    drum: () => { F("#e8463a", () => rr(-0.3, -0.12, 0.6, 0.34, 0.04)); c.strokeStyle = "#ffd23f"; c.lineWidth = 0.03; c.beginPath(); poly([[-0.3, -0.1], [-0.15, 0.2], [0, -0.1], [0.15, 0.2], [0.3, -0.1]]); c.stroke(); st(); F("#f5ecd7", () => ell(0, -0.12, 0.3, 0.08));
+      c.lineWidth = 0.04; c.beginPath(); c.moveTo(-0.1, -0.2); c.lineTo(-0.3, -0.42); c.moveTo(0.12, -0.2); c.lineTo(0.32, -0.4); c.stroke(); st(); },
+    papyrus: () => { F("#f0dca6", () => rr(-0.26, -0.28, 0.52, 0.56, 0.02)); F("#d9bf7c", () => ell(0, -0.3, 0.3, 0.06)); F("#d9bf7c", () => ell(0, 0.3, 0.3, 0.06)); c.strokeStyle = "#8a6a3a"; c.lineWidth = 0.02; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(-0.17, -0.15 + i * 0.1); c.lineTo(0.17, -0.15 + i * 0.1); c.stroke(); } st(); },
+    lamp: () => { c.save(); c.rotate(-0.5); F("#3f6fd8", () => rr(-0.08, -0.05, 0.16, 0.4, 0.03)); F("#c7ccd3", () => poly([[-0.14, -0.05], [0.14, -0.05], [0.1, -0.2], [-0.1, -0.2]])); c.fillStyle = "rgba(255,240,140,.7)"; c.beginPath(); poly([[-0.1, -0.2], [0.1, -0.2], [0.25, -0.5], [-0.25, -0.5]]); c.fill(); c.restore(); },
+    coil: () => { F("#c78a3a", () => rr(-0.08, -0.3, 0.16, 0.6, 0.03)); c.strokeStyle = "#e08a2a"; c.lineWidth = 0.05; for (let i = 0; i < 7; i++) { c.beginPath(); ell(0, -0.24 + i * 0.08, 0.17, 0.04); c.stroke(); } st(); },
+    mech: () => { M("gear", -0.1, 0.05, 0.7); M("gear", 0.2, -0.15, 0.45); M("bolt", 0.2, 0.22, 0.4); },
+    msg: () => { M("bottle", 0, 0, 1); c.save(); c.rotate(0.35); F("#f0dca6", () => rr(-0.08, -0.05, 0.16, 0.26, 0.02)); c.restore(); },
+    antenna: () => { M("shell", 0, 0.12, 0.7); c.beginPath(); c.moveTo(0, -0.05); c.lineTo(0, -0.38); c.stroke(); F("#e8463a", () => c.arc(0, -0.4, 0.05, 0, 7)); c.strokeStyle = "#7fd3ff"; for (const r2 of [0.12, 0.2]) { c.beginPath(); c.arc(0, -0.4, r2, -2.4, -0.7); c.stroke(); } st(); },
+    sling: () => { c.lineWidth = 0.08; c.strokeStyle = "#8a5a2e"; c.beginPath(); c.moveTo(0, 0.38); c.lineTo(0, 0.05); c.lineTo(-0.2, -0.3); c.moveTo(0, 0.05); c.lineTo(0.2, -0.3); c.stroke(); st(); c.strokeStyle = "#e8463a"; c.lineWidth = 0.03; c.beginPath(); c.moveTo(-0.2, -0.3); c.lineTo(0, -0.1); c.lineTo(0.2, -0.3); c.stroke(); st(); M("pebble", 0, -0.12, 0.3); },
+    quill: () => { M("feather", 0, -0.05, 1); c.fillStyle = "#2b2a33"; c.beginPath(); c.arc(0.2, 0.33, 0.05, 0, 7); c.fill(); },
+    trampoline: () => { F("#2f3238", () => ell(0, -0.05, 0.38, 0.1)); F("#4f8ff0", () => ell(0, -0.05, 0.32, 0.07)); c.lineWidth = 0.04; for (const x of [-0.3, 0, 0.3]) { c.beginPath(); c.moveTo(x, 0.02); c.lineTo(x * 1.1, 0.32); c.stroke(); } st(); },
+    glowcoral: () => { c.save(); c.shadowColor = "#ffe27a"; c.shadowBlur = 20; M("coral", 0, 0, 1); c.restore(); M("bulb", 0.18, -0.25, 0.4); },
+    compass: () => { F("#d6a23a", () => c.arc(0, 0, 0.36, 0, 7)); F("#fff8ec", () => c.arc(0, 0, 0.28, 0, 7)); F("#e8463a", () => poly([[0, -0.24], [0.06, 0], [-0.06, 0]])); F("#5a6b80", () => poly([[0, 0.24], [0.06, 0], [-0.06, 0]])); F("#d6a23a", () => c.arc(0, -0.4, 0.05, 0, 7)); },
+    megaphone: () => { M("cup", -0.15, 0, 0.7); c.save(); c.translate(0.15, 0); c.rotate(Math.PI / 2); M("cup", 0, 0, 0.7); c.restore(); },
+    mixer: () => { F("#e8eef6", () => { c.moveTo(-0.3, -0.1); c.lineTo(0.3, -0.1); c.quadraticCurveTo(0.3, 0.32, 0, 0.32); c.quadraticCurveTo(-0.3, 0.32, -0.3, -0.1); }); M("spoon", 0.05, -0.18, 0.7); M("gear", -0.15, -0.25, 0.35); },
+    nightlight: () => { c.save(); c.shadowColor = "#ffe27a"; c.shadowBlur = 18; M("star", 0, -0.05, 0.85); c.restore(); F("#a8aeb6", () => rr(-0.08, 0.25, 0.16, 0.1, 0.02)); },
+    float: () => { F("#ff5d5d", () => c.arc(0, -0.08, 0.28, 0, 7)); c.fillStyle = "#fff"; c.beginPath(); c.arc(0, -0.08, 0.28, -0.3, 0.6); c.lineTo(0, -0.08); c.fill(); c.beginPath(); c.arc(0, -0.08, 0.28, 2.8, 3.7); c.lineTo(0, -0.08); c.fill(); c.beginPath(); c.arc(0, -0.08, 0.28, 0, 7); c.stroke(); c.beginPath(); c.moveTo(0, 0.2); c.quadraticCurveTo(0.08, 0.3, 0, 0.42); c.stroke(); },
+    sandwich: () => { F("#e0a85a", () => rr(-0.34, 0.06, 0.68, 0.14, 0.05)); F("#7cc256", () => poly([[-0.34, 0.06], [-0.2, -0.02], [0, 0.05], [0.2, -0.03], [0.34, 0.06]])); F("#ffcf3a", () => rr(-0.3, -0.08, 0.6, 0.08, 0.01)); F("#e0a85a", () => { c.moveTo(-0.34, -0.08); c.quadraticCurveTo(0, -0.34, 0.34, -0.08); c.closePath(); }); },
+    shake: () => { F("#ffe680", () => poly([[-0.2, -0.22], [0.2, -0.22], [0.14, 0.34], [-0.14, 0.34]])); F("#fff8ec", () => ell(0, -0.24, 0.24, 0.08)); c.strokeStyle = "#ff5d8a"; c.lineWidth = 0.05; c.beginPath(); c.moveTo(0.05, -0.24); c.lineTo(0.15, -0.46); c.stroke(); st(); M("banana", -0.02, -0.33, 0.35); },
+    fishburger: () => { F("#e0a85a", () => { c.moveTo(-0.32, -0.02); c.quadraticCurveTo(0, -0.38, 0.32, -0.02); c.closePath(); }); F("#7fa9d6", () => rr(-0.34, -0.02, 0.68, 0.1, 0.04)); F("#7cc256", () => poly([[-0.34, 0.08], [-0.2, 0.14], [0, 0.08], [0.2, 0.14], [0.34, 0.08]])); F("#e0a85a", () => rr(-0.32, 0.12, 0.64, 0.12, 0.05)); },
+    yogurtbat: () => { M("yogurt", -0.05, 0.05, 0.8); F("#ffd23f", () => poly([[0.12, -0.42], [0.0, -0.12], [0.1, -0.12], [0.02, 0.1], [0.24, -0.2], [0.13, -0.2], [0.22, -0.42]])); },
+    penicillin: () => { c.save(); c.rotate(-0.6); F("#ffffff", () => rr(-0.3, -0.12, 0.3, 0.24, 0.12)); F("#e8463a", () => rr(0, -0.12, 0.3, 0.24, 0.12)); c.restore(); },
+    stinkbomb: () => { F("#6b5a8a", () => c.arc(0, 0.08, 0.26, 0, 7)); c.lineWidth = 0.03; c.beginPath(); c.moveTo(0.1, -0.15); c.quadraticCurveTo(0.2, -0.3, 0.3, -0.25); c.stroke(); st(); c.save(); c.translate(-0.2, 0); stink(); c.restore(); },
+    sharkbait: () => { c.lineWidth = 0.03; c.beginPath(); c.moveTo(0, -0.42); c.lineTo(0, 0.05); c.arc(-0.1, 0.05, 0.1, 0, Math.PI * 0.9); c.stroke(); st(); M("stinkyfish", 0.05, 0.15, 0.55); },
+    cake: () => { F("#c98a4a", () => rr(-0.3, -0.12, 0.6, 0.36, 0.05)); F("#ffe680", () => { c.moveTo(-0.3, -0.04); for (let i = 0; i <= 6; i++) c.quadraticCurveTo(-0.3 + i * 0.1 - 0.05, 0.06, -0.3 + i * 0.1, -0.04); c.lineTo(0.3, -0.12); c.lineTo(-0.3, -0.12); c.closePath(); }); M("banana", 0, -0.2, 0.4); },
+    fondue: () => { F("#3f4b5e", () => { c.moveTo(-0.3, -0.05); c.lineTo(0.3, -0.05); c.quadraticCurveTo(0.28, 0.3, 0, 0.3); c.quadraticCurveTo(-0.28, 0.3, -0.3, -0.05); }); F("#ffe08a", () => ell(0, -0.05, 0.3, 0.07)); c.fillStyle = "#5a7fb8"; for (const x of [-0.12, 0.05, 0.15]) { c.beginPath(); c.arc(x, -0.05, 0.025, 0, 7); c.fill(); } c.lineWidth = 0.03; c.beginPath(); c.moveTo(0.1, -0.08); c.lineTo(0.3, -0.42); c.stroke(); st(); },
+    lighthouse: () => { F("#fff", () => poly([[-0.14, 0.36], [0.14, 0.36], [0.09, -0.2], [-0.09, -0.2]])); c.fillStyle = "#e8463a"; c.beginPath(); poly([[-0.13, 0.22], [0.13, 0.22], [0.12, 0.1], [-0.12, 0.1]]); c.fill(); c.beginPath(); poly([[-0.11, -0.02], [0.11, -0.02], [0.1, -0.12], [-0.1, -0.12]]); c.fill();
+      F("#ffe27a", () => rr(-0.08, -0.32, 0.16, 0.12, 0.02)); F("#e8463a", () => poly([[-0.12, -0.32], [0.12, -0.32], [0, -0.44]])); c.fillStyle = "rgba(255,240,140,.6)"; c.beginPath(); poly([[0.08, -0.28], [0.45, -0.4], [0.45, -0.14]]); c.fill(); },
+    radio: () => { F("#c0763a", () => rr(-0.34, -0.18, 0.68, 0.42, 0.06)); F("#f5ecd7", () => rr(-0.28, -0.12, 0.3, 0.3, 0.03)); c.strokeStyle = "#8a6a3a"; c.lineWidth = 0.02; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(-0.26, -0.06 + i * 0.07); c.lineTo(0, -0.06 + i * 0.07); c.stroke(); } st();
+      F("#2b2a33", () => c.arc(0.16, -0.02, 0.06, 0, 7)); F("#2b2a33", () => c.arc(0.16, 0.13, 0.04, 0, 7)); c.beginPath(); c.moveTo(0.2, -0.18); c.lineTo(0.32, -0.44); c.stroke(); },
+    map: () => { c.save(); c.rotate(-0.05); F("#f0dca6", () => poly([[-0.34, -0.26], [-0.12, -0.2], [0.12, -0.28], [0.34, -0.22], [0.34, 0.26], [0.12, 0.2], [-0.12, 0.28], [-0.34, 0.22]])); c.strokeStyle = "#a07a2a"; c.setLineDash([0.04, 0.03]); c.beginPath(); c.moveTo(-0.25, 0.15); c.quadraticCurveTo(-0.05, -0.15, 0.15, 0.05); c.stroke(); c.setLineDash([]); c.strokeStyle = "#e8463a"; c.lineWidth = 0.04; c.beginPath(); c.moveTo(0.12, -0.02); c.lineTo(0.22, 0.08); c.moveTo(0.22, -0.02); c.lineTo(0.12, 0.08); c.stroke(); c.restore(); },
+    treasure: () => { F("#9a5d2e", () => rr(-0.32, -0.05, 0.64, 0.32, 0.03)); F("#b8743d", () => { c.moveTo(-0.32, -0.05); c.quadraticCurveTo(0, -0.3, 0.32, -0.05); c.closePath(); }); F("#ffd23f", () => rr(-0.05, -0.07, 0.1, 0.12, 0.02));
+      c.fillStyle = "#7fe0ff"; c.beginPath(); poly([[-0.18, -0.12], [-0.1, -0.22], [-0.02, -0.12], [-0.1, -0.04]]); c.fill(); c.stroke(); F("#ffd23f", () => c.arc(0.16, -0.12, 0.05, 0, 7)); },
+    motor: () => { F("#e8463a", () => rr(-0.3, -0.12, 0.5, 0.24, 0.06)); M("gear", 0.24, 0, 0.45); F("#2b2a33", () => c.arc(-0.18, 0.18, 0.07, 0, 7)); F("#2b2a33", () => c.arc(0.08, 0.18, 0.07, 0, 7)); },
+    sub: () => { F("#ffcf3a", () => ell(0, 0.05, 0.38, 0.18)); F("#ffcf3a", () => rr(-0.08, -0.22, 0.18, 0.14, 0.03)); c.beginPath(); c.moveTo(0.04, -0.22); c.lineTo(0.04, -0.36); c.lineTo(0.12, -0.36); c.stroke(); for (const x of [-0.18, 0, 0.18]) F("#7fd3ff", () => c.arc(x, 0.04, 0.06, 0, 7)); F("#ffcf3a", () => poly([[-0.38, 0.05], [-0.48, -0.06], [-0.48, 0.16]])); },
+    speaker: () => { F("#3d3f46", () => rr(-0.24, -0.34, 0.48, 0.68, 0.05)); F("#9aa0a8", () => c.arc(0, 0.1, 0.15, 0, 7)); F("#2b2a33", () => c.arc(0, 0.1, 0.06, 0, 7)); F("#9aa0a8", () => c.arc(0, -0.19, 0.07, 0, 7)); },
+    disco: () => { c.beginPath(); c.moveTo(0, -0.45); c.lineTo(0, -0.3); c.stroke(); F("#c7ccd3", () => c.arc(0, 0.02, 0.32, 0, 7)); c.save(); c.beginPath(); c.arc(0, 0.02, 0.32, 0, 7); c.clip();
+      for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) { c.fillStyle = (i + j) % 2 ? "#e8eef6" : ["#7fd3ff", "#ff9adb", "#ffe27a"][(i * 3 + j + 12) % 3]; c.fillRect(i * 0.08 - 0.04, j * 0.08 - 0.02, 0.075, 0.075); } c.restore(); c.beginPath(); c.arc(0, 0.02, 0.32, 0, 7); c.stroke(); },
+    mail: () => { F("#4f8ff0", () => rr(-0.26, -0.24, 0.52, 0.36, 0.12)); c.fillRect(-0.04, 0.12, 0.08, 0.26); c.strokeRect(-0.04, 0.12, 0.08, 0.26); F("#fff", () => rr(-0.16, -0.1, 0.32, 0.12, 0.02)); F("#e8463a", () => rr(0.2, -0.36, 0.04, 0.16, 0.01)); },
+    starlamp: () => { c.save(); c.shadowColor = "#fff6a8"; c.shadowBlur = 22; F("#fff6a8", () => { for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, r = i % 2 ? 0.14 : 0.36; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); }); c.restore(); },
+    arm: () => { c.lineWidth = 0.14; c.strokeStyle = L; c.beginPath(); c.moveTo(-0.3, 0.32); c.lineTo(-0.1, -0.05); c.lineTo(0.2, -0.2); c.stroke(); c.lineWidth = 0.09; c.strokeStyle = "#9aa3ad"; c.stroke(); st(); F("#6d7680", () => c.arc(-0.1, -0.05, 0.07, 0, 7));
+      c.lineWidth = 0.045; c.beginPath(); c.moveTo(0.2, -0.2); c.lineTo(0.34, -0.32); c.moveTo(0.2, -0.2); c.lineTo(0.36, -0.12); c.stroke(); st(); F("#6d7680", () => rr(-0.4, 0.3, 0.2, 0.08, 0.02)); },
+    typewriter: () => { F("#3d3f46", () => poly([[-0.34, 0.3], [0.34, 0.3], [0.26, -0.02], [-0.26, -0.02]])); F("#f5f5f0", () => rr(-0.18, -0.38, 0.36, 0.3, 0.01)); F("#6d7680", () => rr(-0.3, -0.1, 0.6, 0.08, 0.03));
+      c.fillStyle = "#e8eef6"; for (let r = 0; r < 2; r++) for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(-0.2 + i * 0.08, 0.08 + r * 0.1, 0.025, 0, 7); c.fill(); } },
+    // големите странни
+    sockfinder: () => { M("sock", -0.08, 0.06, 0.75); M("compass", 0.2, -0.22, 0.45); },
+    bubblemeter: () => { F("#e8eef6", () => rr(-0.12, -0.36, 0.24, 0.66, 0.1)); F("#7fd3ff", () => rr(-0.07, -0.05, 0.14, 0.32, 0.06)); c.strokeStyle = "#9ab"; for (let i = 0; i < 5; i++) { c.beginPath(); c.moveTo(0.12, -0.25 + i * 0.1); c.lineTo(0.18, -0.25 + i * 0.1); c.stroke(); } st(); for (const [x, y, r2] of [[0.28, -0.3, 0.05], [0.32, -0.12, 0.04], [-0.28, -0.2, 0.06]]) { c.beginPath(); c.arc(x, y, r2, 0, 7); c.stroke(); } },
+    dreamlamp: () => { c.save(); c.shadowColor = "#c8b6ff"; c.shadowBlur = 20; F("#d8ccff", () => { c.arc(0, -0.05, 0.3, 0.6, 5.7); c.arc(0.12, -0.12, 0.24, 5.2, 1.0, true); c.closePath(); }); c.restore(); c.fillStyle = "#fff"; for (const [x, y] of [[0.25, -0.3], [0.32, 0.05]]) { c.beginPath(); c.arc(x, y, 0.03, 0, 7); c.fill(); } },
+    tidier: () => { F("#ffd23f", () => poly([[-0.34, 0.3], [0.34, 0.3], [-0.34, -0.38]])); c.strokeStyle = "#8a6a1a"; c.lineWidth = 0.02; for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(-0.34 + i * 0.11, 0.3); c.lineTo(-0.34 + i * 0.11, 0.24); c.stroke(); } st(); eye(-0.2, 0.12, 0.05); eye(-0.06, 0.12, 0.05); },
+    singbolt: () => { M("bolt", -0.08, 0.05, 0.9); c.fillStyle = L; c.beginPath(); c.arc(0.22, -0.18, 0.06, 0, 7); c.fill(); c.lineWidth = 0.03; c.beginPath(); c.moveTo(0.27, -0.18); c.lineTo(0.27, -0.42); c.lineTo(0.36, -0.36); c.stroke(); st(); },
+    fork: () => { c.save(); c.rotate(-0.5); F("#c7ccd3", () => rr(-0.035, -0.05, 0.07, 0.42, 0.03)); F("#c7ccd3", () => rr(-0.12, -0.2, 0.24, 0.16, 0.03)); for (const x of [-0.1, -0.035, 0.035, 0.1]) { c.beginPath(); c.moveTo(x, -0.2); c.lineTo(x, -0.36); c.stroke(); } c.restore();
+      c.strokeStyle = "#e8a73a"; c.lineWidth = 0.04; c.beginPath(); for (let i = 0; i < 40; i++) { const a = i * 0.45, r2 = 0.02 + i * 0.006; c.lineTo(-0.15 + Math.cos(a) * r2, -0.18 + Math.sin(a) * r2); } c.stroke(); st(); },
+    yawnmeter: () => { F("#ffe6c4", () => c.arc(0, 0, 0.34, 0, 7)); F("#6b1d2a", () => ell(0, 0.1, 0.12, 0.15)); c.beginPath(); c.arc(-0.13, -0.12, 0.06, 0.2, Math.PI - 0.2); c.stroke(); c.beginPath(); c.arc(0.13, -0.12, 0.06, 0.2, Math.PI - 0.2); c.stroke(); c.lineWidth = 0.04; c.beginPath(); c.moveTo(0, 0); c.lineTo(0.22, -0.2); c.stroke(); st(); },
+    snackcompass: () => { M("compass", 0, 0, 1); M("cheese", 0.16, -0.14, 0.3); },
+    teapot: () => { F("#7fc8a9", () => ell(0, 0.06, 0.28, 0.22)); F("#7fc8a9", () => poly([[0.24, 0.0], [0.42, -0.15], [0.42, -0.1], [0.26, 0.1]])); c.lineWidth = 0.05; c.beginPath(); c.arc(-0.3, 0.06, 0.1, Math.PI * 0.5, Math.PI * 1.5); c.stroke(); st(); F("#5aa88a", () => ell(0, -0.15, 0.14, 0.04)); F("#5aa88a", () => c.arc(0, -0.2, 0.04, 0, 7)); },
+    perfectometer: () => { c.save(); c.rotate(-0.3); F("#ffd23f", () => rr(-0.38, -0.08, 0.76, 0.16, 0.02)); c.strokeStyle = "#8a6a1a"; c.lineWidth = 0.02; for (let i = 0; i <= 14; i++) { c.beginPath(); c.moveTo(-0.36 + i * 0.05, -0.08); c.lineTo(-0.36 + i * 0.05, i % 5 ? -0.03 : 0.02); c.stroke(); } c.restore(); c.fillStyle = "#2bbf6a"; c.font = "0px a"; F("#2bbf6a", () => c.arc(0.25, -0.28, 0.09, 0, 7)); c.strokeStyle = "#fff"; c.lineWidth = 0.035; c.beginPath(); poly([[0.2, -0.28], [0.24, -0.24], [0.3, -0.33]]); c.stroke(); st(); },
+    expedition: () => { M("sub", 0, 0.08, 0.95); c.lineWidth = 0.03; c.beginPath(); c.moveTo(0.04, -0.36); c.lineTo(0.04, -0.5); c.stroke(); st(); F("#e8463a", () => poly([[0.04, -0.5], [0.2, -0.45], [0.04, -0.4]])); },
+    festival: () => { for (const [x, y, col] of [[-0.18, -0.12, "#ff5d8a"], [0.16, -0.2, "#ffd23f"], [0.05, 0.12, "#7fd3ff"]]) { c.strokeStyle = col; c.lineWidth = 0.035; for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5; c.beginPath(); c.moveTo(x + Math.cos(a) * 0.04, y + Math.sin(a) * 0.04); c.lineTo(x + Math.cos(a) * 0.15, y + Math.sin(a) * 0.15); c.stroke(); } } st(); },
+    robokt: () => { F("#aab3bd", () => ell(0, -0.08, 0.26, 0.24)); for (let i = 0; i < 5; i++) { c.lineWidth = 0.07; c.strokeStyle = L; c.beginPath(); c.moveTo(-0.2 + i * 0.1, 0.12); c.lineTo(-0.26 + i * 0.13, 0.36); c.stroke(); c.lineWidth = 0.04; c.strokeStyle = "#aab3bd"; c.stroke(); } st();
+      F("#7fd3ff", () => rr(-0.16, -0.16, 0.32, 0.12, 0.05)); c.beginPath(); c.moveTo(0, -0.32); c.lineTo(0, -0.44); c.stroke(); F("#e8463a", () => c.arc(0, -0.45, 0.04, 0, 7)); },
+    wreck: () => { c.save(); c.rotate(0.25); F("#7a4a2a", () => { c.moveTo(-0.36, 0); c.lineTo(0.36, 0); c.lineTo(0.26, 0.2); c.lineTo(-0.28, 0.2); c.closePath(); }); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -0.38); c.stroke(); F("#3d3f46", () => poly([[0, -0.36], [0.22, -0.28], [0, -0.18]])); c.fillStyle = "#fff"; c.beginPath(); c.arc(0.08, -0.28, 0.025, 0, 7); c.fill(); c.restore(); },
+    // ястия
+    soup: () => { F("#e8eef6", () => { c.moveTo(-0.34, -0.04); c.lineTo(0.34, -0.04); c.quadraticCurveTo(0.3, 0.3, 0, 0.3); c.quadraticCurveTo(-0.3, 0.3, -0.34, -0.04); }); F("#e8a05a", () => ell(0, -0.04, 0.34, 0.08)); M("fish", 0.02, -0.05, 0.3); c.strokeStyle = "rgba(255,255,255,.9)"; c.lineWidth = 0.03; for (const x of [-0.12, 0.12]) { c.beginPath(); c.moveTo(x, -0.14); c.bezierCurveTo(x - 0.05, -0.22, x + 0.05, -0.3, x, -0.4); c.stroke(); } st(); },
+    pancake: () => { for (let i = 0; i < 4; i++) F("#e8b05a", () => ell(0, 0.2 - i * 0.09, 0.32, 0.08)); F("#c8862a", () => { c.moveTo(-0.15, -0.1); c.quadraticCurveTo(0, -0.18, 0.18, -0.1); c.lineTo(0.12, 0.02); c.lineTo(-0.08, -0.04); c.closePath(); }); F("#fff6d0", () => rr(-0.05, -0.2, 0.1, 0.07, 0.01)); },
+    omelet: () => { F("#e8eef6", () => ell(0, 0.08, 0.38, 0.14)); F("#ffd23f", () => { c.moveTo(-0.26, 0.05); c.quadraticCurveTo(0, -0.25, 0.26, 0.05); c.closePath(); }); F("#7cc256", () => c.arc(0.05, -0.04, 0.03, 0, 7)); },
+    pudding: () => { F("#e8eef6", () => ell(0, 0.26, 0.34, 0.07)); F("#ff8ab0", () => { c.moveTo(-0.24, 0.25); c.lineTo(-0.16, -0.12); c.quadraticCurveTo(0, -0.18, 0.16, -0.12); c.lineTo(0.24, 0.25); c.closePath(); }); F("#c0315c", () => ell(0, -0.13, 0.16, 0.05)); M("coral", 0, -0.24, 0.25); },
+    // машини
+    rocket: () => { F("#e8eef6", () => { c.moveTo(0, -0.42); c.quadraticCurveTo(0.18, -0.2, 0.14, 0.2); c.lineTo(-0.14, 0.2); c.quadraticCurveTo(-0.18, -0.2, 0, -0.42); }); F("#e8463a", () => poly([[-0.14, 0.05], [-0.26, 0.28], [-0.12, 0.2]])); F("#e8463a", () => poly([[0.14, 0.05], [0.26, 0.28], [0.12, 0.2]])); F("#7fd3ff", () => c.arc(0, -0.12, 0.07, 0, 7)); F("#ffb020", () => poly([[-0.08, 0.2], [0, 0.42], [0.08, 0.2]])); },
+    carousel: () => { F("#ff8ab0", () => poly([[-0.36, -0.15], [0, -0.42], [0.36, -0.15]])); c.beginPath(); for (const x of [-0.25, 0, 0.25]) { c.moveTo(x, -0.15); c.lineTo(x, 0.3); } c.stroke(); F("#ffd23f", () => ell(0, 0.3, 0.38, 0.07)); M("fish", -0.25, 0.08, 0.3); M("fish", 0.25, 0.02, 0.3); },
+    organ: () => { F("#7a4a2a", () => rr(-0.36, 0.05, 0.72, 0.3, 0.03)); c.fillStyle = "#fff"; c.fillRect(-0.32, 0.1, 0.64, 0.1); c.fillStyle = L; for (let i = 0; i < 7; i++) c.fillRect(-0.3 + i * 0.09, 0.1, 0.02, 0.1); for (let i = 0; i < 5; i++) M("shell", -0.28 + i * 0.14, -0.15 - (i % 2) * 0.06, 0.35); },
+    bdaycake: () => { F("#ff8ab0", () => rr(-0.3, -0.02, 0.6, 0.3, 0.04)); F("#fff", () => rr(-0.22, -0.22, 0.44, 0.2, 0.04)); for (const x of [-0.12, 0, 0.12]) { F("#7fd3ff", () => rr(x - 0.02, -0.36, 0.04, 0.14, 0.01)); c.fillStyle = "#ffb020"; c.beginPath(); ell(x, -0.4, 0.025, 0.04); c.fill(); } },
+    castle: () => { F("#e8d3a0", () => poly([[-0.34, 0.32], [-0.34, -0.12], [-0.24, -0.12], [-0.24, -0.04], [-0.12, -0.04], [-0.12, -0.24], [0.12, -0.24], [0.12, -0.04], [0.24, -0.04], [0.24, -0.12], [0.34, -0.12], [0.34, 0.32]])); F("#9a7a4a", () => { c.moveTo(-0.07, 0.32); c.lineTo(-0.07, 0.15); c.arc(0, 0.15, 0.07, Math.PI, 0); c.lineTo(0.07, 0.32); }); c.beginPath(); c.moveTo(0, -0.24); c.lineTo(0, -0.42); c.stroke(); F("#e8463a", () => poly([[0, -0.42], [0.14, -0.37], [0, -0.32]])); },
+    bubbleship: () => { F("rgba(160,230,255,.55)", () => c.arc(0, -0.08, 0.22, Math.PI, 0)); F("#aab3bd", () => ell(0, 0, 0.38, 0.1)); for (const x of [-0.22, 0, 0.22]) F("#ffe27a", () => c.arc(x, 0.02, 0.03, 0, 7)); eye(0, -0.14, 0.06); for (const [x, y] of [[-0.3, -0.25], [0.3, -0.3]]) { c.beginPath(); c.arc(x, y, 0.04, 0, 7); c.stroke(); } },
+    // от книгите
+    tinguitar: () => { c.save(); c.rotate(-0.6); F("#8a5a2e", () => rr(-0.03, -0.45, 0.06, 0.4, 0.02)); M("can", 0, 0.15, 0.7); c.strokeStyle = "#eee"; c.lineWidth = 0.012; for (const x of [-0.015, 0.015]) { c.beginPath(); c.moveTo(x, -0.42); c.lineTo(x, 0.2); c.stroke(); } c.restore(); },
+    seasun: () => { c.save(); c.shadowColor = "#ffcf3a"; c.shadowBlur = 24; F("#ffd23f", () => c.arc(0, 0, 0.22, 0, 7)); c.restore(); c.strokeStyle = "#ffb020"; c.lineWidth = 0.05; for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5; c.beginPath(); c.moveTo(Math.cos(a) * 0.28, Math.sin(a) * 0.28); c.lineTo(Math.cos(a) * 0.4, Math.sin(a) * 0.4); c.stroke(); } st(); eye(-0.07, -0.03, 0.04); eye(0.07, -0.03, 0.04); },
+    seapizza: () => { F("#e0a85a", () => { c.moveTo(0, 0.38); c.lineTo(-0.3, -0.25); c.quadraticCurveTo(0, -0.38, 0.3, -0.25); c.closePath(); }); F("#ffcf3a", () => { c.moveTo(0, 0.28); c.lineTo(-0.24, -0.2); c.quadraticCurveTo(0, -0.3, 0.24, -0.2); c.closePath(); }); c.fillStyle = "#3e9a4f"; for (const [x, y] of [[-0.08, -0.12], [0.08, -0.05], [0, 0.1]]) { c.beginPath(); ell(x, y, 0.05, 0.025, 0.5); c.fill(); } },
+    coralfeed: () => { F("#e8eef6", () => { c.moveTo(-0.08, -0.38); c.lineTo(0.08, -0.38); c.lineTo(0.08, -0.12); c.lineTo(0.24, 0.28); c.lineTo(-0.24, 0.28); c.lineTo(-0.08, -0.12); c.closePath(); }); F("#ff6f7d", () => poly([[-0.17, 0.1], [0.17, 0.1], [0.24, 0.28], [-0.24, 0.28]])); stink(); },
+    tentclock: () => { F("#fff8ec", () => c.arc(0, -0.05, 0.28, 0, 7)); c.lineWidth = 0.03; c.beginPath(); c.moveTo(0, -0.05); c.lineTo(0, -0.22); c.moveTo(0, -0.05); c.lineTo(0.12, 0.02); c.stroke(); for (let i = 0; i < 4; i++) { c.lineWidth = 0.05; c.strokeStyle = "#e8743b"; c.beginPath(); c.moveTo(-0.15 + i * 0.1, 0.2); c.quadraticCurveTo(-0.2 + i * 0.13, 0.32, -0.15 + i * 0.1, 0.42); c.stroke(); } st(); },
+    flute: () => { c.save(); c.rotate(-0.4); F("#c08a4a", () => rr(-0.4, -0.05, 0.8, 0.1, 0.05)); c.fillStyle = L; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(-0.25 + i * 0.1, 0, 0.022, 0, 7); c.fill(); } c.restore(); M("feather", 0.25, -0.25, 0.35); },
+    spyglass: () => { c.save(); c.rotate(-0.4); F("#d6a23a", () => rr(-0.4, -0.07, 0.3, 0.14, 0.02)); F("#b8743d", () => rr(-0.1, -0.09, 0.28, 0.18, 0.02)); F("#d6a23a", () => rr(0.18, -0.12, 0.2, 0.24, 0.02)); F("#7fd3ff", () => ell(0.38, 0, 0.025, 0.11)); c.restore(); },
+    smiler: () => { F("#ffd23f", () => c.arc(0, 0, 0.34, 0, 7)); eye(-0.12, -0.08, 0.06); eye(0.12, -0.08, 0.06); c.lineWidth = 0.04; c.beginPath(); c.arc(0, 0.04, 0.18, 0.2, Math.PI - 0.2); c.stroke(); st(); M("gear", 0.28, -0.28, 0.3); },
+    backclock: () => { F("#f0dca6", () => { c.moveTo(-0.22, -0.36); c.lineTo(0.22, -0.36); c.lineTo(0.03, 0); c.lineTo(0.22, 0.36); c.lineTo(-0.22, 0.36); c.lineTo(-0.03, 0); c.closePath(); }); F("#e0a85a", () => poly([[-0.14, 0.3], [0.14, 0.3], [0, 0.12]])); c.strokeStyle = "#3f6fd8"; c.lineWidth = 0.04; c.beginPath(); c.arc(0.28, 0, 0.12, -1.2, 2); c.stroke(); F("#3f6fd8", () => poly([[0.32, -0.16], [0.4, -0.1], [0.3, -0.06]])); },
+    train: () => { F("#e8463a", () => rr(-0.34, -0.12, 0.44, 0.26, 0.03)); F("#3d3f46", () => rr(0.1, -0.2, 0.22, 0.34, 0.03)); F("#3d3f46", () => rr(-0.28, -0.3, 0.1, 0.18, 0.02)); for (const x of [-0.24, -0.04, 0.2]) F("#2b2a33", () => c.arc(x, 0.18, 0.07, 0, 7)); F("#7fd3ff", () => rr(0.15, -0.14, 0.12, 0.1, 0.02)); for (const [x, y] of [[-0.28, -0.4], [-0.2, -0.46]]) { c.beginPath(); c.arc(x, y, 0.04, 0, 7); c.stroke(); } },
+    bath: () => { F("#e8eef6", () => { c.moveTo(-0.38, -0.02); c.lineTo(0.38, -0.02); c.quadraticCurveTo(0.36, 0.28, 0, 0.28); c.quadraticCurveTo(-0.36, 0.28, -0.38, -0.02); }); c.lineWidth = 0.04; c.beginPath(); c.moveTo(-0.25, 0.28); c.lineTo(-0.3, 0.38); c.moveTo(0.25, 0.28); c.lineTo(0.3, 0.38); c.stroke(); st();
+      c.fillStyle = "#fff"; for (const [x, y, r2] of [[-0.2, -0.06, 0.1], [0, -0.12, 0.13], [0.2, -0.06, 0.1], [0.08, -0.3, 0.06], [-0.1, -0.32, 0.05]]) { c.beginPath(); c.arc(x, y, r2, 0, 7); c.fill(); c.stroke(); } },
+    pigeon: () => { F("#e8eef6", () => ell(0, 0.05, 0.28, 0.16)); F("#e8eef6", () => c.arc(0.24, -0.1, 0.11, 0, 7)); F("#ffb020", () => poly([[0.33, -0.12], [0.44, -0.08], [0.33, -0.05]])); F("#c7d3e0", () => { c.moveTo(-0.1, 0); c.quadraticCurveTo(-0.15, -0.36, 0.08, -0.18); c.closePath(); }); eye(0.26, -0.12, 0.03); F("#f0dca6", () => rr(-0.08, 0.14, 0.16, 0.1, 0.01)); },
+    horn: () => { F("#f2d9b5", () => { c.moveTo(-0.38, -0.02); c.quadraticCurveTo(0, -0.1, 0.24, -0.3); c.lineTo(0.36, 0.1); c.quadraticCurveTo(0.05, -0.02, -0.38, 0.06); c.closePath(); }); c.strokeStyle = "#c8a070"; for (let i = 0; i < 5; i++) { c.beginPath(); c.moveTo(-0.2 + i * 0.1, -0.05 - i * 0.03); c.lineTo(-0.2 + i * 0.1, 0.04 - i * 0.0); c.stroke(); } st(); F("#c8a070", () => ell(0.3, -0.1, 0.06, 0.2, -0.3)); },
+    inkwell: () => { F("#2d3b5a", () => { c.moveTo(-0.2, 0.3); c.lineTo(-0.24, 0); c.quadraticCurveTo(0, -0.12, 0.24, 0); c.lineTo(0.2, 0.3); c.closePath(); }); F("#1d2740", () => ell(0, -0.04, 0.12, 0.04)); M("feather", 0.08, -0.25, 0.6); },
+    springshoes: () => { F("#e8463a", () => { c.moveTo(-0.3, -0.05); c.lineTo(0.05, -0.05); c.quadraticCurveTo(0.32, -0.05, 0.32, 0.08); c.lineTo(-0.3, 0.08); c.closePath(); }); F("#fff", () => rr(-0.32, 0.06, 0.66, 0.05, 0.02)); M("spring", 0, 0.28, 0.45); c.strokeStyle = "#fff"; c.beginPath(); c.moveTo(-0.15, -0.05); c.lineTo(-0.05, 0.03); c.moveTo(-0.05, -0.05); c.lineTo(0.05, 0.03); c.stroke(); st(); },
+    candycoral: () => { c.save(); c.rotate(0.3); c.lineWidth = 0.05; c.beginPath(); c.moveTo(0, 0.05); c.lineTo(0, 0.42); c.stroke(); st(); F("#ff6fae", () => c.arc(0, -0.12, 0.24, 0, 7)); c.strokeStyle = "#fff"; c.lineWidth = 0.05; c.beginPath(); for (let i = 0; i < 30; i++) { const a = i * 0.45, r2 = i * 0.007; c.lineTo(Math.cos(a) * r2, -0.12 + Math.sin(a) * r2); } c.stroke(); c.restore(); },
+    firefly: () => { M("bottle", 0, 0.02, 0.95); c.save(); c.shadowColor = "#ffe27a"; c.shadowBlur = 12; c.fillStyle = "#fff6a8"; for (const [x, y] of [[0.02, 0.05], [0.1, 0.15], [-0.04, 0.2], [0.06, -0.05]]) { c.beginPath(); c.arc(x, y, 0.03, 0, 7); c.fill(); } c.restore(); },
+    jetpack: () => { F("#3f6fd8", () => rr(-0.26, -0.3, 0.52, 0.48, 0.08)); F("#c7ccd3", () => rr(-0.2, 0.16, 0.14, 0.1, 0.02)); F("#c7ccd3", () => rr(0.06, 0.16, 0.14, 0.1, 0.02)); F("#ffb020", () => poly([[-0.18, 0.26], [-0.13, 0.44], [-0.08, 0.26]])); F("#ffb020", () => poly([[0.08, 0.26], [0.13, 0.44], [0.18, 0.26]])); F("#ffd23f", () => rr(-0.12, -0.2, 0.24, 0.1, 0.03)); },
+    hourglass: () => { F("#b8743d", () => rr(-0.24, -0.4, 0.48, 0.06, 0.02)); F("#b8743d", () => rr(-0.24, 0.34, 0.48, 0.06, 0.02)); F("rgba(220,240,255,.7)", () => { c.moveTo(-0.18, -0.34); c.lineTo(0.18, -0.34); c.lineTo(0.02, 0); c.lineTo(0.18, 0.34); c.lineTo(-0.18, 0.34); c.lineTo(-0.02, 0); c.closePath(); }); c.fillStyle = "#e8c070"; c.beginPath(); poly([[-0.1, -0.2], [0.1, -0.2], [0.01, -0.02], [-0.01, -0.02]]); c.fill(); c.beginPath(); poly([[-0.16, 0.33], [0.16, 0.33], [0, 0.18]]); c.fill(); },
+    navstar: () => { c.save(); c.shadowColor = "#fff6a8"; c.shadowBlur = 16; M("star", 0, 0, 0.9); c.restore(); F("#e8463a", () => poly([[0, -0.22], [0.05, 0], [-0.05, 0]])); F("#5a6b80", () => poly([[0, 0.22], [0.05, 0], [-0.05, 0]])); },
+    robocrab: () => { M("can", 0, -0.02, 0.6); c.lineWidth = 0.035; for (const d of [-1, 1]) { for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(d * 0.12, 0.05 + i * 0.05); c.lineTo(d * 0.3, 0.2 + i * 0.05); c.lineTo(d * 0.32, 0.32); c.stroke(); } c.beginPath(); c.moveTo(d * 0.12, -0.1); c.lineTo(d * 0.3, -0.25); c.stroke(); F("#9aa3ad", () => c.arc(d * 0.32, -0.28, 0.06, 0, 7)); } st(); eye(-0.05, -0.22, 0.04); eye(0.05, -0.22, 0.04); },
+    tea: () => { F("#e8eef6", () => { c.moveTo(-0.26, -0.12); c.lineTo(0.26, -0.12); c.quadraticCurveTo(0.24, 0.28, 0, 0.28); c.quadraticCurveTo(-0.24, 0.28, -0.26, -0.12); }); F("#9ab85a", () => ell(0, -0.12, 0.26, 0.06)); c.lineWidth = 0.05; c.beginPath(); c.arc(0.3, 0.05, 0.08, -1.4, 1.4); c.stroke(); st(); c.strokeStyle = "rgba(255,255,255,.8)"; for (const x of [-0.08, 0.06]) { c.beginPath(); c.moveTo(x, -0.18); c.bezierCurveTo(x - 0.05, -0.26, x + 0.05, -0.32, x, -0.4); c.stroke(); } st(); },
+    noseclip: () => { F("#e8eef6", () => { c.moveTo(-0.3, -0.1); c.quadraticCurveTo(0, -0.22, 0.3, -0.1); c.quadraticCurveTo(0.28, 0.22, 0, 0.24); c.quadraticCurveTo(-0.28, 0.22, -0.3, -0.1); }); c.strokeStyle = "#9ab"; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(-0.2, -0.02 + i * 0.08); c.lineTo(0.2, -0.02 + i * 0.08); c.stroke(); } st(); c.beginPath(); c.moveTo(-0.3, -0.08); c.lineTo(-0.42, -0.2); c.moveTo(0.3, -0.08); c.lineTo(0.42, -0.2); c.stroke(); },
+    oldnotes: () => { c.save(); c.rotate(-0.08); F("#7a4a2a", () => rr(-0.28, -0.34, 0.56, 0.68, 0.03)); F("#f0dca6", () => rr(-0.24, -0.3, 0.48, 0.6, 0.02)); c.strokeStyle = "#a07a2a"; c.lineWidth = 0.02; for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(-0.18, -0.2 + i * 0.08); c.lineTo(0.18, -0.2 + i * 0.08); c.stroke(); } st(); M("gear", 0.1, 0.12, 0.25); c.restore(); },
+    crown: () => { c.save(); c.shadowColor = "#ffd23f"; c.shadowBlur = 14; F("#ffcf3a", () => poly([[-0.34, 0.2], [-0.34, -0.16], [-0.17, 0.02], [0, -0.28], [0.17, 0.02], [0.34, -0.16], [0.34, 0.2]])); c.restore(); F("#ffcf3a", () => poly([[-0.34, 0.2], [-0.34, -0.16], [-0.17, 0.02], [0, -0.28], [0.17, 0.02], [0.34, -0.16], [0.34, 0.2]]));
+      for (const [x, col] of [[-0.18, "#ff6f7d"], [0, "#7fd3ff"], [0.18, "#7cc256"]]) F(col, () => c.arc(x, 0.1, 0.05, 0, 7)); M("coral", 0, -0.33, 0.2); },
     yogurt: () => { F("#fff8f0", () => poly([[-0.24, -0.15], [0.24, -0.15], [0.18, 0.3], [-0.18, 0.3]])); c.fillStyle = "#ff7eb6"; c.fillRect(-0.21, 0.0, 0.42, 0.12); st(); F("#e8eef6", () => ell(0, -0.15, 0.25, 0.06)); },
   };
   return { has: k => !!A[k], draw(ctx, k, x, y, s) { c = ctx; ctx.save(); ctx.translate(x, y); ctx.scale(s, s); st(); try { A[k](); } finally { ctx.restore(); } } };
@@ -1776,6 +1880,40 @@ function readBook() {
     save(); render();
   }, 20000);
 }
+// ---------- Сутрешен подарък от рибата-пощальон ----------
+const HATS = { beanie: ["🧶", "Шапка с помпон"], straw: ["👒", "Сламена шапка"], pirate: ["🏴‍☠️", "Пиратска шапка"], captain: ["⚓", "Капитанска шапка"], party: ["🥳", "Парти шапка"], shellcrown: ["👑", "Коронка от миди"] };
+const GIFT_ITEMS = ["star", "shell", "coral", "feather", "bulb", "bat", "magnet", "gear", "spring", "cheese", "banana", "fish", "bread", "egg", "milk"];
+function dailyGift(p) {
+  const d = new Date(), day = d.toDateString();
+  if (S.giftDay === day || S.gift || d.getHours() < 5 || !S.hatched || S.asleep || p - ptr.t > 60000 || S.stage === "baby") return;
+  if (!S.giftDay) { S.giftDay = day; dirty = true; return; }       // първия ден още не
+  S.giftDay = day;
+  const free = Object.keys(HATS).filter(h => !(S.hats || []).includes(h));
+  const k = free.length && Math.random() < 0.45 ? "hat:" + pick(free) : pick(GIFT_ITEMS);
+  S.gift = { x: rnd(0.25, 0.6), k, t: S.t }; dirty = true; save();
+  log("🎁 Рибата-пощальон донесе подарък.");
+  setTimeout(() => say("", pick(["Рибата-пощальон! Остави ми подарък! Отвори го, моля!", "Подарък! Сутрешен подарък! Какво ли има вътре?"]), 7000), 2500);
+}
+function openGift() {
+  if (role !== "keeper" || !S.gift) return;
+  const k = S.gift.k; poof(S.gift.x, true); S.gift = null; S.mood = clamp(S.mood + 8); dirty = true; fx.party = performance.now();
+  if (k.startsWith("hat:")) {
+    const h = k.slice(4); S.hats = [...new Set([...(S.hats || []), h])];
+    log(`🎁 В подаръка имаше ${HATS[h][1].toLowerCase()}!`);
+    say("", `${HATS[h][1]}! За мен ли е? Ще я пробвам веднага!`, 6000); S.hat = h;
+  } else {
+    addMat(k); flyToChest(k, W * 0.5, H * 0.7);
+    log(`🎁 В подаръка имаше ${elN(k).toLowerCase()}.`);
+    say("", pick([`${elN(k)}! Точно това ми трябваше. Прибирам го в сандъка.`, `Подарък: ${elN(k).toLowerCase()}! Благодаря, рибке!`]), 6000);
+  }
+  save(); render();
+}
+function wearHat(h) {
+  if (role !== "keeper") return;
+  S.hat = S.hat === h ? null : h; dirty = true; save();
+  say("", S.hat ? pick(["Как ми стои?", "Стилно, нали?", "С тази шапка съм по-умен. Измерих го."]) : "Свалих я. Да си почине.", 4000);
+  render();
+}
 function openParcel() {
   if (role !== "keeper" || !S.parcel) return;
   poof(S.parcel.x, true); S.parcel = null; S.glasses = true; S.mood = clamp(S.mood + 15); dirty = true;
@@ -2045,7 +2183,7 @@ $("scrim").onclick = () => { if (performance.now() - dragEndAt > 600) closeSheet
 $("chatBtn").onclick = ev => { ev.stopPropagation(); if (S) togglePop(); };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#pop") && !ev.target.closest("#chatBtn")) closePop(); });
 function lastAsked() { return Math.max(0, ...Object.values(S.asked || {})); }
-let libPick = null, journalPage = 0, libTab = "shelf", mixSel = [], invPick = null, invDrag = null;
+let cabTab = "inv", libPick = null, journalPage = 0, libTab = "shelf", mixSel = [], invPick = null, invDrag = null;
 function priceOf(k) {
   let p2 = YUCK.includes(k) ? 0 : EL[k][4];
   if (EL[k][3] === "junk" && has("recycler")) p2 *= 2;
@@ -2177,10 +2315,15 @@ function fillSheet(kind) {
       ${ingOf(k) && canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(ingOf(k)) ? "" : "disabled"}>Направи${cnt(k) || placed(k) ? " още" : " пак"}</button>` : ""}
       ${placed(k) ? `<small class="st">${k === "trampoline" || active(k) ? "✓ на дъното, работи" : "на дъното, изключено (докосни го там)"}</small>` : ""}
       ${ACTS[k] && role === "keeper" ? `<button class="tg" data-k="${k}">${placed(k) ? "Прибери" : "Сложи"}</button>` : ""}</div>`;
-    sh.innerHTML = head("🗄️ Шкаф") + (made.length ? `<div class="cab">${act.map(card).join("")}${rest.map(card).join("")}</div>`
+    const hats = S.hats || [];
+    const tabs = `<div class="tabs">${[["inv", "⚙️ Изобретения"], ["wear", "🎩 Дрехи"]].map(([k, n]) => `<button data-c="${k}" class="${cabTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
+    sh.innerHTML = head("🗄️ Шкаф") + tabs + (cabTab === "wear" ? (hats.length ? `<div class="cab">${hats.map(h => `<div class="gd${S.hat === h ? " on" : ""}"><span>${HATS[h][0]}</span><b>${esc(HATS[h][1])}</b>${role === "keeper" ? `<button class="tg hat" data-h="${h}">${S.hat === h ? "Свали" : "Сложи"}</button>` : ""}</div>`).join("")}</div>`
+      : `<div class="sub">Още няма дрехи. Понякога рибата-пощальон носи подаръци…</div>`) : made.length ? `<div class="cab">${act.map(card).join("")}${rest.map(card).join("")}</div>`
       : `<div class="sub">Шкафът е празен. Тук ще стоят изобретенията.</div>`);
-    sh.querySelectorAll(".tg").forEach(b => b.onclick = () => togglePlace(b.dataset.k));
+    sh.querySelectorAll(".tg:not(.hat)").forEach(b => b.onclick = () => togglePlace(b.dataset.k));
     sh.querySelectorAll(".rm").forEach(b => b.onclick = () => remake(b.dataset.k));
+    sh.querySelectorAll(".hat").forEach(b => b.onclick = () => wearHat(b.dataset.h));
+    sh.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { cabTab = b.dataset.c; fillSheet("cab"); });
   } else if (kind === "cook") {
     const foods = S.found.filter(c => EDIBLE[c]);
     sh.innerHTML = head("📖 Рецепти") + (foods.length ? `<div class="cab">${foods.map(k => `<div class="gd${cnt(k) ? "" : " zero"}"><span>${elI(k)}</span><b>${esc(elN(k))}${cnt(k) ? ` ×${cnt(k)}` : ""}</b>
@@ -2755,7 +2898,7 @@ function liveSnap() {
     g: guest ? { k: guest.k, e: Math.round(p - guest.at), l: guest.line && p - guest.line.at < 4200 ? guest.line.x : "" } : null,
     bg: bgame ? { k: bgame.k, ph: bgame.phase || "", f: bgame.k === "fish" ? [r2(bgame.fx / W), r2(bgame.fy / H)] : null,
       l: bgame.k === "bubbles" ? bgame.list.filter(q => !q.pop).map(q => [r2(q.x / W), r2(q.y / H), Math.round(q.r)]) : null } : null,
-    bo: bottle ? [Math.round(bottle.level), bdown ? 1 : 0] : null, rk: rocking ? rocking.swings : null, vz: vis ? [vis.id, r2(vis.x / W), r2(vis.y / H), vis.vx > 0 ? 1 : -1] : null, fl: p - flashAt < 500 ? 1 : 0,
+    bo: bottle ? [Math.round(bottle.level), bdown ? 1 : 0] : null, rk: rocking ? rocking.swings : null, vz: vis ? [vis.id, r2(vis.x / W), r2(vis.y / H), vis.vx > 0 ? 1 : -1, vis.line && p - vis.line.at < 4800 ? vis.line.x : ""] : null, fl: p - flashAt < 500 ? 1 : 0,
   };
 }
 function livePush(gone) {
@@ -2789,14 +2932,20 @@ function liveApply() {                      // при vasko: прилага по
   } else bgame = null;
   bottle = L.bo ? { level: L.bo[0], t0: p } : null; bdown = !!(L.bo && L.bo[1]);
   rocking = L.rk != null ? { swings: L.rk, t0: p } : null;
-  if (L.vz && SEA[L.vz[0]]) { if (!vis || vis.id !== L.vz[0]) vis = { id: L.vz[0], t0: p, last: p, ph: 0, mirror: true, x: L.vz[1] * W }; vis.x += (L.vz[1] * W - vis.x) * 0.1; vis.y = L.vz[2] * H; vis.vx = L.vz[3] * 0.001; } else vis = null;
+  if (L.vz && SEA[L.vz[0]]) { if (!vis || vis.id !== L.vz[0]) vis = { id: L.vz[0], t0: p, last: p, ph: 0, mirror: true, x: L.vz[1] * W }; vis.x += (L.vz[1] * W - vis.x) * 0.1; vis.y = L.vz[2] * H; vis.vx = L.vz[3] * 0.001; if (L.vz[4] && (!vis.line || vis.line.x !== L.vz[4])) vis.line = { x: L.vz[4], at: p }; } else vis = null;
   if (L.fl && p - flashAt > 600) flashAt = p;
   return [L.x * W, L.y * H, L.m, L.d];
 }
 
 // ---------- Говорене (балончето следва Октонис) ----------
 let bubbleUntil = 0;
-function say(e, t = "", ms = 4500) { bubbleUntil = performance.now() + ms; lastLine = { t: performance.now(), x: t }; showBubble(e, babify(String(t), e), false); }
+const SLEEPTALK = ["Хрр… още едно болтче… хрр…", "Мм… не, не, червената жица…", "…подреди ги по азбучен ред… хрр…", "Палачинки… осем палачинки… за всяко пипало…", "Ммм… мехурче… голямо мехурче…",
+  "…не пипай масата… хрр…", "Мамо… още пет минутки…", "Аз съм… кралят на рифа… хрр…", "…батерия… крушка… светнааа…", "Хи-хи… гъделичка… хрр…", "…кой ми взе чорапа…",
+  "Ракета… отброявам… десет… девет… хрр…", "Мм… рибке, не бягай…", "…изобретих… сандвич с крила…", "Шшш… камъкът спи… хрр…"];
+let sleepTalking = false;
+function say(e, t = "", ms = 4500) {
+  if (S && S.asleep && S.hatched && !sleepTalking) { t = pick(["Хрр…", "Zzz…", "Хрр… мм…"]); e = ""; ms = Math.min(ms, 2500); }   // насън не говори
+  bubbleUntil = performance.now() + ms; lastLine = { t: performance.now(), x: t }; showBubble(e, babify(String(t), e), false); }
 // говори само с думи: махам картинките (емотиконите) от текста
 const NO_EMO = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}\u{20E3}]/gu;
 const WORDS = { "🤣": "Ха-ха-ха!", "🤗": "Прегръдка! Обичам прегръдки.", "☺️": "Ох, благодаря!", "🥰": "И аз те обичам!", "💤💗": "Хм… обичам те… хррр…",
@@ -3008,7 +3157,12 @@ function drawFloor(t, s, behind) {
   g.textAlign = "center"; g.textBaseline = "middle";
   const list = [...S.trash.map(x => ({ ...x, kind: "trash", e: elE(x.k) })), ...S.parts.map(x => ({ ...x, kind: "part", e: elE(x.k) })),
     ...(S.parcel && !behind ? [{ id: "parcel", x: S.parcel.x, e: "📦", kind: "parcel" }] : []),
-    ...(S.letter && !behind ? [{ id: "letter", x: S.letter.x, e: "🍾", kind: "letter" }] : [])];
+    ...(S.letter && !behind ? [{ id: "letter", x: S.letter.x, e: "🍾", kind: "letter" }] : []),
+    ...(S.gift && !behind ? [{ id: "gift" + S.gift.t, x: S.gift.x, e: "🎁", kind: "gift" }] : [])];
+  if (S.gift && !behind) {                              // рибата-пощальон носи подаръка
+    const a = ((now - (seen["gift" + S.gift.t] || now)) / 1000) / 6;
+    if (a < 1) { const fx3 = W * (1.1 - a * 1.3), fy3 = H * 0.25 + Math.sin(a * 20) * 10; g.save(); g.translate(fx3, fy3); g.scale(-1, 1); drawCreature("mail", 0, 0, Math.max(0.5, sz / 60), t); g.restore(); g.font = `${sz * 0.7}px system-ui, sans-serif`; g.textAlign = "center"; g.fillStyle = "#000"; g.fillText("🎁", fx3 + sz * 0.6, fy3 + 20); }
+  }
   if (S.parcel && !behind) {                            // рибата-пощальон отплува
     const a = ((now - (seen.parcel || now)) / 1000) / 6;
     if (a < 1) { g.font = `${sz * 1.3}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.fillText("🐟", W * (1.1 - a * 1.3), H * 0.25 + Math.sin(a * 20) * 10); g.font = `${sz * 0.7}px system-ui, sans-serif`; g.fillText("✉️", W * (1.1 - a * 1.3) - sz * 0.5, H * 0.25 + 18); }
@@ -3233,8 +3387,8 @@ function seaChance(id) {                    // колко вероятно е д
 }
 const pct = v => v >= 10 ? Math.round(v) + "%" : v >= 1 ? v.toFixed(1).replace(".", ",") + "%" : v.toFixed(2).replace(".", ",") + "%";
 function seaPick() {
-  const dp = dayPart(), list = [];
-  for (const [id, c] of Object.entries(SEA)) if (c[7] === "any" || c[7] === dp || (dp === "morning" && c[7] === "day"))
+  const dp = night(Date.now()) || (S && S.asleep) ? "night" : dayPart(), list = [];
+  for (const [id, c] of Object.entries(SEA)) if (dp === "night" ? c[7] === "night" : c[7] !== "night")
     if (c[5] !== "guest") list.push([id, TIER_W[c[6]] * (S.album && S.album[id] ? 0.6 : 1)]);
   let r = Math.random() * list.reduce((a, b) => a + b[1], 0);
   for (const [id, w] of list) if ((r -= w) <= 0) return id;
@@ -3243,6 +3397,8 @@ function seaPick() {
 function seaTick(p) {
   if (vis && !vis.mirror) {
     const c = SEA[vis.id], e = (p - vis.t0) / 1000;
+    if (vis.pause && p < vis.pause) { vis.last = p; return; }
+    if (vis.flee) { vis.vx = Math.sign(vis.vx || 1) * Math.max(Math.abs(vis.vx) * 1.06, 260); }
     vis.x += vis.vx * (p - vis.last) / 1000; vis.last = p;
     if (c[5] === "sit") { if (e > 22) vis = null; return; }
     if ((vis.vx > 0 && vis.x > W + 260) || (vis.vx < 0 && vis.x < -260) || e > 60) vis = null;
@@ -3681,13 +3837,47 @@ function drawVis(t, s) {
   const fade = SEA[id][5] === "sit" ? Math.min(1, (performance.now() - vis.t0) / 1500, Math.max(0, (22000 - (performance.now() - vis.t0)) / 1500)) : 1;
   drawSeaOne(g, id, x, y - (m === "floor" || m === "sit" ? z * 0.35 : 0), z, t, vis.vx > 0 ? 1 : vis.vx < 0 ? -1 : 1, (m === "far" ? 0.55 : 1) * fade);
   vis.hit = { x, y: y - (m === "floor" || m === "sit" ? z * 0.35 : 0), r: Math.max(44, z * (m === "school" ? 1.2 : 0.6)) };
+  if (vis.line && performance.now() - vis.line.at < 4800) talkBubble(Math.min(W - 60, Math.max(60, x)), vis.hit.y - vis.hit.r, vis.line.x);
+}
+function talkBubble(x, y, text) {              // балонче на животно
+  g.save(); g.font = "600 15px -apple-system, system-ui, sans-serif";
+  const words = text.split(" "), lines = []; let cur = "";
+  for (const w of words) { if (g.measureText(cur + " " + w).width > 180 && cur) { lines.push(cur); cur = w; } else cur = cur ? cur + " " + w : w; }
+  lines.push(cur);
+  const bw = Math.max(...lines.map(l => g.measureText(l).width)) + 22, bh = lines.length * 19 + 14;
+  const bx = Math.min(W - bw - 8, Math.max(8, x - bw / 2)), by = Math.max(70, y - bh - 8);
+  g.fillStyle = "rgba(255,250,242,.96)"; g.strokeStyle = "#2b2a33"; g.lineWidth = 2.5;
+  g.beginPath(); g.roundRect ? g.roundRect(bx, by, bw, bh, 12) : g.rect(bx, by, bw, bh); g.fill(); g.stroke();
+  g.fillStyle = "#2a1730"; g.textAlign = "left"; g.textBaseline = "top";
+  lines.forEach((l, i) => g.fillText(l, bx + 11, by + 8 + i * 19));
+  g.restore();
 }
 function drawFlash() {
   const a = (performance.now() - flashAt) / 450;
   if (a > 1) return;
   g.fillStyle = `rgba(255,255,255,${0.85 * (1 - a)})`; g.fillRect(0, 0, W, H);
 }
-function snapVis() { snapId(vis.id); if (SEA[vis.id][5] !== "sit") vis.vx *= 2.2; }
+const SNAP_OK = ["Чииийз!", "Хубава ли излязох?", "Още една! От другата страна!", "Само от хубавата ми страна!", "Изпрати ми я после!", "Ох, светкавица! Хи-хи."];
+const SNAP_MAD = ["Що ме снимаш бе?!", "Ей! Без снимки!", "Папарак! Бягам!", "Не съм се сресала!", "Кой ти разреши?!"];
+const SNAP_THIEF = ["Щом ме снимаш, ще ти взема нещо!", "Хмпф! Това е за снимката!", "Таксата за снимка! Вземам си!"];
+function snapReact(who) {                    // как реагира снименото животно
+  const r = Math.random(), loot = Object.keys(S.mat).filter(k => cnt(k) > 0 && EL[k] && ["junk", "nature", "part", "food"].includes(EL[k][3]));
+  if (r < 0.12 && loot.length && role === "keeper") {
+    const k = pick(loot); takeMat(k); dirty = true; save();
+    log(`😠 ${who} открадна ${elN(k).toLowerCase()} от сандъка!`);
+    setTimeout(() => say("", pick([`Ей! ${who} ми открадна ${elN(k).toLowerCase()}!`, `Върни ми ${elN(k).toLowerCase()}! Крадец!`, `Ох! Взе ми ${elN(k).toLowerCase()}. Заради снимката…`]), 5500), 1800);
+    return ["thief", pick(SNAP_THIEF)];
+  }
+  if (r < 0.42) return ["mad", pick(SNAP_MAD)];
+  return ["ok", pick(SNAP_OK)];
+}
+function snapVis() {
+  snapId(vis.id); const c = SEA[vis.id], [kind, line] = snapReact(c[1]), p = performance.now();
+  vis.line = { x: line, at: p };
+  if (c[5] === "sit") return;
+  if (kind === "ok") vis.pause = p + 4200;                   // спира за малко и позира
+  else { vis.pause = p + 2600; vis.flee = kind; }             // ядосан: бяга бързо
+}
 function snapId(id) {
   const c = SEA[id];
   flashAt = performance.now();
@@ -3805,7 +3995,7 @@ function loop() {
   const sway = rocking ? Math.sin(t * 2.4) * 22 * s : 0;
   if (!hidden()) drawRock(t);                // камъкът е отзад, освен когато се крие зад него
   drawPillow(s, ground);
-  const info = Octo.draw(g, { paci: S && S.cry ? false : undefined, crack: S && !S.hatched ? (creating ? 1 : (S.eggP || 0) / EGG_MAX) : 0, x: oct.px + sway, y: oct.py - 46 * oct.sc - hop, s: oct.sc, skin: S && S.skin, age, mode, t, mt: t - modeAt, st, lie, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
+  const info = Octo.draw(g, { paci: S && S.cry ? false : undefined, crack: S && !S.hatched ? (creating ? 1 : (S.eggP || 0) / EGG_MAX) : 0, x: oct.px + sway, y: oct.py - 46 * oct.sc - hop, s: oct.sc, skin: S && S.skin, age, mode, t, mt: t - modeAt, st, lie, hat: S && S.hat, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
     hug: mode === "sleep" && !!pillow && pillow.x != null, work: table && table.x != null ? [table.x, ground + 4 - 120 * s - 40 * s] : null, ground: (near || age === "egg") && !(mode === "sleep" && pillow) ? ground : null, drop: age === "egg", style: STYLE, dir: oct.dir,
     lookAt: role === "keeper" && performance.now() - ptr.t < 3000 ? ptr : gaze && performance.now() < gaze.until ? gaze : null });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
@@ -3846,6 +4036,7 @@ cv.addEventListener("pointerdown", ev => {
   const hit = floorHits.find(h => Math.hypot(h.x - x, h.y - y) < h.r);
   if (hit && role === "keeper") { closeRing();
     if (hit.kind === "parcel") return openParcel();
+    if (hit.kind === "gift") return openGift();
     if (hit.kind === "letter") return openLetter();
     itemDrag = { id: hit.id, kind: hit.kind, pid: ev.pointerId, sx: x, sy: y, moved: false };
     try { cv.setPointerCapture(ev.pointerId); } catch {}
@@ -3860,7 +4051,8 @@ cv.addEventListener("pointerdown", ev => {
     return say("😄", pick(["Намери ме!", "Ееех, видя ме!", "Ку-ку!"]));
   }
   if (guest && guest.box && Math.hypot(x - guest.box.x, y - guest.box.y) < guest.box.r) {
-    if (SEA["g_" + guest.k] && performance.now() - flashAt > 1500) { snapId("g_" + guest.k); guest.line = { x: pick(["Ей! Снима ли ме?", "Чииийз!", "Ох, светкавица!", "Само от хубавата ми страна!"]), at: performance.now() }; return; }
+    if (SEA["g_" + guest.k] && performance.now() - flashAt > 1500) { snapId("g_" + guest.k); const [kind, line] = snapReact(SEA["g_" + guest.k][1]); guest.line = { x: line, at: performance.now() };
+      if (kind !== "ok") guest.end = Math.min(guest.end, performance.now() + 2200); return; }
     guest.line = { x: pick(["Ей! Не пипай!", "Здрасти!", "Само минавам.", "Хи-хи!"]), at: performance.now() }; return; }
   if (angler && angler.hit && Math.hypot(x - angler.hit.x, y - angler.hit.y) < angler.hit.r && performance.now() - flashAt > 1500) { closeRing(); return snapId("g_angler"); }
   if (onRock(x, y) && !onOcto(x, y)) {
@@ -3962,6 +4154,8 @@ setInterval(() => {
     grumble(now);
     if (!document.hidden && p - ptr.t < 15 * 60000 && now - lastLive > 1500) livePush();
     babySecond(p, now);
+    dailyGift(p);
+    if (S.asleep && S.hatched && p > bubbleUntil + 30000 && Math.random() < 1 / 300) { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }   // понякога бълнува
     if (placedAny(MUSIC) && S.hatched && !S.asleep && !working && p > nextDance) { nextDance = p + rnd(3, 6) * 60000; danceUntil = p + 6000; say("", pick(["Обичам тази песен!", "Бълбук-бълбук, танцувам!", "Не гледай. Танцувам."])); }
     if (sickSay) { say("", sickSay === "well" ? "Оздравях! Благодаря, че се погрижи за мен." : "Не ми е добре… Май се разболях.", 7000); sickSay = false; }
     guestTick(p);
@@ -4054,7 +4248,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, items: () => Object.keys(EL).map(k => [k, itemImg(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
