@@ -63,7 +63,8 @@
   #mixbar button:disabled { opacity: .5; }
   body.hasbar #sheet { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 62px); border-bottom: 3px solid var(--ink); border-radius: 24px; }
   body.hasbar #hint { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 70px); }
-  #ghost { position: fixed; z-index: 10; pointer-events: none; font-size: 44px; transform: translate(-50%, -120%); }
+  #ghost { position: fixed; z-index: 10; pointer-events: none; font-size: 46px; transform: translate(-50%, -75%) scale(1.1); filter: drop-shadow(0 4px 4px rgba(0,0,0,.4)); }
+  .cell, .spine { -webkit-touch-callout: none; }
 
   /* менюто около него */
   .rb { position: fixed; left: 0; top: 0; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%;
@@ -163,7 +164,7 @@
   .pick .ii { font-size: 30px; } .pick .in { display: flex; flex-direction: column; } .pick small { color: var(--muted); font-size: 12px; }
   .zones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
   .zones span { border: 2px dashed rgba(255,255,255,.35); border-radius: 12px; padding: 12px; text-align: center; font-weight: 700; }
-  .zones span.over, #mixbar.over .slot:not(.full) { background: rgba(255,209,102,.45); }
+  .zones span.over { background: rgba(255,209,102,.45); }
   .letter { background: #fbf3dc; color: #3a2a1a; border-radius: 6px; padding: 18px 18px 22px; font: italic 17px/1.5 Georgia, serif; transform: rotate(-1deg);
     box-shadow: 0 6px 18px rgba(0,0,0,.35); background-image: repeating-linear-gradient(transparent 0 25px, rgba(90,140,220,.18) 25px 26px); }
   .ntf code { display: block; background: rgba(0,0,0,.3); padding: 10px; border-radius: 10px; font-size: 16px; margin: 6px 0; -webkit-user-select: all; user-select: all; }
@@ -185,6 +186,12 @@
   .spine i { position: absolute; top: 4px; font-style: normal; font-size: 12px; color: #fff; } .spine.sel { outline: 3px solid var(--gold); transform: translateY(-8px); }
   .spine u { position: absolute; bottom: 4px; text-decoration: none; font-size: 10px; font-weight: 800; background: #ffe7a8; color: #2a1730; border-radius: 4px; padding: 0 3px; white-space: nowrap; z-index: 1; }
   .shelf.shop .row { height: 160px; } .shelf.shop .spine em { padding-bottom: 24px; } .spine { flex-basis: 38px; } .shelf .empty { color: #e8d2b0; font-size: 13px; align-self: center; } .shelf .deco { font-size: 34px; margin-left: auto; }
+  #tut { position: fixed; inset: 0; z-index: 30; }
+  #tut .spot { position: fixed; border-radius: 18px; box-shadow: 0 0 0 9999px rgba(5,15,35,.62); border: 3px solid var(--gold); transition: all .3s; pointer-events: none; }
+  #tut .tcard { position: fixed; left: 16px; right: 16px; max-width: 420px; margin: 0 auto; background: #fffaf2; color: #2a1730; border: 3px solid var(--ink);
+    border-radius: 18px; padding: 14px 16px; box-shadow: 0 6px 0 rgba(0,0,0,.3); font-size: 16px; }
+  #tut .tcard.mid { top: 40%; } #tut .tcard p { margin: 4px 0 10px; } #tut .tcard .ans { color: #2a1730; background: #eee3d6; }
+  #tut .tcard .ans.yes { background: #6fd3a0; }
   .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
   #bubble .t { font-size: 15px !important; }
   .life { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
@@ -234,6 +241,7 @@
 <button id="profBtn" class="hidden" title="Профил">👤</button><div id="profMenu" class="hidden"></div>
 <div id="side" class="hidden"></div>
 <div id="mixbar" class="hidden"></div>
+<div id="tut" class="hidden"></div>
 <div id="ver" style="position:fixed;right:8px;bottom:max(6px,env(safe-area-inset-bottom));font-size:10px;color:rgba(255,255,255,.55);z-index:2;pointer-events:none"></div>
 <div id="hint" class="hidden">Докосни Октонис 🐙</div>
 <button id="chatBtn" class="hidden" title="Отговори">💬<i></i></button>
@@ -383,7 +391,7 @@ const SECRET = ["wreck", "robokt", "fondue", "penicillin"];          // не с�
 const recKey = (a, b) => [a, b].sort().join("+");
 const RECIPE = Object.fromEntries(REC.map(([a, b, c]) => [recKey(a, b), c]));
 for (const [list, c] of REC3) RECIPE[list.slice().sort().join("+")] = c;
-const elE = k => (EL[k] || ["❓"])[0], elN = k => (EL[k] || ["", k])[1];
+const elE = k => (EL[k] || ["❓"])[0], elN = k => (EL[k] || ["", "нещо"])[1];
 const elFull = k => elE(k) + " " + elN(k);
 const CUR = "перлинги";
 const money = n => `◉ ${n} ${n === 1 ? "перлинг" : CUR}`;
@@ -634,7 +642,7 @@ function proposeIdea() {
 }
 function ideaYes() {
   const id = S.idea; S.idea = null;
-  if (!id || !haveAll([id.a, id.b, ...(id.more || [])])) return "Ох, вече нямам тези неща. Друг път.";
+  if (!id || !EL[id.a] || !EL[id.b] || !haveAll([id.a, id.b, ...(id.more || [])])) return "Ох, вече нямам тези неща. Друг път.";
   if (id.ask) { S.task = { a: id.a, b: id.b }; return `Благодаря! Отвори сандъка и смеси ${elN(id.a).toLowerCase()} и ${elN(id.b).toLowerCase()}. Аз ще гледам.`; }
   setTimeout(() => mix(id.a, id.b, "him", id.more || []), 2500);
   return pick(["Отивам да го направя!", "Супер! Почвам веднага.", "Да! Отивам за масата."]);
@@ -1415,7 +1423,7 @@ function tapEgg() {
   if (S.taps >= 3) {
     S.hatched = true; S.born = S.t; S.stage = "baby"; S.stageT = S.t; S.grow = 0;
     log(`🐣 ${S.name} се излюпи!${S.inherit ? " Прилича на " + (S.parent || "родителя си") + ": " + TRAITS[S.inherit].n.toLowerCase() + "." : " Веднага провери дали всичко наоколо е подредено."}`);
-    fx.party = performance.now(); hatchAt = performance.now(); buildStatic();
+    fx.party = performance.now(); hatchAt = performance.now(); buildStatic(); setTimeout(tutAsk, 9000);
     setTimeout(() => say("", `Здравей! Аз съм ${S.name}.\nОбичам технологиите и реда.`, 7000), 600);
   }
   save();
@@ -1480,6 +1488,8 @@ function afterLoad() {
   if (!S.v || S.v < 2) { S = fresh(Date.now()); dirty = true; }    // нов свят: започва отначало с яйце
   S.pearls = S.pearls || 0;
   if (!S.mat) migrateMat();
+  if (S.task && (!EL[S.task.a] || !EL[S.task.b])) S.task = null;        // повредена задача от стара версия
+  if (S.idea && (!EL[S.idea.a] || !EL[S.idea.b])) S.idea = null;
   if (S.books == null) Object.assign(S, { books: 0, smarts: 0, glasses: STAGES.indexOf(S.stage || "baby") >= 4, parcel: null });
   S.facts = S.facts || {}; S.asked = S.asked || {}; S.chat = S.chat || []; if (S.q === undefined) S.q = null;
   if (!S.stage) Object.assign(S, { gen: 1, name: "Октонис", stage: S.hatched ? "baby" : "egg", stageT: S.hatched ? S.t : S.born, grow: 0, track: newTrack(), family: [], inherit: null });
@@ -1499,11 +1509,12 @@ function afterLoad() {
   show("gameView"); buildStatic(); render();
   loadAt = performance.now();
   morningLetter(); schedNotify(true);
+  setTimeout(tutAsk, 2500);
   if (S.hatched && S.trash.length >= 3) { sadUntil = performance.now() + 60000; setTimeout(() => say("", pick(["Толкова боклуци се събраха… Тъжно ми е.", "Виж каква бъркотия… Плуват навсякъде."]), 7000), 1500); }
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 23;
+const PAGE_V = 24;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1559,6 +1570,7 @@ function closeSheet() {
   $("scrim").classList.add("hidden");
 }
 let dragEndAt = -1e9;
+addEventListener("pointerup", () => setTimeout(() => { if (!invDrag && !(itemDrag && itemDrag.moved)) { $("ghost")?.remove(); document.querySelectorAll("#mixbar .slot.over").forEach(q => q.classList.remove("over")); } }, 50));
 $("scrim").onclick = () => { if (performance.now() - dragEndAt > 600) closeSheet(); };
 $("chatBtn").onclick = ev => { ev.stopPropagation(); if (S) togglePop(); };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#pop") && !ev.target.closest("#chatBtn")) closePop(); });
@@ -1576,7 +1588,8 @@ function dropHover(x, y) {
   const sz = $("sellZone");
   if (sz) { const on = invDrag && el && el.closest("#sellZone"), sum = on ? priceOf(invDrag.k) * Math.min(invDrag.n, cnt(invDrag.k)) : 0;
     sz.textContent = on ? (sum ? `◉ +${sum} ${CUR}` : "Никой не го купува") : "◉ Продай"; }
-  $("mixbar").classList.toggle("over", !!(el && el.closest("#mixbar")));
+  const target = el && el.closest("#mixbar") ? ([...document.querySelectorAll("#mixbar .slot")].find(q => !q.classList.contains("full")) || null) : null;
+  document.querySelectorAll("#mixbar .slot").forEach(q => q.classList.toggle("over", q === target));
 }
 function throwStack(k, n) {
   for (let i = 0; i < n; i++) takeMat(k);
@@ -1860,10 +1873,11 @@ $("profBtn").onclick = ev => {
   const m = $("profMenu");
   if (!m.classList.contains("hidden")) return m.classList.add("hidden");
   m.innerHTML = `<div class="pm-who">👤 ${esc(myNick)}${role === "viewer" ? " · само гледаш" : ""}</div>` +
-    (canFull ? `<button id="pmFull">${isFull() ? "🪟 Малък екран" : "🖥️ Цял екран"}</button>` : "") + (role === "keeper" && !DEMO ? `<button id="pmNt">🔔 Известия</button>` : "") + `<button id="pmOut">🚪 Изход</button>`;
+    (canFull ? `<button id="pmFull">${isFull() ? "🪟 Малък екран" : "🖥️ Цял екран"}</button>` : "") + (role === "keeper" && !DEMO ? `<button id="pmNt">🔔 Известия</button>` : "") + (role === "keeper" ? `<button id="pmTut">🧭 Обиколка</button>` : "") + `<button id="pmOut">🚪 Изход</button>`;
   m.classList.remove("hidden");
   if ($("pmFull")) $("pmFull").onclick = () => { m.classList.add("hidden"); toggleFull(); };
   $("pmOut").onclick = () => { m.classList.add("hidden"); logout(); };
+  if ($("pmTut")) $("pmTut").onclick = () => { m.classList.add("hidden"); try { localStorage.removeItem("okt_tut"); } catch {} tutAsk(); };
   if ($("pmNt")) $("pmNt").onclick = () => { m.classList.add("hidden"); openSheet("notify"); };
 };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#profMenu") && !ev.target.closest("#profBtn")) $("profMenu").classList.add("hidden"); });
@@ -1973,6 +1987,44 @@ function drawCreature(k, x, y, u, t) {
     E(30, -12, 6); g.lineWidth = 2.5; g.beginPath(); g.moveTo(36, -14); g.quadraticCurveTo(60, -40 + sw * 4, 70, -30); g.moveTo(34, -18); g.quadraticCurveTo(50, -50, 64, -46 + sw * 3); g.stroke();
   }
   g.restore();
+}
+
+// ---------- Обиколка за първия път ----------
+const TUT = [
+  { el: () => ({ x: oct.x - oct.r * 0.6, y: oct.cy - oct.r * 0.6, w: oct.r * 1.2, h: oct.r * 1.2 }), t: "Това е Октонис. Докосни го, за да го нахраниш, погалиш, да си играете, да чете или да спи." },
+  { el: "#hud", t: "Горе винаги виждаш как е: глад, сили, настроение, здраве и чистота. Тънката лента показва как расте." },
+  { el: "#chatBtn", t: "Оттук му отговаряш, когато те пита нещо: да, не, сърце, смях, махане, въпрос или скарване." },
+  { el: () => chestBox && { x: chestBox.x - chestBox.r, y: chestBox.y - chestBox.r, w: chestBox.r * 2, h: chestBox.r * 2 }, t: "По дъното падат разни неща. Докосни ги и той ще ги прибере в сандъка." },
+  { el: "#mixbar", t: "Довлачи неща в тези полета и натисни колбата. Така се откриват изобретения." },
+  { el: "#side", t: "Тук са сандъкът, книгите и дневникът. Някои неща ще се появят по-късно." },
+  { el: () => rockBox && { x: rockBox.x - rockBox.rx, y: rockBox.y - rockBox.ry, w: rockBox.rx * 2, h: rockBox.ry * 2 }, t: "Това е неговият камък. Понякога се крие зад него." },
+  { el: "#profBtn", t: "Тук е профилът ти: цял екран, известия и изход. Готово! Грижи се добре за него." },
+];
+let tutI = -1;
+function tutAsk() {
+  if (role !== "keeper" || !S || !S.hatched || tutI >= 0) return;
+  try { if (localStorage.getItem("okt_tut") === "1") return; } catch {}
+  const o = $("tut"); o.classList.remove("hidden");
+  o.innerHTML = `<div class="tcard mid"><b>Здравей!</b><p>Искаш ли да ти покажа кое къде е?</p><div class="row2"><button class="ans yes" id="tGo">Покажи ми</button><button class="ans" id="tSkip">Пропусни</button></div></div>`;
+  $("tGo").onclick = () => { tutI = 0; tutShow(); };
+  $("tSkip").onclick = tutEnd;
+}
+function tutShow() {
+  const st = TUT[tutI]; if (!st) return tutEnd();
+  closeRing(); closeSheet(); closePop();
+  let r = typeof st.el === "string" ? $(st.el.slice(1)).getBoundingClientRect() : st.el();
+  if (!r || (r.width === 0 && !r.w)) { tutI++; return tutShow(); }
+  const x = r.x ?? r.left, y = r.y ?? r.top, w = r.w ?? r.width, h = r.h ?? r.height, pad = 8;
+  const below = y + h / 2 < innerHeight / 2;
+  $("tut").innerHTML = `<div class="spot" style="left:${x - pad}px;top:${y - pad}px;width:${w + pad * 2}px;height:${h + pad * 2}px"></div>
+    <div class="tcard" style="${below ? `top:${Math.min(innerHeight - 200, y + h + pad + 14)}px` : `bottom:${Math.min(innerHeight - 200, innerHeight - y + pad + 14)}px`}">
+    <p>${st.t}</p><div class="row2"><button class="ans" id="tSkip">Пропусни</button><button class="ans yes" id="tNext">${tutI === TUT.length - 1 ? "Готово" : "Напред"} (${tutI + 1}/${TUT.length})</button></div></div>`;
+  $("tNext").onclick = () => { tutI++; tutShow(); };
+  $("tSkip").onclick = tutEnd;
+}
+function tutEnd() {
+  tutI = -1; $("tut").classList.add("hidden"); $("tut").innerHTML = "";
+  try { localStorage.setItem("okt_tut", "1"); } catch {}
 }
 
 // ---------- Говорене (балончето следва Октонис) ----------
