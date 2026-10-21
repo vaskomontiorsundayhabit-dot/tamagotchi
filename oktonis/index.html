@@ -185,7 +185,7 @@
   .spine em { writing-mode: vertical-rl; transform: rotate(180deg); font-style: normal; font-size: 11px; font-weight: 700; color: #fff7e6; padding: 6px 0; overflow: hidden; text-shadow: 0 1px 1px rgba(0,0,0,.5); }
   .spine i { position: absolute; top: 4px; font-style: normal; font-size: 12px; color: #fff; } .spine.sel { outline: 3px solid var(--gold); transform: translateY(-8px); }
   .spine u { position: absolute; bottom: 4px; text-decoration: none; font-size: 10px; font-weight: 800; background: #ffe7a8; color: #2a1730; border-radius: 4px; padding: 0 3px; white-space: nowrap; z-index: 1; }
-  .shelf.shop .row { height: 160px; } .shelf.shop .spine em { padding-bottom: 24px; } .spine { flex-basis: 38px; } .shelf .empty { color: #e8d2b0; font-size: 13px; align-self: center; } .shelf .deco { font-size: 34px; margin-left: auto; }
+  .shelf.shop .row { height: 160px; } .shelf.shop .spine { flex-direction: column; align-items: center; } .shelf.shop .spine em { flex: 1; min-height: 0; padding: 6px 0 3px; } .shelf.shop .spine u { position: static; margin: 0 0 4px; } .spine { flex-basis: 38px; } .shelf .empty { color: #e8d2b0; font-size: 13px; align-self: center; } .shelf .deco { font-size: 34px; margin-left: auto; }
   #tut { position: fixed; inset: 0; z-index: 30; }
   #tut .spot { position: fixed; border-radius: 18px; box-shadow: 0 0 0 9999px rgba(5,15,35,.62); border: 3px solid var(--gold); transition: all .3s; pointer-events: none; }
   #tut .tcard { position: fixed; left: 16px; right: 16px; max-width: 420px; margin: 0 auto; background: #fffaf2; color: #2a1730; border: 3px solid var(--ink);
@@ -1617,7 +1617,7 @@ async function save(force) {
   if (!force && now - lastSave < 3000) { setTimeout(() => save(), 3100); return; }
   dirty = false; lastSave = now;
   if (DEMO) { try { localStorage.setItem(LSKEY, JSON.stringify(S)); } catch {} return; }
-  try { await fb.F.setDoc(docRef, { s: JSON.stringify(S), by: session, at: now }); } catch (e) { console.warn(e); }
+  try { await fb.F.setDoc(docRef, { s: JSON.stringify(S), by: session, at: now, pv: PAGE_V }); } catch (e) { console.warn(e); }
 }
 async function load(user) {
   const now = Date.now();
@@ -1650,6 +1650,7 @@ async function load(user) {
   if (role === "viewer") liveUnsub = fb.F.onSnapshot(liveRef, sn => { L = sn.data() || null; }, () => {});
   unsub = fb.F.onSnapshot(docRef, snap => {
     const d = snap.data();
+    if (d && d.pv) keeperV = d.pv;
     if (!d) {
       if (role === "keeper" && !S) { S = fresh(Date.now()); dirty = true; save(true); afterLoad(); }
       else if (!S) { $("loadView").innerHTML = "<p>Октонис още не се е излюпил 🥚</p>"; }
@@ -1714,7 +1715,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 32;
+const PAGE_V = 33;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1750,7 +1751,7 @@ function ago(t) {
 function esc(s) { return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 function render() {
   if (!S) return;
-  $("top").textContent = role === "viewer" ? (liveOn() ? "🔴 На живо: toshik е тук" : `👀 Само гледаш · toshik беше тук ${ago(S.lastCare)}`) : "";
+  $("top").textContent = role === "viewer" ? topText() : "";
   if (sheetKind) fillSheet(sheetKind);
   if (ringOpen) paintRing();
   renderHud(); renderMix();
@@ -2417,12 +2418,14 @@ function babyPhoto() {                        // бебешка снимка в 
 }
 
 // ---------- На живо: toshik праща какво става, vasko го вижда същото ----------
+let keeperV = 0;
+const topText = () => (liveOn() ? "🔴 На живо: toshik е тук" : `👀 Само гледаш · toshik беше тук ${ago(Math.max(S.lastCare || 0, (L && L.at) || 0))}`) + ` · при него v${(L && L.v) || keeperV || "31 или по-стара"}`;
 let liveRef = null, liveUnsub = null, L = null, lastLive = 0, lastDraw = "idle", liveSay = "";
 const liveOn = () => role === "viewer" && L && !L.gone && Date.now() - L.at < 9000;
 function liveSnap() {
   const p = performance.now(), bub = $("bubble"), r2 = v => Math.round(v * 1000) / 1000;
   return {
-    at: Date.now(), x: r2(oct.px / W), y: r2(oct.py / H), m: lastDraw, d: oct.dir,
+    at: Date.now(), v: PAGE_V, x: r2(oct.px / W), y: r2(oct.py / H), m: lastDraw, d: oct.dir,
     b: bub.classList.contains("hidden") ? "" : $("bubbleT").textContent,
     e: eatFx ? { e: eatFx.e, a: Math.round(p - eatFx.t0) } : null, h: hidden() ? 1 : 0,
     tb: table && table.x != null ? r2(table.x / W) : null, pl: pillow && pillow.x != null ? r2(pillow.x / W) : null,
@@ -3023,7 +3026,7 @@ setInterval(() => {
     if (S.parcel && !parcelSaid) { parcelSaid = true; say("", "Пощата! Рибата-пощальон остави колет! Отвори го, моля, отвори го!", 8000); }
     if (departing && performance.now() - departing.at < 3000) say("", `Сбогом! Грижи се за яйцето.\nТо е моят наследник.`, 6000);
     grumble(now);
-    if (!document.hidden && p - ptr.t < 120000 && now - lastLive > 1500) livePush();
+    if (!document.hidden && p - ptr.t < 15 * 60000 && now - lastLive > 1500) livePush();
     babySecond(p, now);
     if (placedAny(MUSIC) && S.hatched && !S.asleep && !working && p > nextDance) { nextDance = p + rnd(3, 6) * 60000; danceUntil = p + 6000; say("", pick(["Обичам тази песен!", "Бълбук-бълбук, танцувам!", "Не гледай. Танцувам."])); }
     if (sickSay) { say("", sickSay === "well" ? "Оздравях! Благодаря, че се погрижи за мен." : "Не ми е добре… Май се разболях.", 7000); sickSay = false; }
@@ -3055,7 +3058,7 @@ setInterval(() => {
     schedNotify();
     if (sickSay === true && document.hidden && S.notify) ntfy("", 0, `${S.name} се разболя… Ела да го видиш.`);
   } else if (role === "viewer" && S) {
-    $("top").textContent = liveOn() ? "🔴 На живо: toshik е тук" : `👀 Само гледаш · toshik беше тук ${ago(S.lastCare)}`;
+    $("top").textContent = topText();
     if (viewBase && now - lastMinuteCheck > 20000) { lastMinuteCheck = now; S = JSON.parse(viewBase); catchUp(now); render(); }
   }
   updateBubble(); renderHud();
