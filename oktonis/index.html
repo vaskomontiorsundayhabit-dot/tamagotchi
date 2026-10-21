@@ -224,6 +224,9 @@
   .bphoto { width: 96px; height: 96px; border-radius: 10px; transform: rotate(-3deg); box-shadow: 0 4px 10px rgba(0,0,0,.4); margin: 8px auto 2px; display: block; }
   #upd { position: fixed; top: calc(max(8px, env(safe-area-inset-top)) + 96px); left: 50%; transform: translateX(-50%); z-index: 9; background: #ffd166; color: #2a1730;
     font-weight: 800; border: 3px solid var(--ink); border-radius: 999px; padding: 8px 16px; box-shadow: 0 4px 0 rgba(0,0,0,.3); white-space: nowrap; }
+  @keyframes uiin { from { opacity: 0; } }
+  body.entering #hud, body.entering #side, body.entering #profBtn, body.entering #chatBtn, body.entering #mixbar, body.entering #top { animation: uiin .6s ease .15s backwards; }
+  body.entering #sea { animation: uiin .5s ease backwards; }
   .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
   #bubble .t { font-size: 15px !important; }
   .life { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
@@ -1700,6 +1703,7 @@ function afterLoad() {
     S.lastCare = Date.now();
   }
   save();
+  document.body.classList.add("entering"); setTimeout(() => document.body.classList.remove("entering"), 1200);
   show("gameView"); buildStatic(); render();
   loadAt = performance.now();
   morningLetter(); schedNotify(true);
@@ -1708,7 +1712,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 30;
+const PAGE_V = 31;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
