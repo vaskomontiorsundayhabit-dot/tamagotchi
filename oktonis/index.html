@@ -629,13 +629,30 @@ function drawTramp(t, s, cx) {
   g.restore();
 }
 function bounce() { bounceT = performance.now(); if (S) { S.mood = clamp(S.mood + 3); S.track.play++; dirty = true; } say("", pick(["Уииии! Батутът работи!", "По-високо! По-високо!", "Летяяя!"])); }
-function drawPillow(s, ground) {
+const BED_W = 440, BED_H = 150;
+function drawPillow(s, ground, front) {
   if (!pillow || pillow.x == null) return;
-  const w = 330 * s, h = 70 * s, x = pillow.x, y = ground - h * 0.55, sk = STYLE === "sketch";
-  g.save(); g.lineWidth = sk ? 2.4 : 4; g.strokeStyle = sk ? SK_INK : "#2b2a33"; g.fillStyle = sk ? "#fff" : "#cfe3ff";
-  g.beginPath(); g.ellipse(x, y, w / 2, h / 2, 0, 0, 7); g.fill(); g.stroke();
-  g.strokeStyle = sk ? "rgba(35,57,93,.4)" : "#9cb8e6"; g.lineWidth = 3; for (const dx of [-0.25, 0, 0.25]) { g.beginPath(); g.moveTo(x + dx * w, y - h * 0.38); g.lineTo(x + dx * w, y + h * 0.38); g.stroke(); }
-  g.restore();
+  if (front && (STYLE === "sketch" || lastDraw !== "sleep")) return;
+  // голяма пухкава възглавница (като пуф), на която ляга
+  const w = BED_W * s, h = BED_H * s, x = pillow.x, b = ground + 4, top = b - h, sk = STYLE === "sketch";
+  g.save(); g.lineWidth = sk ? 2.4 : 4; g.strokeStyle = sk ? SK_INK : "#2b2a33";
+  const lip = () => { g.moveTo(x - w * 0.62, top + h * 0.62); g.quadraticCurveTo(x, top + h * 0.22, x + w * 0.62, top + h * 0.62); };
+  if (front) { g.beginPath(); lip(); g.lineTo(x + w, b + 20); g.lineTo(x - w, b + 20); g.closePath(); g.clip(); }   // предният ръб пада върху пипалата му
+  g.fillStyle = "rgba(0,0,0,.18)"; g.beginPath(); g.ellipse(x, b, w * 0.55, 12 * s, 0, 0, 7); g.fill();
+  const shape = () => { g.beginPath(); g.moveTo(x - w * 0.5, b);
+    g.bezierCurveTo(x - w * 0.62, b - h * 0.55, x - w * 0.42, top - h * 0.05, x - w * 0.2, top + h * 0.12);   // ляв ръб
+    g.quadraticCurveTo(x, top + h * 0.3, x + w * 0.2, top + h * 0.12);                                      // вдлъбнато по средата
+    g.bezierCurveTo(x + w * 0.42, top - h * 0.05, x + w * 0.62, b - h * 0.55, x + w * 0.5, b);
+    g.closePath(); };
+  const gr = g.createLinearGradient(0, top, 0, b);
+  gr.addColorStop(0, sk ? "#fff" : "#b9a6ff"); gr.addColorStop(1, sk ? "#f3eee2" : "#7d68d8");
+  g.fillStyle = gr; shape(); g.fill(); g.stroke();
+  g.save(); shape(); g.clip();
+  g.strokeStyle = sk ? "rgba(35,57,93,.35)" : "rgba(60,40,140,.45)"; g.lineWidth = 3;
+  for (const dx of [-0.28, 0.28]) { g.beginPath(); g.moveTo(x + dx * w, top); g.quadraticCurveTo(x + dx * w * 1.25, b - h * 0.5, x + dx * w * 0.95, b); g.stroke(); }   // шевове
+  if (front) { g.beginPath(); lip(); g.lineWidth = sk ? 2.4 : 4; g.strokeStyle = sk ? SK_INK : "#2b2a33"; g.stroke(); }
+  if (!sk && !front) { g.fillStyle = "rgba(255,255,255,.35)"; g.beginPath(); g.ellipse(x - w * 0.27, top + h * 0.3, w * 0.09, h * 0.12, -0.5, 0, 7); g.fill(); }
+  g.restore(); g.restore();
 }
 // ---------- Подаръци от гостите ----------
 const GIFT = { crab: "shell", lobster: "bolt", turtle: "coral", fish: "star", mail: "paper", puffer: "feather", squid: "bottle", jelly: "star", snail: "pebble", shrimp: "weed" };
@@ -1715,7 +1732,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 33;
+const PAGE_V = 34;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -2832,12 +2849,12 @@ function loop() {
   if (age !== "egg" && performance.now() - hatchAt < 4000 && eggBox) { tx = eggBox.x; ty = eggBox.y - 40 * s; k = 0.2; }
   else if (age === "egg") { tx = W * 0.33; ty = ground - 60 * s; k = 1; mode = "idle"; if (performance.now() - eggShake < 600) mode = "happy"; }
   else if (mode === "sleep") {               // взима си възглавница и ляга до камъка
-    const sx = Math.max(W * 0.32, R.cx - R.rw * 0.5 - 230 * s);
+    const sx = Math.max(W * 0.3 + BED_W * 0.5 * s, R.cx - R.rw * 0.5 - 230 * s);
     if (!pillow) pillow = { t0: performance.now() - (performance.now() - loadAt < 4000 ? 1e4 : 0), x: null };
     const e = performance.now() - pillow.t0;
     if (e < 1800) { tx = -160 * s; ty = ground - 201 * s; k = 0.07; mode = "idle"; }
     else if (e < 4200) { tx = sx; ty = ground - 201 * s; lin = 5; mode = "idle"; pillow.x = pillow.x == null ? -250 * s : pillow.x + (oct.px - 200 * s * Math.sign(sx - oct.px || 1) - pillow.x) * 0.25; }
-    else { tx = sx; k = 0.03; if (STYLE === "sketch") { ty = ground - 54 * s; lie = true; } else ty = ground - 170 * s; pillow.x = pillow.x == null ? sx : pillow.x + (sx - pillow.x) * 0.08; }
+    else { tx = sx; k = 0.03; if (STYLE === "sketch") { lie = true; ty = ground - 54 * s - BED_H * 0.72 * s; } else ty = ground - 150 * s - BED_H * 0.5 * s; pillow.x = pillow.x == null ? sx : pillow.x + (sx - pillow.x) * 0.08; }
   }
   else if (working) {
     const e = performance.now() - working;
@@ -2886,6 +2903,7 @@ function loop() {
     lookAt: role === "keeper" && performance.now() - ptr.t < 3000 ? ptr : gaze && performance.now() < gaze.until ? gaze : null });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
   if (age === "egg") eggBox = { x: oct.px, y: ground - 60 * s, r: 80 * s };
+  drawPillow(s, ground, true);
   drawEggBar(s); drawCreation(t, s);
   if (departing && performance.now() - departing.at < 9000) {     // старият Октонис отплава нагоре
     const a = (performance.now() - departing.at) / 9000;
