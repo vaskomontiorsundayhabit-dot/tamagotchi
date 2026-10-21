@@ -1222,12 +1222,13 @@ function answer(ans) {
   }
   if (!path.length) { S.answers = S.answers || {}; S.answers[root.id] = ans; }
   if (PD[root.id + ":" + ans]) pdiary(PD[root.id + ":" + ans]);
+  S.qDone = Date.now();
   S.q = next ? { id: root.id, path: [...path, ans], t: Date.now(), tries: 0, text: qText(next), ctx: r || "" } : null;
   S.lastCare = Date.now();
   const nq = S.q;
   if (r && huff) r += huff;
-  setTimeout(() => { if (r) oSays(r); render(); if (nq) setTimeout(() => { if (S.q === nq) oSays(nq.text, 9000); }, r ? 3200 : 0); }, 700);
-  if (!next && !path.length && root.next && root.next[ans]) { S.followUp = root.next[ans]; setTimeout(() => askNext(), 5000); }
+  setTimeout(() => { if (r) oSays(r); render(); if (nq) setTimeout(() => { if (S.q === nq) oSays(nq.text, 9000); }, r ? 6000 : 0); }, 700);
+  if (!next && !path.length && root.next && root.next[ans]) { S.followUp = root.next[ans]; setTimeout(() => { if (!S.q && performance.now() > bubbleUntil) askNext(); }, rnd(60, 120) * 1000); }
   save();
 }
 function careEffect(ans) {                 // сърце, смях и махане все пак му действат
@@ -1871,7 +1872,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 34;
+const PAGE_V = 35;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -3465,7 +3466,7 @@ if (canHover) addEventListener("mousemove", ev => {
   else if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = 0; }
 });
 // ---------- Таймер ----------
-let wasAsleep = null, nextIdeaAt = Date.now() + 4 * MIN, parcelSaid = false, nextQGap = 12 * MIN, lastMinuteCheck = 0, nextHide = performance.now() + 4 * 60000;
+let hadQ = false, wasAsleep = null, nextIdeaAt = Date.now() + 4 * MIN, parcelSaid = false, nextQGap = 12 * MIN, lastMinuteCheck = 0, nextHide = performance.now() + 4 * 60000;
 setInterval(() => {
   if (!S || !inGame) return;
   const now = Date.now(), p = performance.now();
@@ -3493,10 +3494,12 @@ setInterval(() => {
       if (S.sleeps >= S.dreamAt && stageIdx() >= 2) { S.dreamAt = S.sleeps + Math.floor(rnd(6, 9)); setTimeout(dreamTell, 4000); }
     }
     wasAsleep = !!S.asleep;
+    if (hadQ && !S.q) S.qDone = now;              // въпросът току-що свърши: следващият чака
+    hadQ = !!S.q;
     if (S.moody && now > S.moody) { S.moody = 0; dirty = true; if (S.hatched && !S.asleep) say("", pick(["Ох… Добре де. Извинявай, че бях такъв.", "Май вече ми мина. Не знам какво ми стана."]), 5000); }
     if (S.sulk && now > S.sulk) { S.sulk = 0; dirty = true; if (S.hatched && !S.asleep) say("", pick(["Добре… вече не ти се сърдя.", "Хмпф. Мина ми. Но запомних!"]), 4500); }
     if (S.hatched && !S.asleep && !working && !S.q && !S.naming && now - lastAsked() > nextQGap && performance.now() - ptr.t < 120000 && performance.now() - loadAt > 120000 && !hidden()) {
-      nextQGap = rnd(25, 45) * MIN; askNext();
+      nextQGap = rnd(25, 45) * MIN; if (now - (S.qDone || 0) > 8 * MIN) askNext();
     }
     if (S.q && now - S.q.t > 2 * 60 * MIN) { chatPush("o", "Не ми отговори… Сигурно си бил зает. Ще те питам друг път."); S.q = null; }
     if (S.facts.promisedClean) {
@@ -3505,7 +3508,7 @@ setInterval(() => {
     }
     $("chatBtn").classList.toggle("ping", !!(S.q || S.naming));
     chatter();
-    if (S.hatched && !S.asleep && !working && !reading && !S.q && !S.naming && !S.task && now > nextIdeaAt && performance.now() - ptr.t < 120000 && !hidden()) {
+    if (S.hatched && !S.asleep && !working && !reading && !S.q && !S.naming && !S.task && now > nextIdeaAt && now - Math.max(lastAsked(), S.qDone || 0) > 8 * MIN && performance.now() - ptr.t < 120000 && !hidden()) {
       nextIdeaAt = now + rnd(has("hermit") ? 12 : 20, has("hermit") ? 25 : 40) * MIN;
       if (stageIdx() >= 4 && Math.random() < 0.5) selfT = -1e9, selfWork(p); else proposeIdea();
     }
