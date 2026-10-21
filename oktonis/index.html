@@ -1646,6 +1646,8 @@ async function load(user) {
     return afterLoad();
   }
   docRef = fb.F.doc(fb.db, "world", "oktonis");
+  liveRef = fb.F.doc(fb.db, "world", "live");
+  if (role === "viewer") liveUnsub = fb.F.onSnapshot(liveRef, sn => { L = sn.data() || null; }, () => {});
   unsub = fb.F.onSnapshot(docRef, snap => {
     const d = snap.data();
     if (!d) {
@@ -1712,7 +1714,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 31;
+const PAGE_V = 32;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1748,7 +1750,7 @@ function ago(t) {
 function esc(s) { return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 function render() {
   if (!S) return;
-  $("top").textContent = role === "viewer" ? `👀 Само гледаш · toshik беше тук ${ago(S.lastCare)}` : "";
+  $("top").textContent = role === "viewer" ? (liveOn() ? "🔴 На живо: toshik е тук" : `👀 Само гледаш · toshik беше тук ${ago(S.lastCare)}`) : "";
   if (sheetKind) fillSheet(sheetKind);
   if (ringOpen) paintRing();
   renderHud(); renderMix();
@@ -2306,6 +2308,7 @@ function babyInput(type, x, y) {
 }
 // ход на игрите всеки кадър; може да насочи накъде да плува
 function babyTick(t, s) {
+  if (role === "viewer") return null;
   if (!isBaby()) { bgame = bottle = rocking = null; return null; }
   const p = performance.now();
   if (bottle) {
@@ -2413,6 +2416,57 @@ function babyPhoto() {                        // бебешка снимка в 
   } catch {}
 }
 
+// ---------- На живо: toshik праща какво става, vasko го вижда същото ----------
+let liveRef = null, liveUnsub = null, L = null, lastLive = 0, lastDraw = "idle", liveSay = "";
+const liveOn = () => role === "viewer" && L && !L.gone && Date.now() - L.at < 9000;
+function liveSnap() {
+  const p = performance.now(), bub = $("bubble"), r2 = v => Math.round(v * 1000) / 1000;
+  return {
+    at: Date.now(), x: r2(oct.px / W), y: r2(oct.py / H), m: lastDraw, d: oct.dir,
+    b: bub.classList.contains("hidden") ? "" : $("bubbleT").textContent,
+    e: eatFx ? { e: eatFx.e, a: Math.round(p - eatFx.t0) } : null, h: hidden() ? 1 : 0,
+    tb: table && table.x != null ? r2(table.x / W) : null, pl: pillow && pillow.x != null ? r2(pillow.x / W) : null,
+    bt: p - bounceT < 1300 ? Math.round(p - bounceT) : null, cr: creating ? Math.round(p - creating) : 0,
+    g: guest ? { k: guest.k, e: Math.round(p - guest.at), l: guest.line && p - guest.line.at < 4200 ? guest.line.x : "" } : null,
+    bg: bgame ? { k: bgame.k, ph: bgame.phase || "", f: bgame.k === "fish" ? [r2(bgame.fx / W), r2(bgame.fy / H)] : null,
+      l: bgame.k === "bubbles" ? bgame.list.filter(q => !q.pop).map(q => [r2(q.x / W), r2(q.y / H), Math.round(q.r)]) : null } : null,
+    bo: bottle ? [Math.round(bottle.level), bdown ? 1 : 0] : null, rk: rocking ? rocking.swings : null,
+  };
+}
+function livePush(gone) {
+  if (DEMO || role !== "keeper" || !liveRef) return;
+  lastLive = Date.now();
+  try { fb.F.setDoc(liveRef, gone ? { at: Date.now(), gone: true } : liveSnap()).catch(() => {}); } catch (e) {}
+}
+let wasLive = false;
+function liveApply() {                      // при vasko: прилага последното от toshik
+  if (!liveOn()) {
+    if (wasLive) { wasLive = false; liveSay = ""; eatFx = table = pillow = guest = bgame = bottle = rocking = null; hideUntil = 0; creating = 0; bubbleUntil = 0; $("bubble").classList.add("hidden"); }
+    return null;
+  }
+  wasLive = true;
+  const p = performance.now();
+  if (L.b !== liveSay) { liveSay = L.b; if (L.b) { bubbleUntil = p + 60000; showBubble("", L.b, false); } else { bubbleUntil = 0; $("bubble").classList.add("hidden"); } }
+  if (L.e && (!eatFx || eatFx.e !== L.e.e)) eatFx = { e: L.e.e, t0: p - L.e.a };
+  if (!L.e) eatFx = null;
+  hideUntil = L.h ? p + 3000 : 0;
+  table = L.tb != null ? { x: L.tb * W, a: 0 } : null;
+  pillow = L.pl != null ? { t0: -1e9, x: L.pl * W } : null;
+  if (L.bt != null && p - bounceT > 1300) bounceT = p - L.bt;
+  if (L.cr && !creating) creating = p - L.cr;
+  if (!L.cr) creating = 0;
+  if (L.g) { if (!guest || guest.k !== L.g.k) guest = { k: L.g.k, at: p - L.g.e, end: p + 60000, lines: [], i: 99 };
+    guest.end = p + 8000; guest.line = L.g.l ? { x: L.g.l, at: p } : null; } else guest = null;
+  if (L.bg) {
+    if (!bgame || bgame.k !== L.bg.k) bgame = { k: L.bg.k, t0: p, list: [] };
+    bgame.phase = L.bg.ph; if (L.bg.f) { bgame.fx = L.bg.f[0] * W; bgame.fy = L.bg.f[1] * H; }
+    if (L.bg.l) bgame.list = L.bg.l.map(([x, y, r]) => ({ x: x * W, y: y * H, r, v: 0.5, ph: x * 10 }));
+  } else bgame = null;
+  bottle = L.bo ? { level: L.bo[0], t0: p } : null; bdown = !!(L.bo && L.bo[1]);
+  rocking = L.rk != null ? { swings: L.rk, t0: p } : null;
+  return [L.x * W, L.y * H, L.m, L.d];
+}
+
 // ---------- Говорене (балончето следва Октонис) ----------
 let bubbleUntil = 0;
 function say(e, t = "", ms = 4500) { bubbleUntil = performance.now() + ms; lastLine = { t: performance.now(), x: t }; showBubble(e, babify(String(t), e), false); }
@@ -2428,6 +2482,7 @@ function showBubble(e, t, want) {
   $("bubble").classList.toggle("want", want); $("bubble").classList.toggle("hidden", !inGame);
 }
 function updateBubble() {
+  if (liveOn()) return;
   if (!inGame || performance.now() < bubbleUntil) return;
   if (scared && hidden() && S.hatched) return showBubble("", pick(["Кой е? Кой е там?", "Кой е? Кой е?"]), true);
   if (scared && !hidden()) scared = false;
@@ -2765,6 +2820,7 @@ function loop() {
   const s = Math.min(H * 0.46 / 430, W * 0.8 / 560);
   const ground = H * 0.88 + 6, R = rockGeom();
   let mode = S ? octoMode() : "idle";
+  let lv = null; try { lv = S && role === "viewer" ? liveApply() : null; } catch (e) {}    // при vasko: каквото е при toshik
   let age = S && S.hatched ? ageKey() : "egg", lie = false, scale = s;
   // къде отива
   if (!oct.wp || t > oct.wpT) { oct.wp = [rnd(0.2, 0.6) * W, H * rnd(0.3, 0.6)]; oct.wpT = t + rnd(5, 10); }
@@ -2799,6 +2855,7 @@ function loop() {
   const bt2 = S ? babyTick(t, s) : null;
   if (bt2 && !(drag && drag.moved)) { tx = bt2[0]; ty = bt2[1]; k = 0.035; }
   if (rocking) { tx = oct.px; ty = oct.py; }
+  if (lv) { tx = lv[0]; ty = lv[1]; k = 0.12; lin = 0; pillow = L.pl != null ? { t0: -1e9, x: L.pl * W } : null; }
   if ((ringOpen || sheetKind) && age !== "egg") { tx = oct.px; ty = oct.py; }
   if (oct.px == null) { oct.px = tx; oct.py = ty; }
   if (oct.sc == null) oct.sc = scale;
@@ -2812,6 +2869,8 @@ function loop() {
   const vx = oct.px - px0;
   if (Math.abs(vx) > 0.6) oct.dir = Math.sign(vx);
   if (S && S.hatched && (mode === "idle" || mode === "happy") && !hidden() && Math.hypot(tx - oct.px, ty - oct.py) > 60 && !ringOpen && !sheetKind) mode = "swim";
+  if (lv) { mode = lv[2] || mode; oct.dir = lv[3] || oct.dir; }
+  lastDraw = mode;
   if (mode !== lastMode) { lastMode = mode; modeAt = t; }
   const near = oct.py > ground - 260 * oct.sc && !(drag && drag.moved) && mode !== "swim" && !lie && !hop;
   if (S) drawFloor(t, s, true);            // плаващите боклуци са зад него
@@ -2964,6 +3023,7 @@ setInterval(() => {
     if (S.parcel && !parcelSaid) { parcelSaid = true; say("", "Пощата! Рибата-пощальон остави колет! Отвори го, моля, отвори го!", 8000); }
     if (departing && performance.now() - departing.at < 3000) say("", `Сбогом! Грижи се за яйцето.\nТо е моят наследник.`, 6000);
     grumble(now);
+    if (!document.hidden && p - ptr.t < 120000 && now - lastLive > 1500) livePush();
     babySecond(p, now);
     if (placedAny(MUSIC) && S.hatched && !S.asleep && !working && p > nextDance) { nextDance = p + rnd(3, 6) * 60000; danceUntil = p + 6000; say("", pick(["Обичам тази песен!", "Бълбук-бълбук, танцувам!", "Не гледай. Танцувам."])); }
     if (sickSay) { say("", sickSay === "well" ? "Оздравях! Благодаря, че се погрижи за мен." : "Не ми е добре… Май се разболях.", 7000); sickSay = false; }
@@ -2994,9 +3054,9 @@ setInterval(() => {
     if (dirty && now - lastSave > 60000) save();
     schedNotify();
     if (sickSay === true && document.hidden && S.notify) ntfy("", 0, `${S.name} се разболя… Ела да го видиш.`);
-  } else if (viewBase && now - lastMinuteCheck > 20000) {
-    lastMinuteCheck = now;
-    S = JSON.parse(viewBase); catchUp(now); render();
+  } else if (role === "viewer" && S) {
+    $("top").textContent = liveOn() ? "🔴 На живо: toshik е тук" : `👀 Само гледаш · toshik беше тук ${ago(S.lastCare)}`;
+    if (viewBase && now - lastMinuteCheck > 20000) { lastMinuteCheck = now; S = JSON.parse(viewBase); catchUp(now); render(); }
   }
   updateBubble(); renderHud();
   if (S && !S.hatched && role === "keeper" && !creating && (S.eggP || 0) < EGG_MAX * EGG_WARM) { S.eggP = Math.min(EGG_MAX * EGG_WARM, (S.eggP || 0) + EGG_MAX / 5000); dirty = true; }
@@ -3013,7 +3073,7 @@ async function checkUpdate() {
 $("upd").onclick = async () => { await save(true); location.reload(); };
 setInterval(checkUpdate, 3 * 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
-document.addEventListener("visibilitychange", () => { if (document.hidden) { save(true); schedNotify(true); } });
+document.addEventListener("visibilitychange", () => { if (document.hidden) { save(true); schedNotify(true); livePush(true); } });
 window.addEventListener("pagehide", () => save(true));
 
 // ---------- Вход ----------
@@ -3040,7 +3100,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
