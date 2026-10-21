@@ -197,6 +197,30 @@
   .gd.on { background: rgba(255,209,102,.25); border-color: var(--gold); } .gd span { font-size: 30px; } .gd small { color: #f1dfc4; font-size: 11px; line-height: 1.25; flex: 1; }
   .gd .st { color: #ffe7a8 !important; flex: 0 !important; }
   .gd .tg { margin-top: 4px; padding: 6px; font-weight: 700; background: #ffd166; color: #2a1730; } .gd.on .tg { background: rgba(255,255,255,.2); color: #fff; }
+  /* панелите като предмети от играта */
+  #sheet.wood { background: repeating-linear-gradient(0deg, rgba(0,0,0,.12) 0 2px, transparent 2px 46px), linear-gradient(90deg, #9a6337, #b07440 50%, #9a6337);
+    border: 5px solid #4e2e18; border-bottom: 0; box-shadow: inset 0 0 0 3px #c98a52, inset 0 0 30px rgba(0,0,0,.35); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  body.hasbar #sheet.wood { border-bottom: 5px solid #4e2e18; }
+  #sheet.wood h2 { background: linear-gradient(#f0c870, #c99a3c); color: #3a2410; border: 3px solid #5a3a14;
+    border-radius: 10px; padding: 6px 12px; box-shadow: 0 3px 0 #5a3a14, inset 0 1px 0 #fff3c4; text-shadow: 0 1px 0 #ffe7a8; }
+  #sheet.wood h2 span, #sheet.wood .x, #sheet.wood .cash { color: #3a2410; }
+  #sheet.wood .sub { color: #fbe9cf; text-shadow: 0 1px 2px rgba(0,0,0,.5); } #sheet.wood .grp { color: #ffe7a8; }
+  #sheet.wood .tabs button { background: #6b4226; color: #f6e2c2; border: 2px solid #4e2e18; border-radius: 10px 10px 4px 4px; }
+  #sheet.wood .tabs button.on { background: #e0b25a; color: #3a2410; }
+  #sheet.wood .inv { background: #5a3418; box-shadow: inset 0 0 0 3px #3e2410; }
+  #sheet.wood .cell { background: #7a4a26; box-shadow: inset 0 3px 0 rgba(0,0,0,.35), inset 0 -2px 0 rgba(255,220,170,.15); }
+  #sheet.wood .cell.full { background: #8b5a34; }
+  #sheet.wood .zones span { border-color: #f0c870; color: #fff3d6; background: rgba(0,0,0,.18); }
+  #sheet.wood .journal li, #sheet.wood .fam { color: #fff3e0; }
+  #sheet.wood .made div { background: rgba(60,30,10,.35); border: 2px solid rgba(0,0,0,.25); }
+  #sheet.paper { background: #fbf3dc repeating-linear-gradient(transparent 0 25px, rgba(90,140,220,.2) 25px 26px); color: #3a2a1a; border: 4px solid #c9b48a;
+    border-bottom: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  #sheet.paper h2, #sheet.paper .sub, #sheet.paper .x { color: #3a2a1a; } #sheet.paper code { background: rgba(0,0,0,.08); color: #3a2a1a; }
+  #sheet.bare { background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; padding-top: 6px; }
+  #sheet.bare .diary { position: relative; }
+  .diary .bx { position: absolute; top: -8px; right: -8px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; background: #fbf3dc; color: #5a3a14; border: 3px solid #5a3418; font-size: 18px; }
+  .diary .turn { position: absolute; bottom: 14px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; background: rgba(90,58,20,.85); color: #fbf3dc; font-size: 18px; padding: 0; }
+  .diary .turn.l { left: 14px; } .diary .turn.r { right: 14px; } .diary .turn:disabled { opacity: .25; }
   .cash { color: #ffe7a8; font-size: 15px; margin-right: 8px; }
   #bubble .t { font-size: 15px !important; }
   .life { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; }
@@ -212,6 +236,8 @@
   #pop { position: fixed; left: 17px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 74px); display: flex; flex-direction: column-reverse; gap: 8px; z-index: 4; }
   #pop button { width: 52px; height: 52px; border-radius: 50%; padding: 0; font-size: 24px; background: rgba(255,250,242,.95); border: 3px solid var(--ink); color: #2a1730;
     box-shadow: 0 3px 0 rgba(0,0,0,.25); animation: popin .18s ease backwards; }
+  #pop .qtext { position: absolute; left: 62px; bottom: 0; width: min(240px, 60vw); background: #fffaf2; color: #2a1730; border: 3px solid var(--ink); border-radius: 14px;
+    padding: 8px 10px; font-size: 14px; font-weight: 600; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
   #pop button.txt { font-size: 15px; font-weight: 800; } #pop button.yes { background: #8fe0b4; } #pop button.no { background: #ffa3a3; }
   @keyframes popin { from { transform: translateY(20px) scale(.4); opacity: 0; } }
   #chatBtn.ping i { display: block; } #chatBtn.ping { animation: wig .6s infinite; }
@@ -283,8 +309,9 @@ const firebaseConfig = {
 const KEEPER = "toshik";                    // грижи се; останалите само гледат
 const DEMO = new URLSearchParams(location.search).has("demo");
 const END_TEST = DEMO && new URLSearchParams(location.search).has("end"), TUT_TEST = DEMO && new URLSearchParams(location.search).has("tut");
-const PLAY_TEST = DEMO && new URLSearchParams(location.search).has("play");
-const LSKEY = END_TEST ? "oktonis_end" : TUT_TEST ? "oktonis_tut" : PLAY_TEST ? "oktonis_play" : "oktonis";
+const PLAY_TEST = DEMO && new URLSearchParams(location.search).has("play"), EGG_TEST = DEMO && new URLSearchParams(location.search).has("egg");
+const LSKEY = END_TEST ? "oktonis_end" : TUT_TEST ? "oktonis_tut" : PLAY_TEST ? "oktonis_play" : EGG_TEST ? "oktonis_egg" : "oktonis";
+if (EGG_TEST) try { localStorage.removeItem(LSKEY); } catch {}
 if (PLAY_TEST && new URLSearchParams(location.search).has("reset")) try { localStorage.removeItem(LSKEY); } catch {}
 if (TUT_TEST) try { localStorage.removeItem(LSKEY); localStorage.removeItem("okt_tut"); } catch {}
 if (END_TEST && new URLSearchParams(location.search).has("reset")) try { localStorage.removeItem(LSKEY); } catch {}
@@ -417,6 +444,20 @@ const SHOP = [
   { id: "b_great", n: "Великите изобретения", p: 60, hints: ["sockfinder", "bubblemeter", "dreamlamp", "tidier", "singbolt"] },
   { id: "b_great2", n: "Великите изобретения II", p: 60, hints: ["fork", "yawnmeter", "snackcompass", "teapot", "perfectometer"] },
   { id: "b_mach", n: "Големите машини", p: 70, hints: ["rocket", "carousel", "organ", "castle"] },
+  { id: "b_bubbles", n: "Мехурчета и как да ги броим", p: 20, hints: ["bubblemeter", "antenna", "float"] },
+  { id: "b_post", n: "Пощата под водата", p: 20, hints: ["msg", "mail"] },
+  { id: "b_whales", n: "Песните на китовете", p: 35, hints: ["organ", "singbolt", "speaker"] },
+  { id: "b_ink", n: "Перото и мастилото", p: 25, hints: ["quill", "papyrus", "typewriter"] },
+  { id: "b_jump", n: "Пружини и скокове", p: 25, hints: ["trampoline", "carousel", "mech"] },
+  { id: "b_sweets", n: "Сладкарницата на рифа", p: 30, hints: ["cake", "pudding", "bdaycake", "pancake"] },
+  { id: "b_nightl", n: "Нощните светлини", p: 35, hints: ["dreamlamp", "starlamp", "glowcoral"] },
+  { id: "b_rocket", n: "Ракети за начинаещи", p: 45, hints: ["rocket", "motor"] },
+  { id: "b_sand", n: "Пясъчни замъци", p: 30, hints: ["castle", "sling"] },
+  { id: "b_ways", n: "Компаси и посоки", p: 35, hints: ["compass", "snackcompass", "sockfinder"] },
+  { id: "b_robots", n: "Роботи и ръце", p: 50, hints: ["arm", "tidier", "typewriter"] },
+  { id: "b_tea", n: "Как се прави подводен чай", p: 30, hints: ["teapot", "yogurtbat"] },
+  { id: "b_stink", n: "Миризливата наука", p: 20, hints: ["stinkbomb", "sharkbait"] },
+  { id: "b_diary", n: "Дневникът на един стар изобретател", p: 40, hints: [] },
   { id: "b_legend", n: "Легенди от дълбокото", p: 90, hints: ["sub", "expedition", "festival"] },
 ];
 const recOf = c => REC.find(r => r[2] === c);
@@ -996,19 +1037,19 @@ const CARE_OF = { love: "❤️", laugh: "😂", wave: "👋" };
 Q.push(
   { id: "dShell", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Виж! Блестяща раковина! Хубава е, нали?",
     yes: "Нали! Ще я сложа на рафта. До другите, подредени по големина.",
-    no: { s: "Какво, не?", n: { q: "Наистина ли не ти харесва?", yes: "Хм. Е, на мен ми харесва. Вкусовете са различни.", no: "Аха, значи ти харесва! Объркваш ме.", laugh: "Шегуваш се с мен! Знаех си.", scold: "Добре, добре. Няма значение… Ще я харесвам сам." } },
+    no: { s: "Какво, не?", n: { q: "Наистина ли раковината не ти харесва?", yes: "Хм. Е, на мен ми харесва. Вкусовете са различни.", no: "Аха, значи ти харесва! Объркваш ме.", laugh: "Шегуваш се с мен! Знаех си.", scold: "Добре, добре. Няма значение… Ще я харесвам сам." } },
     laugh: "Защо се смееш? Раковините са сериозна работа.", ask: "Ей там, до камъка. Лъскавата. Хубава е, нали?", love: "И ти я харесваш! Ще я кръстя на теб." },
   { id: "dBubbles", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Преброих мехурчетата днес. Двеста и дванайсет! Да ти кажа ли колко бяха вчера?",
     yes: "Двеста и единайсет! Растем!", no: "Добре… Ама бяха двеста и единайсет. Просто да знаеш.",
     laugh: "Не е смешно. Това е статистика!", ask: "Мехурчетата. Броя ги всеки ден. Някой трябва." },
   { id: "dJoke", st: ["kid", "teen", "adult", "aging", "old"], every: 1440, q: "Искаш ли да ти кажа виц?",
-    yes: { s: "Защо октоподът не играе карти? Защото има осем ръце и всички го хващат, че мами!", n: { q: "Смешно ли беше?",
+    yes: { s: "Защо октоподът не играе карти? Защото има осем ръце и всички го хващат, че мами!", n: { q: "Смешно ли беше вицът?",
       yes: "Знаех си! Аз съм много забавен. Записвам го.", laugh: "Смееш се! Перфектно. Работи.",
-      no: { s: "Какво, не? Ох.", n: { q: "Да ти кажа ли друг?", yes: "Какво е синьо и подредено? Морето, след като мина аз!", no: "Добре. Ще го пазя за по-добър ден.", laugh: "Ха! Даже не съм го казал още!" } } } },
+      no: { s: "Какво, не? Ох.", n: { q: "Да ти кажа ли друг виц?", yes: "Какво е синьо и подредено? Морето, след като мина аз!", no: "Добре. Ще го пазя за по-добър ден.", laugh: "Ха! Даже не съм го казал още!" } } } },
     no: "Хм. Друг път тогава. Имам цял списък с вицове.", laugh: "Още не съм го казал!" },
   { id: "dRock", st: ["kid", "teen", "adult", "aging", "old"], every: 4320, q: "Мисля, че камъкът се помръдна. Видя ли?",
     yes: "И ти ли?! Значи не си въобразявам!",
-    no: { s: "Не? Сигурен ли си?", n: { q: "Сигурен ли си?", yes: "Добре… Ще го наблюдавам. Цяла нощ, ако трябва.", no: "Значи може и да се е помръднал! Знаех си.", laugh: "Смееш се, а той може да ни гледа." } },
+    no: { s: "Не? Сигурен ли си?", n: { q: "Сигурен ли си, че камъкът не мръдна?", yes: "Добре… Ще го наблюдавам. Цяла нощ, ако трябва.", no: "Значи може и да се е помръднал! Знаех си.", laugh: "Смееш се, а той може да ни гледа." } },
     laugh: "Не се смей! Камъните са коварни.", ask: "Камъкът! Големият, вдясно. Помръдна се. Видя ли?" },
   { id: "dDream", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Сънувах, че подреждам цял подводен град. Хубав сън ли е?",
     yes: "Да! Всичко беше под прав ъгъл. Даже рибите.", no: "Може би. Малко беше страшно. Градът ме гледаше.", laugh: "Смешно ли е? За мен беше най-хубавият сън." },
@@ -1016,17 +1057,17 @@ Q.push(
     yes: "Болтът! Класика. Знаех си.", no: "Значи зъбното колело. Смело решение. Уважавам го.", ask: "Болт или зъбно колело? Кое е по-хубаво? Болтът ли?" },
   { id: "dWeeds", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Подредих водораслите по височина. Забеляза ли?",
     yes: "Знаех си, че ще забележиш! Ти си внимателен.",
-    no: { s: "Какво, не? Цяла сутрин ги подреждах!", n: { q: "Ще ги погледнеш ли сега?", yes: "Благодаря. Най-високото е вляво. Обърни му внимание.", no: "Ох. Няма значение… Ще ги подредя пак.", love: "Добре, прощавам ти." } },
+    no: { s: "Какво, не? Цяла сутрин ги подреждах!", n: { q: "Ще погледнеш ли водораслите сега?", yes: "Благодаря. Най-високото е вляво. Обърни му внимание.", no: "Ох. Няма значение… Ще ги подредя пак.", love: "Добре, прощавам ти." } },
     love: "Ох. Това значи, че ти харесва. Разбрах." },
   { id: "dFish", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Една рибка ми каза здрасти днес. Да ѝ кажа ли и от теб?",
     yes: "Ще ѝ кажа! Тя ще се зарадва.", no: "Добре. Ще пазя поздравите само за теб.", wave: "Ето, махна! Ще ѝ предам." },
   { id: "dMiss", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Липсвах ли ти?",
     yes: "И ти на мен! Броих минутите.", love: "Ох. Това значи да. Разбрах.",
-    no: { s: "Какво, не?", n: { q: "Ама поне малко?", yes: "Малко е достатъчно. Записвам го.", no: "Пфф. Добре. Не ми пука. Много.", laugh: "Шегуваш се! Знаех си." } } },
+    no: { s: "Какво, не?", n: { q: "Поне малко липсвах ли ти?", yes: "Малко е достатъчно. Записвам го.", no: "Пфф. Добре. Не ми пука. Много.", laugh: "Шегуваш се! Знаех си." } } },
   { id: "dCold", st: ["kid", "teen", "adult", "aging", "old"], every: 1440, q: "Днес водата е по-студена. При теб студено ли е?",
     yes: "Облечи се! Аз имам осем ръкава, ти само два.", no: "Хубаво. Аз ще се стопля с работа." },
   { id: "dSong", st: ["kid", "teen", "adult", "aging", "old"], every: 2880, q: "Измислих песен. Да ти я изпея?",
-    yes: { s: "Бълбук-бълбук, болт и гайка, бълбук-бълбук, мида-майка…", n: { q: "Хареса ли ти?", yes: "Ще стана звезда!", no: "Още работя по нея.", laugh: "Смееш се?! Това беше балада!", love: "Ох. Ще ти я пея всеки ден." } },
+    yes: { s: "Бълбук-бълбук, болт и гайка, бълбук-бълбук, мида-майка…", n: { q: "Хареса ли ти песента ми?", yes: "Ще стана звезда!", no: "Още работя по нея.", laugh: "Смееш се?! Това беше балада!", love: "Ох. Ще ти я пея всеки ден." } },
     no: "Добре. Ще я пея на камъка. Той не се оплаква." },
   { id: "dClean", st: ["teen"], every: 1440, q: "Може ли днес да не чистя?",
     yes: "Супер! Ох, чакай… Аз съм Дева. Ще почистя все пак.", no: "Пфф. Знаех си.", scold: "Добре де! Ще чистя! Не се карай." },
@@ -1056,7 +1097,7 @@ function answer(ans) {
   if (ans === "scold") S.mood = clamp(S.mood - 4);
   if (!path.length) { S.answers = S.answers || {}; S.answers[root.id] = ans; }
   if (PD[root.id + ":" + ans]) pdiary(PD[root.id + ":" + ans]);
-  S.q = next ? { id: root.id, path: [...path, ans], t: Date.now(), tries: 0, text: qText(next) } : null;
+  S.q = next ? { id: root.id, path: [...path, ans], t: Date.now(), tries: 0, text: qText(next), ctx: r || "" } : null;
   S.lastCare = Date.now();
   const nq = S.q;
   setTimeout(() => { if (r) oSays(r); render(); if (nq) setTimeout(() => { if (S.q === nq) oSays(nq.text, 9000); }, r ? 3200 : 0); }, 700);
@@ -1072,7 +1113,7 @@ function careEffect(ans) {                 // сърце, смях и махан
 function defaultReact(ans) {
   const q = S.q, baby = S.stage === "baby";
   chatPush("u", LABEL[ans]);
-  if (ans === "ask") return oSays(baby ? "~Ъ? Бебо пита! " + q.text.replace(/^~/, "") : pick(["Не разбра ли? Питам: ", "Ами… питам те: "]) + q.text + " Да или не?", 9000);
+  if (ans === "ask") return oSays(baby ? "~Ъ? Бебо пита! " + q.text.replace(/^~/, "") : (q.ctx ? `Казах: „${q.ctx}“ ` : pick(["Не разбра ли? ", "Ами… "])) + "Питам: " + q.text + " Да или не?", 11000);
   if (ans === "scold") { S.q = null; S.mood = clamp(S.mood - 6); fx.hurt = performance.now(); save();
     return oSays(baby ? "~Уааа! Бебо само пита!" : S.stage === "teen" ? "Ей! Само питах. Пфф." : pick(["Ох… Добре, няма да питам.", "Защо се караш? Само питах…"])); }
   if (ans === "yes" || ans === "no") { S.q = null; save(); return oSays(ans === "yes" ? pick(["Да? Добре. Записах го.", "Хубаво!"]) : pick(["Не? Добре де.", "Хм. Няма значение тогава."])); }
@@ -1087,8 +1128,9 @@ function defaultReact(ans) {
 // иконка, когато нищо не е питал
 let lastLine = { t: 0, x: "" };
 function react(ans) {
-  if (role !== "keeper" || !S || !S.hatched) return;
+  if (role !== "keeper" || !S) return;
   closePop();
+  if (!S.hatched) return talkEgg(ans);
   if (S.naming) return openSheet("chat");
   S.lastCare = Date.now(); dirty = true;
   if (scared) return unscare();
@@ -1126,11 +1168,11 @@ function react(ans) {
 }
 // изскачащите балончета над бутона
 function togglePop() {
-  if (!S || !S.hatched || role !== "keeper") return;
+  if (!S || role !== "keeper") return;
   if (S.naming) return openSheet("chat");
   const p = $("pop");
   if (!p.classList.contains("hidden")) return closePop();
-  p.innerHTML = Object.entries(LABEL).map(([k, v], i) => `<button data-k="${k}" class="${k === "yes" || k === "no" ? "txt " + k : ""}" style="animation-delay:${i * 30}ms">${v}</button>`).join("");
+  p.innerHTML = (S.q && !S.asleep ? `<div class="qtext">${esc((S.q.ctx ? S.q.ctx + " " : "") + S.q.text.replace(/^~/, ""))}</div>` : "") + Object.entries(LABEL).map(([k, v], i) => `<button data-k="${k}" class="${k === "yes" || k === "no" ? "txt " + k : ""}" style="animation-delay:${i * 30}ms">${v}</button>`).join("");
   p.classList.remove("hidden");
   p.querySelectorAll("button").forEach(b => b.onclick = ev => { ev.stopPropagation(); react(b.dataset.k); });
 }
@@ -1281,7 +1323,7 @@ let stageFlash = null, departing = null;
 
 // Една минута от живота му. offline = докато никой не гледа.
 function minute(t, offline, ev) {
-  if (!S.hatched) return;
+  if (!S.hatched) { if (offline) S.eggP = Math.min(Math.max(S.eggP || 0, 0) + 4, Math.max(S.eggP || 0, EGG_MAX * EGG_WARM)); return; }
   if (END_TEST) offline = false;
   const nt = night(t), f = offline ? (nt ? 0.15 : 0.35) : 1;    // без теб всичко тече по-бавно
   grow(t, offline ? (nt ? 0 : 0.35) : 1);
@@ -1475,22 +1517,82 @@ function worries() {
   if (bad.length) w.push(`🦠 в сандъка има развалени неща: ${bad.map(k => elN(k).toLowerCase()).join(", ")}`);
   return w;
 }
+// ---------- Яйцето: топли се с времето, но трябват много докосвания ----------
+const EGG_MAX = END_TEST ? 120 : EGG_TEST ? 200 : 1000, EGG_WARM = 0.7;          // само с време стига до 70%
+let creating = 0;
+const EGG_LINES = ["Тук-тук.", "Нещо вътре слуша.", "Топло е…", "Чу ли? Почука отвътре!", "Мърда!", "Като че ли някой се прозя вътре."];
+const EGG_MS = [[0.25, "Яйцето стана топло. Нещо вътре се обърна."], [0.5, "Чу се тихо почукване отвътре!"], [0.75, "Появи се пукнатина! Още малко!"], [0.9, "Пука се! Почти е готово!"]];
+function eggAdd(n) {
+  const before = (S.eggP || 0) / EGG_MAX;
+  S.eggP = Math.min(EGG_MAX, (S.eggP || 0) + n); dirty = true;
+  const now = S.eggP / EGG_MAX, m = EGG_MS.find(([k]) => before < k && now >= k);
+  if (m) say("", m[1], 5000);
+  if (S.eggP >= EGG_MAX && !creating) startHatch();
+}
 function tapEgg() {
-  if (role !== "keeper" || S.hatched) return;
+  if (role !== "keeper" || S.hatched || creating) return;
   eggShake = performance.now();
-  const left = Math.ceil((STAGE_MIN.egg * MIN - (S.t - S.stageT)) / MIN);
-  if (left > 0) {                                  // всяко докосване го стопля и времето намалява
-    if ((S.eggShave || 0) < 45) { S.stageT -= MIN; S.eggShave = (S.eggShave || 0) + 1; dirty = true; save(); }
-    return say("", left > 40 ? pick(["Яйцето е топло… Още!", "Нещо вътре слуша.", "Тук-тук. Топло е."]) : left > 15 ? pick(["Мърда! Още малко топлина!", "Чу ли? Почука отвътре!"]) : pick(["Пука се! Само още малко…", "Вече е съвсем топло!"]));
-  }
-  S.taps = (S.taps || 0) + 1; dirty = true;
-  if (S.taps >= 3) {
-    S.hatched = true; S.born = S.t; S.stage = "baby"; S.stageT = S.t; S.grow = 0;
-    log(`🐣 ${S.name} се излюпи!${S.inherit ? " Прилича на " + (S.parent || "родителя си") + ": " + TRAITS[S.inherit].n.toLowerCase() + "." : " Веднага провери дали всичко наоколо е подредено."}`);
-    fx.party = performance.now(); hatchAt = performance.now(); buildStatic(); setTimeout(tutAsk, 9000);
-    setTimeout(() => say("", `Здравей! Аз съм ${S.name}.\nОбичам технологиите и реда.`, 7000), 600);
-  }
+  S.eggTaps = (S.eggTaps || 0) + 1;
+  eggAdd(1);
+  if (S.eggTaps % 45 === 0 && !creating) say("", pick(EGG_LINES), 3000);
+  if (S.eggTaps % 25 === 0) save();
+}
+function talkEgg(ans) {                      // говориш му, докато е в яйцето
+  if (role !== "keeper" || S.hatched || creating) return;
+  if (performance.now() - (talkEgg.t || 0) < 1500) return; talkEgg.t = performance.now();
+  eggShake = performance.now(); eggAdd(15);
+  say("", { love: "Яйцето стана по-топло. Сякаш се усмихна.", laugh: "Нещо вътре се закиска.", wave: "Яйцето леко помръдна в отговор.", yes: "Тук-тук. Това значи „да“.",
+    no: "Яйцето се завъртя. Тайнствено.", ask: "Отвътре се чу: „Бълбук?“", scold: "Яйцето трепна. Шшш, нежно." }[ans] || "Тук-тук.", 3500);
   save();
+}
+function startHatch() {                      // сътворението: светлина, лъчи, черупки
+  creating = performance.now(); save();
+  setTimeout(() => {
+    S.hatched = true; S.born = S.t; S.stage = "baby"; S.stageT = S.t; S.grow = 0; dirty = true;
+    log(`🐣 ${S.name} се излюпи!${S.inherit ? " Прилича на " + (S.parent || "родителя си") + ": " + TRAITS[S.inherit].n.toLowerCase() + "." : ""}`);
+    oct.sc = 0.02; hatchAt = performance.now(); if (eggBox) { oct.px = eggBox.x; oct.py = eggBox.y - 40 * Math.min(H * 0.46 / 430, W * 0.8 / 560); } buildStatic(); save(); render();
+    setTimeout(() => { fx.party = performance.now(); say("", `Здравей! Аз съм ${S.name}.`, 7000); }, 1800);
+    setTimeout(tutAsk, 9000);
+  }, 1500);
+  setTimeout(() => { creating = 0; }, 5200);
+}
+function drawEggBar(s) {
+  if (!S || S.hatched || creating || !eggBox) return;
+  const w = Math.max(150, 220 * s), x = Math.max(86, eggBox.x - w / 2), y = H * 0.88 + 16, k = (S.eggP || 0) / EGG_MAX;
+  g.save(); g.fillStyle = "rgba(20,30,50,.55)"; g.strokeStyle = "#2b2a33"; g.lineWidth = 3;
+  g.beginPath(); g.roundRect ? g.roundRect(x, y, w, 16, 8) : g.rect(x, y, w, 16); g.fill(); g.stroke();
+  const gr = g.createLinearGradient(x, 0, x + w, 0); gr.addColorStop(0, "#ffd166"); gr.addColorStop(1, "#ff8fb0");
+  g.fillStyle = gr; g.beginPath(); g.roundRect ? g.roundRect(x + 3, y + 3, Math.max(0, (w - 6) * k), 10, 5) : g.rect(x + 3, y + 3, (w - 6) * k, 10); g.fill();
+  g.strokeStyle = "rgba(255,255,255,.6)"; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 3 + (w - 6) * EGG_WARM, y + 2); g.lineTo(x + 3 + (w - 6) * EGG_WARM, y + 14); g.stroke();
+  g.fillStyle = "#fff"; g.font = "700 12px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "top"; g.textAlign = "left"; g.fillText(Math.floor(k * 100) + "%", x + w + 8, y + 1); g.font = "600 12px system-ui, sans-serif"; g.fillText("Докосвай, говори му, стопли го", x, y + 20);
+  g.restore();
+}
+const shells = [];
+function drawCreation(t, s) {
+  if (!creating) return;
+  const e = (performance.now() - creating) / 1000, cx = eggBox ? eggBox.x : W * 0.33, cy = eggBox ? eggBox.y : H * 0.75;
+  const env = Math.min(1, e / 0.8) * Math.max(0, Math.min(1, (5 - e) / 1.5));
+  g.save(); g.globalCompositeOperation = "lighter"; g.translate(cx, cy);
+  for (let i = 0; i < 14; i++) {                // въртящи се лъчи
+    const a = i / 14 * Math.PI * 2 + e * 0.6, L = Math.max(W, H) * (0.4 + e * 0.15);
+    g.fillStyle = `rgba(255,${200 + (i % 3) * 20},${150 + (i % 2) * 80},${0.18 * env})`;
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a - 0.06) * L, Math.sin(a - 0.06) * L); g.lineTo(Math.cos(a + 0.06) * L, Math.sin(a + 0.06) * L); g.fill();
+  }
+  const rg = g.createRadialGradient(0, 0, 0, 0, 0, 260 * Math.max(0.5, s) * (1 + e * 0.4)); rg.addColorStop(0, `rgba(255,250,220,${0.8 * env})`); rg.addColorStop(1, "rgba(255,240,200,0)");
+  g.fillStyle = rg; g.beginPath(); g.arc(0, 0, 600, 0, 7); g.fill();
+  for (let i = 0; i < 40; i++) {                // искрици в спирала
+    const a = i * 2.4 + e * 2, r = (e * 120 + i * 9) % (Math.min(W, H) * 0.6);
+    g.fillStyle = `rgba(255,255,200,${env * (1 - r / (Math.min(W, H) * 0.6))})`; g.beginPath(); g.arc(Math.cos(a) * r, Math.sin(a) * r, 2.5, 0, 7); g.fill();
+  }
+  g.restore();
+  if (e > 1.5 && !shells.length && e < 1.7) for (let i = 0; i < 9; i++) shells.push({ x: cx, y: cy - 30 * s, vx: Math.cos(i / 9 * 6.28 - 1.57) * rnd(4, 9), vy: Math.sin(i / 9 * 6.28 - 1.57) * rnd(4, 9) - 4, a: rnd(0, 6), va: rnd(-0.3, 0.3), r: rnd(14, 26) * Math.max(0.6, s * 1.6) });
+  for (let i = shells.length - 1; i >= 0; i--) {   // черупките хвърчат
+    const sh = shells[i]; sh.x += sh.vx; sh.y += sh.vy; sh.vy += 0.35; sh.a += sh.va;
+    if (sh.y > H + 50) { shells.splice(i, 1); continue; }
+    g.save(); g.translate(sh.x, sh.y); g.rotate(sh.a); g.fillStyle = "#fff3e2"; g.strokeStyle = "#2b2a33"; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(-sh.r, 0); g.lineTo(-sh.r * 0.4, -sh.r * 0.6); g.lineTo(0, -sh.r * 0.2); g.lineTo(sh.r * 0.5, -sh.r * 0.7); g.lineTo(sh.r, 0); g.quadraticCurveTo(0, sh.r * 0.8, -sh.r, 0); g.fill(); g.stroke(); g.restore();
+  }
+  if (e > 1.4 && e < 2.4) { g.fillStyle = `rgba(255,255,255,${(1 - (e - 1.4)) * 0.85})`; g.fillRect(0, 0, W, H); }   // бяла светкавица
 }
 let sickSay = false, eggShake = -1e9, hatchAt = -1e9, expedition = false;
 
@@ -1595,7 +1697,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 26;
+const PAGE_V = 28;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1616,8 +1718,8 @@ let inGame = false;
 function buildStatic() {
   let seen = false;
   try { seen = localStorage.getItem("okt_hint2") === "1"; } catch {}
-  $("hint").classList.toggle("hidden", seen || role !== "keeper");
-  $("hint").textContent = S.hatched ? "Докосни Октонис 🐙" : "Докосни яйцето 3 пъти 🥚";
+  $("hint").classList.toggle("hidden", seen || role !== "keeper" || !S.hatched);
+  $("hint").textContent = S.hatched ? "Докосни Октонис 🐙" : "Докосвай яйцето, говори му, стопли го 🥚";
   if (STYLE === "sketch") for (const id of ["hint", "top"]) { $(id).style.color = "#23395d"; $(id).style.textShadow = "none"; }
 }
 function ago(t) {
@@ -1689,6 +1791,9 @@ function sellStack(k, n) {
 function fillSheet(kind) {
   const sh = $("sheet");
   sh.classList.toggle("airy", kind === "stats");
+  sh.classList.toggle("wood", ["bag", "cab", "lib", "family"].includes(kind));
+  sh.classList.toggle("paper", ["notify", "letter"].includes(kind));
+  sh.classList.toggle("bare", kind === "journal");
   const head = (title, extra = "") => `<h2>${title} <span>${extra}<button class="x" id="sx">✕</button></span></h2>`;
   if (kind === "lib") {
     const tabs = [["found", "📗 Открития"], ["notes", "📓 Тетрадка"], ["shelf", "📚 Рафт"], ["secret", "🔒 Личен"]];
@@ -1849,8 +1954,8 @@ function fillSheet(kind) {
       return `<div class="pg">${list.map(j => { const d = new Date(j.t);
         return `<p><time>${d.toLocaleDateString("bg-BG", { day: "numeric", month: "long" })}, ${d.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" })}</time>${esc(j.x.replace(NO_EMO, "").trim())}</p>`; }).join("") || "<p>&nbsp;</p>"}
         <b class="pn">${i + 1}</b></div>`; };
-    sh.innerHTML = head("📖 Дневник") + `<div class="diary${two ? " two" : ""}">${page(journalPage)}${two ? page(journalPage + 1) : ""}</div>
-      <div class="row2"><button class="ans" id="jPrev" ${journalPage <= 0 ? "disabled" : ""}>◀ По-нови</button><button class="ans" id="jNext" ${journalPage + step >= pages ? "disabled" : ""}>По-стари ▶</button></div>`;
+    sh.innerHTML = `<div class="diary${two ? " two" : ""}"><button class="x bx" id="sx">✕</button>${page(journalPage)}${two ? page(journalPage + 1) : ""}
+      <button class="turn l" id="jPrev" ${journalPage <= 0 ? "disabled" : ""}>◀</button><button class="turn r" id="jNext" ${journalPage + step >= pages ? "disabled" : ""}>▶</button></div>`;
     $("jPrev").onclick = () => { journalPage = Math.max(0, journalPage - step); fillSheet("journal"); };
     $("jNext").onclick = () => { journalPage += step; fillSheet("journal"); };
   }
@@ -2466,7 +2571,8 @@ function loop() {
   if (!oct.wp || t > oct.wpT) { oct.wp = [rnd(0.2, 0.6) * W, H * rnd(0.3, 0.6)]; oct.wpT = t + rnd(5, 10); }
   let tx = oct.wp[0], ty = oct.wp[1], k = 0.02, lin = 0;
   if (mode !== "sleep") pillow = null;
-  if (age === "egg") { tx = W * 0.33; ty = ground - 60 * s; k = 1; mode = "idle"; if (performance.now() - eggShake < 600) mode = "happy"; }
+  if (age !== "egg" && performance.now() - hatchAt < 4000 && eggBox) { tx = eggBox.x; ty = eggBox.y - 40 * s; k = 0.2; }
+  else if (age === "egg") { tx = W * 0.33; ty = ground - 60 * s; k = 1; mode = "idle"; if (performance.now() - eggShake < 600) mode = "happy"; }
   else if (mode === "sleep") {               // взима си възглавница и ляга до камъка
     const sx = Math.max(W * 0.32, R.cx - R.rw * 0.5 - 230 * s);
     if (!pillow) pillow = { t0: performance.now() - (performance.now() - loadAt < 4000 ? 1e4 : 0), x: null };
@@ -2509,11 +2615,12 @@ function loop() {
   if (S) drawFloor(t, s, true);            // плаващите боклуци са зад него
   drawPillow(s, ground);
   if (S && S.hatched) drawPlaced(t, s);
-  const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * oct.sc - hop, s: oct.sc, skin: S && S.skin, age, mode, t, mt: t - modeAt, st, lie, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
+  const info = Octo.draw(g, { crack: S && !S.hatched ? (creating ? 1 : (S.eggP || 0) / EGG_MAX) : 0, x: oct.px, y: oct.py - 46 * oct.sc - hop, s: oct.sc, skin: S && S.skin, age, mode, t, mt: t - modeAt, st, lie, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
     ground: near || age === "egg" ? ground : null, drop: age === "egg", style: STYLE, dir: oct.dir,
     lookAt: role === "keeper" && performance.now() - ptr.t < 3000 ? ptr : gaze && performance.now() < gaze.until ? gaze : null });
   oct.x = oct.px; oct.cy = info.cy; oct.top = info.top; oct.r = info.r;
   if (age === "egg") eggBox = { x: oct.px, y: ground - 60 * s, r: 80 * s };
+  drawEggBar(s); drawCreation(t, s);
   if (departing && performance.now() - departing.at < 9000) {     // старият Октонис отплава нагоре
     const a = (performance.now() - departing.at) / 9000;
     g.globalAlpha = 1 - a;
@@ -2682,6 +2789,7 @@ setInterval(() => {
     S = JSON.parse(viewBase); catchUp(now); render();
   }
   updateBubble(); renderHud();
+  if (S && !S.hatched && role === "keeper" && !creating && (S.eggP || 0) < EGG_MAX * EGG_WARM) { S.eggP = Math.min(EGG_MAX * EGG_WARM, (S.eggP || 0) + EGG_MAX / 5000); dirty = true; }
 }, 1000);
 document.addEventListener("visibilitychange", () => { if (document.hidden) { save(true); schedNotify(true); } });
 window.addEventListener("pagehide", () => save(true));

@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 26;
+const VER = 28;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
+let CRACK = 0, SAD = false, EAT = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -235,10 +235,14 @@ function part(p) {
 
 // ---------- Яйцето ----------
 function egg(t, st) {
-  const shake = (t % 5.5) < 0.7 ? Math.sin(t * 40) * 0.1 * (1 - (t % 5.5) / 0.7) : 0;
+  const shake = ((t % 5.5) < 0.7 ? Math.sin(t * 40) * 0.1 * (1 - (t % 5.5) / 0.7) : 0) + (CRACK > 0.97 ? Math.sin(t * 60) * 0.12 : CRACK > 0.8 ? Math.sin(t * 30) * 0.03 : 0);
   const rot = Math.sin(t * 1.6) * 0.04 + shake;
   const cy = GROUND != null ? GROUND - 118 : 30 + Math.sin(t * 1.3) * 6;
   if (GROUND != null) { g.fillStyle = "rgba(60,55,75,.22)"; ell(0, GROUND + 6, 110, 16); g.fill(); }
+  if (CRACK > 0.3) {                   // стопленото яйце свети
+    const a = Math.min(0.55, (CRACK - 0.3) * 0.8), rg = g.createRadialGradient(0, cy, 20, 0, cy, 230);
+    rg.addColorStop(0, `rgba(255,220,150,${a})`); rg.addColorStop(1, "rgba(255,220,150,0)"); g.fillStyle = rg; g.beginPath(); g.arc(0, cy, 230, 0, 7); g.fill();
+  }
   g.save(); g.translate(0, cy + 118); g.rotate(rot); g.translate(0, -118);
   const path = () => {
     g.beginPath(); g.moveTo(0, -122);
@@ -257,6 +261,9 @@ function egg(t, st) {
   }
   g.strokeStyle = "rgba(255,255,255,.9)"; g.lineWidth = 7; g.lineCap = "round";
   g.beginPath(); g.ellipse(-8, -8, 70, 98, 0, 1.12 * Math.PI, 1.32 * Math.PI); g.stroke();
+  const CR = [[[-20, -90], [-8, -70], [-24, -52], [-6, -36]], [[40, -60], [56, -44], [44, -24], [64, -8]], [[-70, 20], [-50, 30], [-62, 52], [-40, 64]], [[20, 40], [36, 54], [24, 74], [44, 90]], [[-30, -20], [-10, -2], [-28, 16]]];
+  g.strokeStyle = C.line; g.lineWidth = 5; g.lineJoin = "miter";
+  CR.slice(0, Math.floor(CRACK * 6)).forEach(c => { g.beginPath(); c.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); });
   g.restore();
   if (CUTE) {                          // бебето наднича през дупката
     const hole = [[-38, -40], [-24, -58], [-6, -46], [10, -64], [26, -48], [44, -56], [48, -24], [36, 2], [20, -8], [2, 8], [-18, -4], [-36, 4], [-46, -18]];
@@ -1044,7 +1051,7 @@ function drawArcade(ctx, o) {
 }
 function draw(ctx, o) { return o.style === "pixel" ? drawArcade(ctx, o) : o.style === "pixelsoft" ? drawPixel(ctx, o) : drawReal(ctx, o); }
 function drawReal(ctx, o) {
-  g = ctx; mode = o.mode || "idle"; SAD = mode === "sad"; EAT = mode === "eat"; if (SAD) mode = "idle"; if (EAT) mode = "happy"; TR = o.traits || [];
+  g = ctx; mode = o.mode || "idle"; SAD = mode === "sad"; EAT = mode === "eat"; CRACK = o.crack || 0; if (SAD) mode = "idle"; if (EAT) mode = "happy"; TR = o.traits || [];
   if (mode === "swim" && o.style !== "sketch") mode = "idle";
   const st = o.st || (o.st = {});
   st.parts = st.parts || [];
