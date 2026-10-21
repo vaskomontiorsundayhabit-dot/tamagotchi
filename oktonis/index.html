@@ -2030,8 +2030,8 @@ function fillSheet(kind) {
           <span class="btns">${!mine && role === "keeper" ? `<button class="sell buy" data-b="${pb.id}" ${S.pearls < pb.p ? "disabled" : ""}>Купи</button>` : ""}</span></div>`;
         if (pb.d) h += `<div class="bookd">${esc(pb.d)}${pb.ch ? `<ul class="bch">${pb.ch.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${read && BOOK_INV_OF[pb.id] ? `<div class="bin">${S.found.includes(BOOK_INV_OF[pb.id]) ? `Чертеж: ${elE(BOOK_INV_OF[pb.id])} ${esc(elN(BOOK_INV_OF[pb.id]))}` : "В книгата има чертеж на изобретение…"}</div>` : ""}${read && pb.q ? `<div class="bq">${pb.q.map(x => `<p>„${esc(x)}“</p>`).join("")}</div>` : ""}</div>`; }
     } else {
-      if (!S.asleep && role !== "viewer") h += `<div class="lock">🔒<div>Личният дневник е заключен.<br><small>Пази го под пипалото си.</small></div></div>`;
-      else h += (role === "viewer" ? `<div class="sub">👀 Като наблюдател го виждаш винаги. Той не знае.</div>` : `<div class="sub">Спи… Дневникът се е изплъзнал изпод пипалото му.</div>`) + `<div class="sub grp">Какво мисля за теб</div><ul class="journal">${myThoughts().map(x => `<li>${esc(x)}</li>`).join("")}</ul>` +
+      if (role !== "viewer") h += `<div class="lock">🔒<div>Личният дневник е заключен.<br><small>Пази го под пипалото си.</small></div></div>`;
+      else h += `<div class="sub">👀 Само ти като наблюдател го виждаш. Той не знае.</div>` + `<div class="sub grp">Какво мисля за теб</div><ul class="journal">${myThoughts().map(x => `<li>${esc(x)}</li>`).join("")}</ul>` +
         `<div class="sub grp">Записки</div>` + ((S.pdiary || []).length ? `<ul class="journal">${S.pdiary.slice().reverse().map(e => `<li><time>${new Date(e.t).toLocaleDateString("bg-BG", { day: "numeric", month: "short" })}</time>${esc(e.x)}</li>`).join("")}</ul>` : `<div class="sub">Празно. Само една рисунка на теб. Доста прилича.</div>`);
     }
     sh.innerHTML = h;
