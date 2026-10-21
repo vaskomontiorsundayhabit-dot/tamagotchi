@@ -2190,7 +2190,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 35;
+const PAGE_V = 36;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -4305,7 +4305,7 @@ async function checkUpdate() {
   } catch {}
 }
 $("upd").onclick = async () => { await save(true); location.reload(); };
-setInterval(checkUpdate, 3 * 60000);
+setInterval(checkUpdate, 60000);          // проверява за нова версия всяка минута
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) { save(true); schedNotify(true); livePush(true); } });
 window.addEventListener("pagehide", () => save(true));
