@@ -752,7 +752,7 @@ function pickFloor(id, by) {
   const h = floorHits.find(f => f.id === id);
   addMat(it.k); poof(it.x, ti < 0, h && h.x, h && h.y); dirty = true;
   if (!quietPick) flyToChest(it.k, h ? h.x : it.x * W, h ? h.y : H * 0.86);
-  if (by === "me") { S.lastCare = Date.now(); if (ti >= 0) { S.track.clean++; S.mood = clamp(S.mood + 4); if (++cleanN === 4) note("cleanday", ["Днес изчисти цялото дъно. Мисля, че е тайно перфекционист като мен.", "Махна толкова боклуци днес! Водата е синя, а аз съм щастлив."]); } }
+  if (by === "me") { S.lastCare = Date.now(); if (ti >= 0) { S.track.clean++; td("clean"); S.mood = clamp(S.mood + 4); if (++cleanN === 4) note("cleanday", ["Днес изчисти цялото дъно. Мисля, че е тайно перфекционист като мен.", "Махна толкова боклуци днес! Водата е синя, а аз съм щастлив."]); } }
   return { it, junk: ti >= 0 };
 }
 function doPickTrash(id) {
@@ -840,7 +840,7 @@ function drawPlaced(t, s) {                   // сложените изобре
     }
     if (on) { g.save(); g.fillStyle = "rgba(255,230,140,.25)"; g.beginPath(); g.arc(x, y, sz * 0.7 + Math.sin(t * 3) * 3, 0, 7); g.fill(); g.restore(); }
     g.save(); g.globalAlpha = on ? 1 : 0.6; g.fillStyle = "#000"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = `${sz}px system-ui, "Apple Color Emoji", sans-serif`;
-    g.fillText(elE(k), x, y + (on && MUSIC.includes(k) ? Math.sin(t * 8) * 2 : 0)); g.restore();
+    paintEl(g, k, x, y + (on && MUSIC.includes(k) ? Math.sin(t * 8) * 2 : 0), sz); g.restore();
     if (on && MUSIC.includes(k)) { g.font = `${Math.max(14, 28 * s)}px system-ui, sans-serif`; g.fillStyle = "#fff";
       for (let j = 0; j < 3; j++) { const a = ((t * 0.5 + j / 3) % 1); g.globalAlpha = 1 - a; g.fillText(j % 2 ? "♪" : "♫", x + Math.sin(a * 6 + j) * 14, y - 24 - a * 80); } g.globalAlpha = 1; }
     placedHits.push({ k, x, y, r: sz * 0.7 });
@@ -943,6 +943,7 @@ function morningLetter() {
   log("🍾 На дъното има бутилка с писмо.");
 }
 function openLetter() {
+  note("letter", ["Четохме писмо от бутилка заедно. Той чете на глас по-хубаво от мен.", "Днес отворихме писмо в бутилка. Чудя се кой ли го е писал. Той също се чуди."]);
   if (!S.letter) return;
   const ex = S.letter.ex && ingOf(S.letter.ex[0]);
   const L = ex ? [EXPLORER[S.letter.ex[1]](S.letter.ex[0]), "Писмо от изследовател! Ще запиша това в тетрадката. Може да е важно."] : LETTERS[S.letter.i];
@@ -1099,6 +1100,7 @@ function mixDone() {
     S.future = (S.future || []).filter(f => RECIPE[recKey(f.a, f.b)] !== c);
     S.mood = clamp(S.mood + (first ? 18 : 5)); if (first) fx.party = performance.now();
     log(first ? `🎉 Откри ${elFull(c)}! (${name})` : `🔁 Направи пак ${elFull(c)}.`);
+    if (who === "me") { td("mix"); if (first) note("mixwin", [`Днес двамата открихме ${elN(c).toLowerCase()}! Той смесваше, аз държах. Отбор сме.`, `${elN(c)}! Измислихме го заедно. Записвам го с големи букви.`]); }
     say("", first ? `Работи! ${elN(c)}! Записвам го в Книгата на откритията.` : `Още един ${elN(c).toLowerCase()}. Точно като първия.`, 7000);
     if (first && Object.values(FOODS).some(f => f[5] === c)) setTimeout(() => say("", `${elN(c)} отива при храната. Рецептата я записах, можем да го правим пак!`, 7000), 7500);
     if (first && ACTS[c]) setTimeout(() => say("", `Сложих ${elN(c).toLowerCase()} в шкафа. Извади го оттам и ще заработи!`, 7000), 7500);
@@ -1130,6 +1132,32 @@ function note(kind, lines) {
   if (S.pnotes[kind] === day) return;
   S.pnotes[kind] = day; S.track[kind] = (S.track[kind] || 0) + 1;
   pdiary(Array.isArray(lines) ? pick(lines) : lines);
+}
+function td(k) {                             // броячи за днешния ден (за дневника)
+  const d = new Date().toDateString();
+  if (!S.today || S.today.d !== d) S.today = { d, feed: 0, junk: 0, veg: 0, pet: 0, play: 0, clean: 0, scold: 0, mix: 0, photo: 0, mins: 0 };
+  if (k) S.today[k] = (S.today[k] || 0) + 1;
+  return S.today;
+}
+function daySummary() {                       // вечер, преди да заспи: какво е било днес с него
+  if (role !== "keeper" || !S.hatched || S.stage === "baby") return;
+  const T = td(), day = new Date().toDateString();
+  if (S.sumDay === day) return;
+  S.sumDay = day;
+  const out = [];
+  if (T.mins >= 60) out.push(pick(["Днес беше с мен дълго. Над час! Чувствах се важен.", "Цял ден заедно. Най-хубавият вид ден."]));
+  else if (T.mins >= 15) out.push(pick(["Днес се видяхме малко. Хубаво беше.", "Мина да ме види. Кратко, но мило."]));
+  else if (T.mins < 3) out.push(pick(["Днес почти не го видях. Броих мехурчета сам.", "Днес го нямаше. Надявам се, че е добре."]));
+  if (T.feed >= 3) out.push(T.veg > T.junk ? "Хранеше ме здравословно. Грижовен е." : T.junk > T.veg + 1 ? "Даде ми много сладки неща. Не се оплаквам, но коремчето малко." : "Нахрани ме навреме. Не бях гладен нито веднъж.");
+  else if (T.feed === 0 && T.mins >= 15) out.push("Днес забрави да ме нахрани. Не му казах. Сега казвам на дневника.");
+  if (T.pet >= 4) out.push("Гали ме много. Пипалата ми още се усмихват.");
+  if (T.play >= 2) out.push("Играхме на криеница. Той винаги ме намира. Как ли?");
+  if (T.clean >= 3) out.push("Изчисти около мен. Обичам, когато е подредено.");
+  if (T.scold >= 2) out.push("Скара ми се няколко пъти. Може би имаше лош ден. Или аз.");
+  if (T.mix >= 2) out.push("Смесвахме заедно. Добър асистент е, само понякога бърза.");
+  if (T.photo >= 2) out.push("Снимахме морски животни. Албумът расте.");
+  if (!out.length) return;
+  pdiary(out.slice(0, 3).join(" "));
 }
 function pdiary(x) { S.pdiary = [...(S.pdiary || []), { t: Date.now(), x }].slice(-50); dirty = true; }
 const PD = {   // какво си записва за разговорите (само по-интересните)
@@ -1503,7 +1531,7 @@ function react(ans) {
       "Подреждам мислите си. Тази отляво, онази отдясно.", "Мечтая за сандвич. И за подредени чорапи.", "Чакам да ми хрумне нещо гениално. Още чакам."]));
   }
   if (ans === "scold") {
-    S.mood = clamp(S.mood - 8); fx.hurt = performance.now();
+    S.mood = clamp(S.mood - 8); fx.hurt = performance.now(); td("scold");
     note("scold", ["Днес ми се скара. Не разбрах защо. Ще бъда по-добър. Може би.", "Скара ми се. Записвам го тук, за да не го забравя. Или за да го забравя.", "Днес беше строг с мен. Сигурно има лош ден."]); save();
     if (baby) return say("", "~Уааа! Бебо тъжен!");
     if (teen) return say("", pick(["Ама аз нищо не съм направил! Пфф.", "Защо все на мен се караш?!"]));
@@ -1803,7 +1831,7 @@ function careAct(e) {
     }
   }
   switch (e) {
-    case "🍕": case "🥦": case "🦐": case "🍣": case "🥕": case "🍪": case "🍲": case "🥞": case "🍳": case "🍮": { const h0 = S.hunger; eat(e, now); if (S.hunger < h0) { startEat(e); S.track.ate = S.track.ate || {}; S.track.ate[e] = (S.track.ate[e] || 0) + 1; } break; }
+    case "🍕": case "🥦": case "🦐": case "🍣": case "🥕": case "🍪": case "🍲": case "🥞": case "🍳": case "🍮": { const h0 = S.hunger; eat(e, now); if (S.hunger < h0) { startEat(e); td("feed"); if (FOODS[e][4] === "veg") td("veg"); if (FOODS[e][4] === "junk") td("junk"); S.track.ate = S.track.ate || {}; S.track.ate[e] = (S.track.ate[e] || 0) + 1; } break; }
     case "😴":
       if (S.energy > 60) { say("", pick(["Не съм уморен! Още не ми се спи.", "Сън? Сега? Още е рано за мен."])); break; }
       S.asleep = true; log("😴 Легна на дъното да спи."); say("😴", "Лека нощ…"); break;
@@ -1811,8 +1839,8 @@ function careAct(e) {
       if (!S.asleep) { say("😎", "Буден съм!"); break; }
       if (S.energy < 30) { say("😪", "Още малко…"); break; }
       S.asleep = false; log("☀️ Събуди го."); say("🥱", "Добро утро!"); break;
-    case "❤️": S.track.play++; S.mood = clamp(S.mood + 6); say(S.asleep ? "💤💗" : pick(["☺️", "🥰"]), S.asleep ? "" : pick(["О, не беше нужно…", "", "И аз те обичам. Точно 100%."])); break;
-    case "🤗": S.track.play++; S.mood = clamp(S.mood + 8); say("🤗", ""); hugN++; if (hugN === 5) note("hugs", ["Днес ме прегърна много пъти. Броих: пет. После спрях да броя.", "Толкова прегръдки днес! Пипалата ми още са топли."]); break;
+    case "❤️": td("pet"); S.track.play++; S.mood = clamp(S.mood + 6); say(S.asleep ? "💤💗" : pick(["☺️", "🥰"]), S.asleep ? "" : pick(["О, не беше нужно…", "", "И аз те обичам. Точно 100%."])); break;
+    case "🤗": td("pet"); S.track.play++; S.mood = clamp(S.mood + 8); say("🤗", ""); hugN++; if (hugN === 5) note("hugs", ["Днес ме прегърна много пъти. Броих: пет. После спрях да броя.", "Толкова прегръдки днес! Пипалата ми още са топли."]); break;
     case "👍": S.mood = clamp(S.mood + 3); say("☺️", pick(["О, не беше нищо особено…", "Може и по-добре, но благодаря."])); break;
     case "😂": S.mood = clamp(S.mood + 4); say("🤣", ""); break;
     case "👋": S.mood = clamp(S.mood + 2); say("👋🐙", "Здрасти!"); break;
@@ -1897,6 +1925,7 @@ function dailyGift(p) {
 function openGift() {
   if (role !== "keeper" || !S.gift) return;
   const k = S.gift.k; poof(S.gift.x, true); S.gift = null; S.mood = clamp(S.mood + 8); dirty = true; fx.party = performance.now();
+  note("gift", ["Сутринта получих подарък. Той ми помогна да го отворя. Хубаво е да има с кого.", "Подарък от рибата-пощальон! Той беше толкова любопитен, колкото и аз."]);
   if (k.startsWith("hat:")) {
     const h = k.slice(4); S.hats = [...new Set([...(S.hats || []), h])];
     log(`🎁 В подаръка имаше ${HATS[h][1].toLowerCase()}!`);
@@ -1910,7 +1939,9 @@ function openGift() {
 }
 function wearHat(h) {
   if (role !== "keeper") return;
-  S.hat = S.hat === h ? null : h; dirty = true; save();
+  S.hat = S.hat === h ? null : h; dirty = true;
+  if (S.hat) note("hat", [`Днес ми сложи ${HATS[h][1].toLowerCase()}. Мисля, че ми отива. Той също мисли така.`, `${HATS[h][1]}! Той избра тази шапка за мен. Има вкус.`]);
+  save();
   say("", S.hat ? pick(["Как ми стои?", "Стилно, нали?", "С тази шапка съм по-умен. Измерих го."]) : "Свалих я. Да си почине.", 4000);
   render();
 }
@@ -2485,6 +2516,7 @@ function paintRing() {
 }
 function playHide() {                      // криеница
   if (S.asleep) return say("", "Шшш… спи.");
+  td("play");
   S.track.play++; S.mood = clamp(S.mood + 4); S.lastCare = Date.now(); dirty = true; save();
   say("", pick(["Крия се! Брой до десет!", "Криеница! Намери ме!", "Не гледай! Крия се!"]));
   setTimeout(() => { hideUntil = performance.now() + 25000; }, 1200);
@@ -3884,6 +3916,7 @@ function snapId(id) {
   S.album = S.album || {};
   const first = !S.album[id];
   S.album[id] = { t: first ? Date.now() : S.album[id].t, n: (first ? 0 : S.album[id].n) + 1 };
+  td("photo");
   if (first) { log(`📸 Снимка: ${c[1].toLowerCase()}.`); S.albumNew = (S.albumNew || 0) + 1;
     note("photo", [`Днес направихме снимка: ${c[1]}. Той има много бързи пръсти. И добро око.`, `Нова снимка в албума: ${c[1]}! Беше толкова развълнуван. И аз.`]); }
   dirty = true; save(); renderAlbBadge();
@@ -4139,7 +4172,7 @@ if (canHover) addEventListener("mousemove", ev => {
   else if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = 0; }
 });
 // ---------- Таймер ----------
-let hadQ = false, wasAsleep = null, nextIdeaAt = Date.now() + 4 * MIN, parcelSaid = false, nextQGap = 12 * MIN, lastMinuteCheck = 0, nextHide = performance.now() + 4 * 60000;
+let lastMinTick = 0, hadQ = false, wasAsleep = null, nextIdeaAt = Date.now() + 4 * MIN, parcelSaid = false, nextQGap = 12 * MIN, lastMinuteCheck = 0, nextHide = performance.now() + 4 * 60000;
 setInterval(() => {
   if (!S || !inGame) return;
   const now = Date.now(), p = performance.now();
@@ -4163,6 +4196,8 @@ setInterval(() => {
       S.moody = now + rnd(15, 30) * MIN; dirty = true; sulkFace = p; log("🙄 Има тийнейджърски период.");
       say("", pick(["Не ми се говори. Всичко е скучно.", "Остави ме. Никой не ме разбира.", "Пфф. Днес всичко ме дразни."]), 5000);
     }
+    if (p - ptr.t < 60000 && now - (lastMinTick || 0) > 60000) { lastMinTick = now; td().mins++; }
+    if (wasAsleep === false && S.asleep && S.hatched && new Date().getHours() >= 18) daySummary();   // вечер заспива: записва деня
     if (wasAsleep && !S.asleep && S.hatched && S.stage !== "baby") {          // току-що се събуди
       S.sleeps = (S.sleeps || 0) + 1; dirty = true;
       if (!S.dreamAt) S.dreamAt = S.sleeps + Math.floor(rnd(6, 9));
