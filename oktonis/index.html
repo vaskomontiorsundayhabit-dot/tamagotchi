@@ -22,7 +22,7 @@
   #sea { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
   /* балонче с говор */
-  #bubble { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); pointer-events: none;
+  #bubble { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); pointer-events: none; width: min(250px, 70vw);
     background: #fffaf2; color: #2a1730; border: 3px solid var(--ink); border-radius: 18px; padding: 6px 14px 8px;
     text-align: center; max-width: min(280px, 80vw); box-shadow: 0 4px 0 rgba(0,0,0,.25); transition: opacity .2s; z-index: 3; }
   #bubble::after { content: ""; position: absolute; left: 50%; bottom: -12px; margin-left: -9px; width: 16px; height: 16px;
@@ -37,7 +37,33 @@
   .todo li.done { color: var(--muted); text-decoration: line-through; }
   #bubble.want { background: #fff3c4; animation: pulse 1.2s infinite; }
   #bubble.want::after { background: #fff3c4; }
-  @keyframes pulse { 50% { transform: translate(-50%, -100%) scale(1.06); } }
+  @keyframes pulse { 50% { background: #ffe9a0; } }
+  #hud { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 3; text-align: center; cursor: pointer; }
+  #hud b { display: block; font-size: 14px; text-shadow: 0 1px 3px rgba(0,0,0,.6); margin-bottom: 4px; }
+  #meters { display: flex; gap: 7px; justify-content: center; }
+  .mt.s { width: 38px; height: 38px; } .mt.s span { width: 29px; height: 29px; font-size: 15px; }
+  #grow { height: 6px; width: 100%; border-radius: 3px; background: rgba(0,0,0,.3); margin-top: 6px; overflow: hidden; }
+  #grow i { display: block; height: 100%; background: linear-gradient(90deg, #b39ddb, #ffd166); border-radius: 3px; transition: width .6s; }
+  #profBtn { position: fixed; top: max(8px, env(safe-area-inset-top)); right: 10px; width: 42px; height: 42px; border-radius: 50%; padding: 0; font-size: 20px;
+    background: rgba(255,250,242,.9); border: 3px solid var(--ink); z-index: 4; }
+  #profMenu { position: fixed; top: calc(max(8px, env(safe-area-inset-top)) + 50px); right: 10px; z-index: 9; background: rgba(18,40,68,.95); border: 3px solid var(--ink);
+    border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 170px; }
+  .pm-who { font-size: 13px; color: var(--muted); padding: 4px 6px; }
+  #side { position: fixed; right: 10px; top: calc(max(8px, env(safe-area-inset-top)) + 62px); display: flex; flex-direction: column; gap: 14px; z-index: 3; }
+  #side button { width: 46px; height: 46px; border-radius: 50%; padding: 0; font-size: 22px; background: rgba(255,250,242,.9); border: 3px solid var(--ink);
+    box-shadow: 0 3px 0 rgba(0,0,0,.25); position: relative; }
+  #side small { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); white-space: nowrap; }
+  #mixbar { position: fixed; left: 84px; right: 12px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 4px); max-width: 430px; z-index: 8;
+    display: grid; grid-template-columns: repeat(5, 1fr) 54px; gap: 6px; }
+  #mixbar .slot { height: 52px; border-radius: 14px; background: rgba(12,30,54,.55); border: 2px dashed rgba(255,255,255,.4); display: grid; place-items: center; font-size: 26px; cursor: pointer; }
+  #mixbar .slot.full { border: 3px solid var(--ink); background: rgba(255,250,242,.9); }
+  #mixbar .slot.over { background: rgba(255,209,102,.6); }
+  #mixbar button { height: 52px; border-radius: 14px; padding: 0; font-size: 24px; background: var(--peach); border: 3px solid var(--ink); }
+  #mixbar button:disabled { opacity: .5; }
+  body.hasbar #sheet:not(.open) { transform: translateY(calc(100% + 120px)); }
+  body.hasbar #sheet { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 62px); border-bottom: 3px solid var(--ink); border-radius: 24px; }
+  body.hasbar #hint { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 70px); }
+  #ghost { position: fixed; z-index: 10; pointer-events: none; font-size: 44px; transform: translate(-50%, -60%); }
 
   /* менюто около него */
   .rb { position: fixed; left: 0; top: 0; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%;
@@ -51,7 +77,7 @@
   .rb.want { background: var(--gold); animation: wig .5s infinite; }
   @keyframes wig { 25% { rotate: -8deg; } 75% { rotate: 8deg; } }
 
-  #top { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 0; right: 0; text-align: center; font-size: 13px;
+  #top { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 72px); left: 0; right: 0; text-align: center; font-size: 13px;
     color: #eaf6ff; text-shadow: 0 1px 3px rgba(0,0,0,.6); pointer-events: none; z-index: 2; }
   #hint { position: fixed; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 36px); left: 0; right: 0; text-align: center; font-size: 14px;
     color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); pointer-events: none; animation: fade 2.4s infinite; z-index: 2; }
@@ -172,6 +198,10 @@
 <body>
 <canvas id="sea"></canvas>
 <div id="top"></div>
+<div id="hud" class="hidden"><b id="hudName"></b><div id="meters"></div><div id="grow"><i id="growFill"></i></div></div>
+<button id="profBtn" class="hidden" title="Профил">👤</button><div id="profMenu" class="hidden"></div>
+<div id="side" class="hidden"></div>
+<div id="mixbar" class="hidden"></div>
 <div id="ver" style="position:fixed;right:8px;bottom:max(6px,env(safe-area-inset-bottom));font-size:10px;color:rgba(255,255,255,.55);z-index:2;pointer-events:none"></div>
 <div id="hint" class="hidden">Докосни Октонис 🐙</div>
 <div id="handle" class="hidden" title="Как е"></div>
@@ -338,7 +368,9 @@ function pickFloor(id, by) {
   const ti = S.trash.findIndex(x => x.id === id), pi = S.parts.findIndex(x => x.id === id);
   if (ti < 0 && pi < 0) return;
   const it = ti >= 0 ? S.trash.splice(ti, 1)[0] : S.parts.splice(pi, 1)[0];
-  addMat(it.k); poof(it.x, ti < 0); dirty = true;
+  const h = floorHits.find(f => f.id === id);
+  addMat(it.k); poof(it.x, ti < 0, h && h.x, h && h.y); dirty = true;
+  if (!quietPick) flyToChest(elE(it.k), h ? h.x : it.x * W, h ? h.y : H * 0.86);
   if (by === "me") { S.lastCare = Date.now(); if (ti >= 0) { S.track.clean++; S.mood = clamp(S.mood + 4); } }
   return { it, junk: ti >= 0 };
 }
@@ -1249,10 +1281,12 @@ function afterLoad() {
   }
   save();
   show("gameView"); buildStatic(); render();
+  loadAt = performance.now();
+  if (S.hatched && S.trash.length >= 3) { sadUntil = performance.now() + 60000; setTimeout(() => say("", pick(["Толкова боклуци се събраха… Тъжно ми е.", "Виж каква бъркотия… Плуват навсякъде."]), 7000), 1500); }
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 19;
+const PAGE_V = 20;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -1264,7 +1298,8 @@ function show(v) {
   $("loginView").classList.toggle("hidden", v !== "loginView");
   $("loadView").classList.toggle("hidden", v !== "loadView");
   inGame = v === "gameView";
-  $("handle").classList.toggle("hidden", !inGame);
+  for (const id of ["profBtn", "side"]) $(id).classList.toggle("hidden", !inGame);
+  if (!inGame) { $("hud").classList.add("hidden"); $("mixbar").classList.add("hidden"); document.body.classList.remove("hasbar"); }
   $("chatBtn").classList.toggle("hidden", !inGame);
   if (!inGame) { closeRing(); closeSheet(); $("bubble").classList.add("hidden"); $("top").textContent = ""; $("hint").classList.add("hidden"); }
 }
@@ -1290,6 +1325,7 @@ function render() {
   $("top").textContent = role === "viewer" ? `👀 Само гледаш · toshik беше тук ${ago(S.lastCare)}` : "";
   if (sheetKind) fillSheet(sheetKind);
   if (ringOpen) paintRing();
+  renderHud(); renderMix();
 }
 
 // ---------- Панелът отдолу ----------
@@ -1371,17 +1407,10 @@ function fillSheet(kind) {
     const junk = Object.keys(S.mat).filter(k => cnt(k) && EL[k] && EL[k][3] === "junk");
     h += rows || `<div class="sub">Торбата е празна. Събирай нещата по дъното.</div>`;
     if (junk.length > 1 && role === "keeper") h += `<button class="try" id="sellJunk" style="margin-top:10px">♻️ Рециклирай всички боклуци</button>`;
-    if (canMix) h += `<div class="mixbar">${[0, 1, 2, 3, 4].map(i => `<span class="slot${mixSel[i] ? " full" : ""}" data-i="${i}">${mixSel[i] ? elE(mixSel[i]) : ""}</span>`).join("")}
-      <button class="try" id="mixBtn" ${mixSel.length < 2 || working ? "disabled" : ""}>⚗️ Смеси</button></div>`;
     sh.innerHTML = h;
-    sh.querySelectorAll(".add").forEach(b => b.onclick = () => { const k = b.dataset.k;
-      if (mixSel.length >= 5) return say("", "Пет неща стигат! Повече не се събират.");
-      if (mixSel.filter(x => x === k).length >= cnt(k)) return say("", "Имам само едно такова.");
-      mixSel.push(k); fillSheet("bag"); });
-    sh.querySelectorAll(".slot").forEach(b => b.onclick = () => { mixSel.splice(+b.dataset.i, 1); fillSheet("bag"); });
+    sh.querySelectorAll(".add").forEach(b => b.onclick = () => addToMix(b.dataset.k));
     sh.querySelectorAll(".eat").forEach(b => b.onclick = () => feed(b.dataset.k));
     sh.querySelectorAll(".sell").forEach(b => b.onclick = () => sellMat(b.dataset.k));
-    if ($("mixBtn")) $("mixBtn").onclick = () => { const [a, b, ...more] = mixSel; mixSel = []; mix(a, b, "me", more); };
     if ($("sellJunk")) $("sellJunk").onclick = () => { let sum = 0; for (const k of junk) while (cnt(k)) sum += sellMat(k, true); log(`♻️ Рециклира боклуците за ${sum} ${CUR}.`); save(); render(); say("", "Рециклирах всичко! Чисто, подредено и с пари. Перфектно."); };
   } else if (kind === "stats") {
     const clean = Math.max(0, 100 - S.trash.length * 15);
@@ -1465,14 +1494,12 @@ function toggleFull() {
 }
 function ringItems() {
   const extra = [fullItem(), ["logout", "🚪", "Изход"]].filter(Boolean);
-  if (role !== "keeper") return [["lib", "📚", "Библиотека"], ["bag", "🎒", "Торба"], ["stats", "📊", "Как е"], ["family", "🌳", "Род"], ["journal", "📖", "Дневник"], ...extra];
+  if (role !== "keeper") return [];
   if (ringPage === "food") return [["back", "↩️", "Назад"], ["e🍕", "🍕", "Пица"], ["e🥦", "🥦", "Броколи"], ["e🦐", "🦐", "Скариди"]];
-  if (ringPage === "talk") return [["back", "↩️", "Назад"], ...["❤️", "🤗", "👍", "😂", "👋"].map(e => ["e" + e, e, ""])];
-  return [["food", "🍕", "Храна"], S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Сън"], ["read", "📕", "Чети"],
-    ["lib", "📚", "Библиотека"], ["bag", "🎒", "Торба"], ["stats", "📊", "Как е"], ["family", "🌳", "Род"], ["journal", "📖", "Дневник"], ...extra];
+  return [["food", "🍕", "Нахрани"], ["e🤗", "🤗", "Погали"], ["play", "🙈", "Играй"], ["read", "📕", "Чети"], S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Сън"]];
 }
 function openRing() {
-  if (!inGame || sheetKind || !S.hatched) return;
+  if (!inGame || sheetKind || !S.hatched || role !== "keeper") return;
   ringOpen = true; ringPage = "main";
   ringCenter = [oct.x, oct.cy];
   try { localStorage.setItem("okt_hint2", "1"); } catch {}
@@ -1507,16 +1534,156 @@ function paintRing() {
     setTimeout(() => b.classList.add("open"), 20 + i * 25);
   });
 }
+function playHide() {                      // криеница
+  if (S.asleep) return say("", "Шшш… спи.");
+  S.track.play++; S.mood = clamp(S.mood + 4); S.lastCare = Date.now(); dirty = true; save();
+  say("", pick(["Крия се! Брой до десет!", "Криеница! Намери ме!", "Не гледай! Крия се!"]));
+  setTimeout(() => { hideUntil = performance.now() + 25000; }, 1200);
+}
 function ringAction(id) {
   if (id === "talk" || id === "food") { ringPage = id; return paintRing(); }
   if (id === "back") { ringPage = "main"; return paintRing(); }
   if (["lib", "bag", "stats", "family", "journal"].includes(id)) return openSheet(id);
   if (id === "read") { closeRing(); return readBook(); }
+  if (id === "play") { closeRing(); return playHide(); }
   if (id === "full") { closeRing(); return toggleFull(); }
   if (id === "logout") { closeRing(); return logout(); }
   const e = { sleep: "😴", wake: "☀️" }[id] || id.slice(1);
   careAct(e);
   if (ringPage === "talk") paintRing(); else closeRing();
+}
+
+// ---------- Горната лента: състоянието винаги се вижда ----------
+function renderHud() {
+  if (!S || !inGame) return;
+  const on = S.hatched;
+  $("hud").classList.toggle("hidden", !on);
+  if (!on) return;
+  const clean = Math.max(0, 100 - S.trash.length * 15);
+  const ms = [["🍕", 100 - S.hunger, "#ffb36b"], ["⚡", S.energy, "#ffd166"], ["😊", S.mood, "#7cc8f2"], ["❤️", S.health, "#ff6b81"], ["🧹", clean, "#6fd3a0"]];
+  $("meters").innerHTML = ms.map(([i, v, c]) => `<span class="mt s" style="--v:${Math.round(v)};--c:${c}"><span>${i}</span></span>`).join("");
+  const dur = STAGE_MIN[S.stage] || 1, done = Math.min(1, (S.grow || 0) / dur);
+  $("growFill").style.width = (done * 100).toFixed(1) + "%";
+  $("hudName").textContent = S.name + (S.sick ? " 🤒" : "");
+}
+// ---------- Профилът горе вдясно ----------
+$("profBtn").onclick = ev => {
+  ev.stopPropagation();
+  const m = $("profMenu");
+  if (!m.classList.contains("hidden")) return m.classList.add("hidden");
+  m.innerHTML = `<div class="pm-who">👤 ${esc(myNick)}${role === "viewer" ? " · само гледаш" : ""}</div>` +
+    (canFull ? `<button id="pmFull">${isFull() ? "🪟 Малък екран" : "🖥️ Цял екран"}</button>` : "") + `<button id="pmOut">🚪 Изход</button>`;
+  m.classList.remove("hidden");
+  if ($("pmFull")) $("pmFull").onclick = () => { m.classList.add("hidden"); toggleFull(); };
+  $("pmOut").onclick = () => { m.classList.add("hidden"); logout(); };
+};
+document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#profMenu") && !ev.target.closest("#profBtn")) $("profMenu").classList.add("hidden"); });
+// ---------- Бутоните по екрана ----------
+$("side").innerHTML = [["bag", "🎒", "Торба"], ["lib", "📚", "Книги"], ["family", "🌳", "Род"], ["journal", "📖", "Дневник"]]
+  .map(([k, i, n]) => `<button data-k="${k}" title="${n}">${i}<small>${n}</small></button>`).join("");
+$("side").querySelectorAll("button").forEach(b => b.onclick = ev => { ev.stopPropagation(); if (S) openSheet(b.dataset.k); });
+$("hud").onclick = () => S && openSheet("stats");
+// ---------- Полетата за смесване: винаги долу ----------
+function canMixNow() { return role === "keeper" && S && S.hatched && S.stage !== "baby"; }
+function renderMix() {
+  const bar = $("mixbar"), on = inGame && canMixNow();
+  bar.classList.toggle("hidden", !on); document.body.classList.toggle("hasbar", on);
+  if (!on) return;
+  mixSel = mixSel.filter((k, i) => cnt(k) > mixSel.slice(0, i).filter(x => x === k).length);
+  bar.innerHTML = [0, 1, 2, 3, 4].map(i => `<span class="slot${mixSel[i] ? " full" : ""}" data-i="${i}">${mixSel[i] ? elE(mixSel[i]) : ""}</span>`).join("") +
+    `<button id="mixBtn" ${mixSel.length < 2 || working ? "disabled" : ""}>⚗️</button>`;
+  bar.querySelectorAll(".slot").forEach(b => b.onclick = () => { if (mixSel[+b.dataset.i]) { mixSel.splice(+b.dataset.i, 1); renderMix(); if (sheetKind === "bag") fillSheet("bag"); } });
+  $("mixBtn").onclick = () => { const [a, b, ...more] = mixSel; mixSel = []; renderMix(); mix(a, b, "me", more); };
+}
+function addToMix(k) {
+  if (mixSel.length >= 5) return say("", "Пет неща стигат! Повече не се събират.");
+  if (mixSel.filter(x => x === k).length >= cnt(k)) return say("", "Нямам повече от това.");
+  mixSel.push(k); renderMix();
+}
+// ---------- Сандъкът на дъното ----------
+const flyers = [];
+let chestOpen = -1e9;
+function chestGeom(s) { const w = Math.max(70, 150 * s), h = w * 0.72; return { x: Math.max(w * 0.6 + 6, W * 0.09), y: H * 0.88 + 8, w, h }; }
+function flyToChest(e, x, y) { flyers.push({ e, x, y, t0: performance.now() }); }
+function drawChest(t, s) {
+  const c = chestGeom(s), p = performance.now(), open = p - chestOpen < 700, sk = STYLE === "sketch";
+  const x = c.x - c.w / 2, y = c.y - c.h;
+  g.save(); g.lineWidth = sk ? 2.4 : 4; g.strokeStyle = sk ? SK_INK : "#2b2a33"; g.lineJoin = "round";
+  g.fillStyle = sk ? "#efe6d2" : "#9a5d2e"; g.beginPath(); g.rect(x, y + c.h * 0.35, c.w, c.h * 0.65); g.fill(); g.stroke();
+  g.fillStyle = sk ? "#f6efdf" : "#b8743d";
+  g.save(); g.translate(x, y + c.h * 0.35); if (open) g.rotate(-0.5);
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -c.h * 0.22); g.quadraticCurveTo(c.w / 2, -c.h * 0.5, c.w, -c.h * 0.22); g.lineTo(c.w, 0); g.closePath(); g.fill(); g.stroke();
+  g.restore();
+  g.fillStyle = sk ? "#fff" : "#e0b25a"; g.beginPath(); g.rect(x + c.w * 0.42, y + c.h * 0.3, c.w * 0.16, c.h * 0.22); g.fill(); g.stroke();
+  for (const bx of [x + c.w * 0.16, x + c.w * 0.84]) { g.beginPath(); g.moveTo(bx, y + c.h * 0.2); g.lineTo(bx, c.y); g.stroke(); }
+  g.restore();
+  chestBox = { x: c.x, y: c.y - c.h / 2, r: c.w * 0.6 };
+  for (let i = flyers.length - 1; i >= 0; i--) {             // нещата летят в сандъка
+    const f = flyers[i], a = (p - f.t0) / 650;
+    if (a >= 1) { flyers.splice(i, 1); chestOpen = p; continue; }
+    const fx2 = f.x + (c.x - f.x) * a, fy2 = f.y + (c.y - c.h * 0.6 - f.y) * a - Math.sin(a * Math.PI) * 80;
+    g.font = `${Math.max(22, 52 * s) * (1 - a * 0.5)}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(f.e, fx2, fy2);
+  }
+}
+let chestBox = null;
+// ---------- Морските гости: нарисувани като Октонис ----------
+function drawCreature(k, x, y, u, t) {
+  const L = "#2b2a33";
+  g.save(); g.translate(x, y); g.scale(u, u); g.lineWidth = 4; g.strokeStyle = L; g.lineJoin = "round"; g.lineCap = "round";
+  const E = (ex, ey, r = 9) => { g.fillStyle = "#fff"; g.beginPath(); g.arc(ex, ey, r, 0, 7); g.fill(); g.stroke(); g.fillStyle = L; g.beginPath(); g.arc(ex + 1.5, ey + 1, r * 0.45, 0, 7); g.fill(); g.fillStyle = "#fff"; g.beginPath(); g.arc(ex - 1, ey - 2, r * 0.18, 0, 7); g.fill(); };
+  const O = (fill, f) => { g.fillStyle = fill; g.beginPath(); f(); g.fill(); g.stroke(); };
+  const sw = Math.sin(t * 3);
+  if (k === "crab" || k === "lobster") {
+    const c = k === "crab" ? "#ef6a4c" : "#b8452f";
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 30, 5); g.lineTo(s * 52, -14 + sw * 4 * s); g.stroke();
+      O(c, () => g.ellipse(s * 58, -24 + sw * 4 * s, 15, 12, s * 0.4, 0, 7)); g.beginPath(); g.moveTo(s * 50, -30 + sw * 4 * s); g.lineTo(s * 62, -22 + sw * 4 * s); g.stroke(); }
+    O(c, () => g.ellipse(0, 10, 42, 26, 0, 0, 7));
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 10, -10); g.lineTo(s * 14, -28); g.stroke(); E(s * 15, -32, 8); }
+    g.beginPath(); g.arc(0, 16, 8, 0.2, Math.PI - 0.2); g.stroke();
+  } else if (k === "turtle") {
+    O("#9bd18b", () => g.ellipse(48, -4 + sw * 2, 18, 15, 0, 0, 7)); E(52, -8 + sw * 2, 6);
+    O("#5aa35a", () => { g.moveTo(-48, 18); g.quadraticCurveTo(-46, -40, 0, -42); g.quadraticCurveTo(46, -40, 48, 18); g.closePath(); });
+    g.strokeStyle = "rgba(43,42,51,.55)"; g.lineWidth = 3; for (const [a, b] of [[-22, -18], [0, -26], [22, -18], [-12, 4], [12, 4]]) { g.beginPath(); g.arc(a, b, 9, 0, 7); g.stroke(); }
+  } else if (k === "fish" || k === "mail") {
+    const c = k === "fish" ? "#ffb84d" : "#7cc8f2";
+    O(c, () => { g.moveTo(-34, 0); g.lineTo(-58, -18 + sw * 4); g.lineTo(-58, 18 + sw * 4); g.closePath(); });
+    O(c, () => g.ellipse(0, 0, 40, 26, 0, 0, 7));
+    g.strokeStyle = "rgba(43,42,51,.4)"; g.lineWidth = 6; for (const a of [-12, 4]) { g.beginPath(); g.moveTo(a, -22); g.lineTo(a, 22); g.stroke(); }
+    g.strokeStyle = L; g.lineWidth = 4; g.beginPath(); g.ellipse(0, 0, 40, 26, 0, 0, 7); g.stroke();
+    E(20, -6, 8); g.beginPath(); g.arc(36, 8, 4, 0, Math.PI); g.stroke();
+    if (k === "mail") { O("#fffaf2", () => g.rect(-14, 14, 22, 15)); g.beginPath(); g.moveTo(-14, 14); g.lineTo(-3, 23); g.lineTo(8, 14); g.stroke(); }
+  } else if (k === "puffer") {
+    const pf = 1 + Math.max(0, Math.sin(t * 1.3)) * 0.12;
+    g.save(); g.scale(pf, pf);
+    g.fillStyle = "#e9c75c"; for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; g.beginPath(); g.moveTo(Math.cos(a - 0.12) * 34, Math.sin(a - 0.12) * 34); g.lineTo(Math.cos(a) * 46, Math.sin(a) * 46); g.lineTo(Math.cos(a + 0.12) * 34, Math.sin(a + 0.12) * 34); g.fill(); g.stroke(); }
+    O("#f2d06b", () => g.arc(0, 0, 36, 0, 7));
+    E(-12, -8, 9); E(14, -8, 9); g.beginPath(); g.arc(1, 14, 5, 0, 7); g.stroke();
+    g.restore();
+  } else if (k === "squid") {
+    g.strokeStyle = L; for (let i = -3; i <= 3; i++) { g.lineWidth = 7; g.beginPath(); g.moveTo(i * 8, 20); g.quadraticCurveTo(i * 10 + sw * 6, 40, i * 9, 58); g.stroke(); }
+    g.lineWidth = 4;
+    O("#c07ad6", () => { g.moveTo(-26, 22); g.quadraticCurveTo(-30, -30, 0, -58); g.quadraticCurveTo(30, -30, 26, 22); g.closePath(); });
+    O("#a65fc0", () => { g.moveTo(-22, -34); g.lineTo(-40, -22); g.lineTo(-24, -14); g.closePath(); }); O("#a65fc0", () => { g.moveTo(22, -34); g.lineTo(40, -22); g.lineTo(24, -14); g.closePath(); });
+    E(-10, 2, 8); E(10, 2, 8);
+  } else if (k === "jelly") {
+    const glow = night(Date.now());
+    if (glow) { const rg = g.createRadialGradient(0, -8, 4, 0, -8, 70); rg.addColorStop(0, "rgba(255,170,230,.5)"); rg.addColorStop(1, "rgba(255,170,230,0)"); g.fillStyle = rg; g.beginPath(); g.arc(0, -8, 70, 0, 7); g.fill(); }
+    g.strokeStyle = "rgba(230,120,190,.9)"; g.lineWidth = 4; for (let i = -2; i <= 2; i++) { g.beginPath(); g.moveTo(i * 10, 4); for (let j = 1; j <= 5; j++) g.lineTo(i * 10 + Math.sin(t * 2 + j + i) * 5, 4 + j * 10); g.stroke(); }
+    g.strokeStyle = L; O("rgba(255,160,215,.92)", () => { g.moveTo(-34, 6); g.quadraticCurveTo(-34, -40, 0, -40); g.quadraticCurveTo(34, -40, 34, 6); g.quadraticCurveTo(0, -2, -34, 6); });
+    E(-10, -14, 6); E(10, -14, 6);
+  } else if (k === "snail") {
+    O("#d9c6a5", () => { g.moveTo(-46, 22); g.lineTo(40, 22); g.quadraticCurveTo(52, 22, 50, 4); g.lineTo(34, 4); g.closePath(); });
+    for (const s of [0, 12]) { g.beginPath(); g.moveTo(40 + s * 0.3, 6); g.lineTo(42 + s, -14); g.stroke(); E(42 + s, -16, 6); }
+    O("#c98b4f", () => g.arc(-8, -6, 28, 0, 7));
+    g.lineWidth = 3; g.beginPath(); for (let a = 0; a < 12; a += 0.2) { const r = 24 - a * 1.9; g.lineTo(-8 + Math.cos(a) * r, -6 + Math.sin(a) * r); } g.stroke();
+  } else if (k === "shrimp") {
+    g.fillStyle = "#ff9e8a";
+    for (let i = 4; i >= 0; i--) O("#ff9e8a", () => g.arc(-34 + i * 15, Math.sin(i * 0.8) * -12, 13 - i * 0.6, 0, 7));
+    O("#ff9e8a", () => { g.moveTo(-40, 6); g.lineTo(-58, 0 + sw * 3); g.lineTo(-52, 16); g.closePath(); });
+    E(30, -12, 6); g.lineWidth = 2.5; g.beginPath(); g.moveTo(36, -14); g.quadraticCurveTo(60, -40 + sw * 4, 70, -30); g.moveTo(34, -18); g.quadraticCurveTo(50, -50, 64, -46 + sw * 3); g.stroke();
+  }
+  g.restore();
 }
 
 // ---------- Говорене (балончето следва Октонис) ----------
@@ -1542,12 +1709,14 @@ function updateBubble() {
   if (S.energy < 15) return showBubble("🥱", "Много съм уморен…", true);
   $("bubble").classList.add("hidden");
 }
+const bpos = { x: null, y: null };
 function placeBubble() {
   const b = $("bubble");
   const w = b.offsetWidth / 2 + 8;
   const x = Math.max(w, Math.min(innerWidth - w, oct.x));
-  const y = Math.max(b.offsetHeight + 16, oct.top - 18);
-  b.style.left = x + "px"; b.style.top = y + "px";
+  const y = Math.max(b.offsetHeight + 16 + (S && S.hatched ? 70 : 0), oct.top - 18);
+  bpos.x = bpos.x == null ? x : bpos.x + (x - bpos.x) * 0.12; bpos.y = bpos.y == null ? y : bpos.y + (y - bpos.y) * 0.12;
+  b.style.left = Math.round(bpos.x) + "px"; b.style.top = Math.round(bpos.y) + "px";
 }
 
 // ---------- Морето, камъкът и нещата по дъното ----------
@@ -1569,7 +1738,9 @@ const oct = { x: 0, y: 0, cy: 0, top: 0, r: 100, px: null, py: null, dir: 1 };
 const seen = {}, poofs = [];
 let floorHits = [], rockBox = null, eggBox = null, hideUntil = 0, lastMode = "", modeAt = 0;
 const hidden = () => performance.now() < hideUntil;
-function poof(xf, sparkle) { poofs.push({ x: xf * W, y: H * 0.88 + 6, t0: performance.now(), sparkle }); }
+function poof(xf, sparkle, px, py) { poofs.push({ x: px ?? xf * W, y: py != null ? py + 20 : H * 0.88 + 6, t0: performance.now(), sparkle }); }
+let quietPick = false;
+let sadUntil = -1e9, loadAt = -1e9;
 function octoMode() {
   const p = performance.now();
   if (drag && drag.moved) return drag.mood;
@@ -1578,6 +1749,7 @@ function octoMode() {
   if (p - fx.party < 4000) return "party";
   if (S.asleep) return "sleep";
   if (S.hurt || S.sick || p - fx.hurt < 2500) return "hurt";
+  if (p < sadUntil || (S.trash.length >= 4 && S.hatched)) return "sad";
   if (S.mood > 70) return "happy";
   return "idle";
 }
@@ -1658,11 +1830,9 @@ function drawRock(t) {
     for (let x = R.cx; x < R.cx + R.rw / 2; x += 7) { g.beginPath(); g.moveTo(x, R.base); g.lineTo(x + 40, R.top - 10); g.stroke(); }
     g.restore();
     g.strokeStyle = SK_INK; g.lineWidth = 1.6; g.beginPath(); g.moveTo(R.cx - R.rw * 0.1, R.top + R.rh * 0.25); g.lineTo(R.cx - R.rw * 0.02, R.top + R.rh * 0.45); g.lineTo(R.cx - R.rw * 0.12, R.top + R.rh * 0.62); g.stroke();
-    g.strokeStyle = "rgba(60,170,110,.7)"; g.lineWidth = 2; for (let i = 0; i < 6; i++) { const x = R.cx - R.rw * 0.25 + i * 7; g.beginPath(); g.moveTo(x, R.top + 8); g.lineTo(x + 3, R.top + 1); g.stroke(); }
   } else {
     path(); g.fillStyle = "#7f8c9c"; g.fill(); g.lineWidth = 5; g.strokeStyle = "#2b2a33"; g.stroke();
     g.save(); path(); g.clip(); g.fillStyle = "#9aa7b6"; g.beginPath(); g.ellipse(R.cx - R.rw * 0.15, R.top + R.rh * 0.25, R.rw * 0.3, R.rh * 0.25, -0.2, 0, Math.PI * 2); g.fill(); g.restore();
-    g.fillStyle = "#3fae77"; g.beginPath(); g.ellipse(R.cx - R.rw * 0.15, R.top + 6, R.rw * 0.14, 7, 0, 0, Math.PI * 2); g.fill();
   }
   rockBox = { x: R.cx, y: R.base - R.rh / 2, rx: R.rw / 2, ry: R.rh / 2 };
 }
@@ -1695,22 +1865,33 @@ function notice(it, tries = 0) {
   say("", cat === "food" ? pick([`${elN(it.k)}! Пада храна отгоре! Да го прибера, докато е прясно.`, `Ооо, ${elN(it.k).toLowerCase()}! Проверявам датата.`])
     : pick([`${elN(it.k)}! Ще ми потрябва за нещо.`, `Виж! ${elN(it.k)}. Блести.`, `Ооо, ${elN(it.k).toLowerCase()}! Имам идеи.`]));
 }
-function drawFloor(t, s) {
-  floorHits = [];
+const floats = {};
+function drawFloor(t, s, behind) {
+  if (behind) { floorHits = []; }
+  else drawChest(t, s);
   const now = performance.now(), sandY = H * 0.88 + 4, sz = Math.max(26, 64 * s);
   g.textAlign = "center"; g.textBaseline = "middle";
   const list = [...S.trash.map(x => ({ ...x, kind: "trash", e: elE(x.k) })), ...S.parts.map(x => ({ ...x, kind: "part", e: elE(x.k) })),
-    ...(S.parcel ? [{ id: "parcel", x: S.parcel.x, e: "📦", kind: "parcel" }] : [])];
-  if (S.parcel) {                            // рибата-пощальон отплува
+    ...(S.parcel && !behind ? [{ id: "parcel", x: S.parcel.x, e: "📦", kind: "parcel" }] : [])];
+  if (S.parcel && !behind) {                            // рибата-пощальон отплува
     const a = ((now - (seen.parcel || now)) / 1000) / 6;
     if (a < 1) { g.font = `${sz * 1.3}px system-ui, "Apple Color Emoji", sans-serif`; g.textAlign = "center"; g.fillText("🐟", W * (1.1 - a * 1.3), H * 0.25 + Math.sin(a * 20) * 10); g.font = `${sz * 0.7}px system-ui, sans-serif`; g.fillText("✉️", W * (1.1 - a * 1.3) - sz * 0.5, H * 0.25 + 18); }
   }
   for (const it of list) {
-    if (!seen[it.id]) { seen[it.id] = now; if (it.kind !== "parcel" && Date.now() - it.t < 3 * MIN) setTimeout(() => notice(it), 1800); }
-    const age = (now - seen[it.id]) / 1000, fall = Math.min(1, age / 2.2);
-    const x = it.x * W + Math.sin(age * 3) * 10 * (1 - fall);
-    const y = H * 0.1 + (sandY - H * 0.1) * (1 - (1 - fall) * (1 - fall)) - sz * 0.3;
-    g.save(); g.translate(x, y); g.rotate(it.kind === "trash" ? Math.sin(it.x * 40) * 0.5 : Math.sin(age * 2) * 0.1);
+    if (!seen[it.id]) {
+      seen[it.id] = now;
+      const old = now - loadAt < 4000 || Date.now() - it.t > 5 * MIN;        // събрано, докато те нямаше
+      if (old) { seen[it.id] = now - 1e5; if (it.kind === "trash") floats[it.id] = { y: rnd(0.24, 0.78), ph: rnd(0, 6) }; }
+      else if (it.kind !== "parcel") setTimeout(() => notice(it), 1800);
+    }
+    if (itemDrag && itemDrag.moved && itemDrag.id === it.id) continue;
+    if (floats[it.id] && !behind) continue;
+    if (behind && !floats[it.id]) continue;
+    const age = (now - seen[it.id]) / 1000, fall = Math.min(1, age / 2.2), fl = floats[it.id];
+    let x = it.x * W + Math.sin(age * 3) * 10 * (1 - fall);
+    let y = H * 0.1 + (sandY - H * 0.1) * (1 - (1 - fall) * (1 - fall)) - sz * 0.3;
+    if (fl) { x = it.x * W + Math.sin(t * 0.25 + fl.ph) * 40; y = H * fl.y + Math.sin(t * 0.7 + fl.ph) * 10; }
+    g.save(); g.translate(x, y); g.rotate(fl ? Math.sin(t * 0.4 + fl.ph) * 0.6 : it.kind === "trash" ? Math.sin(it.x * 40) * 0.5 : Math.sin(age * 2) * 0.1);
     g.font = `${sz}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
     if (STYLE === "sketch") g.globalAlpha = 0.92;
     g.fillText(it.e, 0, 0); g.globalAlpha = 1;
@@ -1722,6 +1903,7 @@ function drawFloor(t, s) {
     }
     floorHits.push({ kind: it.kind, id: it.id, x, y, r: sz * 0.7 });
   }
+  if (behind) return;
   for (let i = poofs.length - 1; i >= 0; i--) {     // облаче, когато нещо се вземе
     const p = poofs[i], a = (now - p.t0) / 600;
     if (a > 1) { poofs.splice(i, 1); continue; }
@@ -1751,17 +1933,16 @@ function drawTable(s, ground) {
 }
 // ---------- Гости зад камъка ----------
 const GUESTS = [
-  { e: "🦀", when: "day", lines: [["g", "Щрак-щрак! Някой да е виждал щипката ми?"], ["o", "На теб е. Две са. Преброих ги."], ["g", "А! Точно. Благодаря!"]] },
-  { e: "🐢", when: "day", lines: [["g", "Здравей, малкия. Още ли подреждаш?"], ["o", "Винаги. Ти още ли плуваш бавно?"], ["g", "Бавно, но сигурно."]] },
-  { e: "🐡", when: "any", lines: [["g", "Не ме плаши! Иначе се надувам."], ["o", "Няма. Само искам да те измеря."], ["g", "Пфффф!"]] },
-  { e: "🦑", when: "night", lines: [["g", "Пссст. Имаш ли мастило назаем?"], ["o", "Имам. Подредено по цветове."], ["g", "Ще взема черното."]] },
-  { e: "🪼", when: "night", lines: [["g", "Блъм… блъм…"], ["o", "Тя не говори много. Но свети красиво."]] },
-  { e: "🐠", when: "day", lines: [["g", "Видя ли накъде отиде ятото?"], ["o", "Наляво. Преди точно четири минути."], ["g", "Ти си странен. Благодаря!"]] },
-  { e: "🦐", when: "any", lines: [["g", "Ей! Да не ме ядеш, а?"], ["o", "Не! Аз ям… ъъ… броколи."], ["g", "Хм. Ще те наблюдавам."]] },
-  { e: "🦞", when: "night", lines: [["g", "Чу ли за новия риф?"], ["o", "Не. Подреден ли е?"], ["g", "Ни най-малко."], ["o", "Ужас."]] },
-  { e: "🐌", when: "morning", lines: [["g", "Добро… утро…"], ["o", "Вече е обяд."], ["g", "Аха… добро… обяд…"]] },
-  { e: "🐟", when: "any", lines: [["g", "Пощата е по-късно днес. Не питай."], ["o", "Не съм питал."], ["g", "Ей така, за всеки случай."]] },
-  { e: "🦭", when: "day", lines: [["g", "Ар-ар! Само минавам."], ["o", "Тук не е за минаване. Тук е подредено."], ["g", "Ар!"]] },
+  { k: "crab", when: "day", lines: [["g", "Щрак-щрак! Някой да е виждал щипката ми?"], ["o", "На теб е. Две са. Преброих ги."], ["g", "А! Точно. Благодаря!"]] },
+  { k: "turtle", when: "day", lines: [["g", "Здравей, малкия. Още ли подреждаш?"], ["o", "Винаги. Ти още ли плуваш бавно?"], ["g", "Бавно, но сигурно."]] },
+  { k: "puffer", when: "any", lines: [["g", "Не ме плаши! Иначе се надувам."], ["o", "Няма. Само искам да те измеря."], ["g", "Пфффф!"]] },
+  { k: "squid", when: "night", lines: [["g", "Пссст. Имаш ли мастило назаем?"], ["o", "Имам. Подредено по цветове."], ["g", "Ще взема черното."]] },
+  { k: "jelly", when: "night", lines: [["g", "Блъм… блъм…"], ["o", "Тя не говори много. Но свети красиво."]] },
+  { k: "fish", when: "day", lines: [["g", "Видя ли накъде отиде ятото?"], ["o", "Наляво. Преди точно четири минути."], ["g", "Ти си странен. Благодаря!"]] },
+  { k: "shrimp", when: "any", lines: [["g", "Ей! Да не ме ядеш, а?"], ["o", "Не! Аз ям… ъъ… броколи."], ["g", "Хм. Ще те наблюдавам."]] },
+  { k: "lobster", when: "night", lines: [["g", "Чу ли за новия риф?"], ["o", "Не. Подреден ли е?"], ["g", "Ни най-малко."], ["o", "Ужас."]] },
+  { k: "snail", when: "morning", lines: [["g", "Добро… утро…"], ["o", "Вече е обяд."], ["g", "Аха… добро… обяд…"]] },
+  { k: "mail", when: "any", lines: [["g", "Пощата е по-късно днес. Не питай."], ["o", "Не съм питал."], ["g", "Ей така, за всеки случай."]] },
 ];
 let guest = null, nextGuest = performance.now() + rnd(6, 14) * 60000;
 function dayPart() { const h = new Date().getHours(); return h >= 21 || h < 6 ? "night" : h < 10 ? "morning" : "day"; }
@@ -1782,11 +1963,10 @@ function drawGuest(t, s) {
     if (who === "o") { if (!S.asleep) say("", S.stage === "baby" ? "~" + pick(["Ова кво е?", "Здъ-ти!", "Хи-хи! Риба!"]) : x, 4000); guest.line = null; }
     else guest.line = { x: S.asleep && idx > 0 ? "Шшш, той спи." : x, at: p };
   }
-  const up = Math.min(1, e / 900, (guest.end - p) / 900), sz = Math.max(30, 70 * s);
+  const up = Math.min(1, e / 900, (guest.end - p) / 900), sz = Math.max(40, 95 * s);
   const x = R.cx + R.rw * 0.18, y = R.top + sz * 0.5 - up * sz * 0.85 + Math.sin(t * 2) * 3;
   g.save(); g.beginPath(); g.rect(0, 0, W, R.top + 14); g.clip();            // показва се само над камъка
-  g.font = `${sz}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
-  g.fillText(guest.e, x, y); g.restore();
+  drawCreature(guest.k, x, y, sz / 90, t); g.restore();
   guest.box = { x, y, r: sz * 0.6 };
   if (guest.line && p - guest.line.at < 4200) {                                // неговото балонче
     g.font = `600 ${Math.max(13, 15)}px -apple-system, system-ui, sans-serif`;
@@ -1866,6 +2046,7 @@ function loop() {
   if (S && S.hatched && (mode === "idle" || mode === "happy") && !hidden() && Math.hypot(tx - oct.px, ty - oct.py) > 60 && !ringOpen && !sheetKind) mode = "swim";
   if (mode !== lastMode) { lastMode = mode; modeAt = t; }
   const near = oct.py > ground - 260 * oct.sc && !(drag && drag.moved) && mode !== "swim" && !lie;
+  if (S) drawFloor(t, s, true);            // плаващите боклуци са зад него
   const info = Octo.draw(g, { x: oct.px, y: oct.py - 46 * oct.sc, s: oct.sc, age, mode, t, mt: t - modeAt, st, lie, glasses: S ? !!S.glasses : true, traits: S ? [...traitsOf(), S.inherit].filter(Boolean) : [],
     ground: near || age === "egg" ? ground : null, drop: age === "egg", style: STYLE, dir: oct.dir,
     lookAt: performance.now() - ptr.t < 3000 ? ptr : gaze && performance.now() < gaze.until ? gaze : null });
@@ -1898,7 +2079,12 @@ cv.addEventListener("pointerdown", ev => {
   if (!inGame || !S || sheetKind) return;
   const x = ev.clientX, y = ev.clientY;
   const hit = floorHits.find(h => Math.hypot(h.x - x, h.y - y) < h.r);
-  if (hit && role === "keeper") { closeRing(); return hit.kind === "parcel" ? openParcel() : hit.kind === "trash" ? pickTrash(hit.id) : pickPart(hit.id); }
+  if (hit && role === "keeper") { closeRing();
+    if (hit.kind === "parcel") return openParcel();
+    itemDrag = { id: hit.id, kind: hit.kind, pid: ev.pointerId, sx: x, sy: y, moved: false };
+    try { cv.setPointerCapture(ev.pointerId); } catch {}
+    return; }
+  if (chestBox && Math.hypot(x - chestBox.x, y - chestBox.y) < chestBox.r) { chestOpen = performance.now(); return openSheet("bag"); }
   if (!S.hatched) { if (eggBox && Math.hypot(x - eggBox.x, y - eggBox.y) < eggBox.r) tapEgg(); return; }
   if (hidden() && (onRock(x, y) || onOcto(x, y))) {
     hideUntil = 0; S.mood = clamp(S.mood + 3); dirty = true;
@@ -1910,12 +2096,35 @@ cv.addEventListener("pointerdown", ev => {
   drag = { id: ev.pointerId, sx: x, sy: y, dx: oct.px - x, dy: oct.py - y, moved: false };
   try { cv.setPointerCapture(ev.pointerId); } catch {}
 });
+let itemDrag = null;
+function slotAt(x, y) { const el = document.elementFromPoint(x, y); return el && (el.closest("#mixbar .slot") || el.closest("#mixbar")); }
 cv.addEventListener("pointermove", ev => {
+  if (itemDrag && ev.pointerId === itemDrag.pid) {
+    if (!itemDrag.moved && Math.hypot(ev.clientX - itemDrag.sx, ev.clientY - itemDrag.sy) > 10) {
+      itemDrag.moved = true; const it = [...S.trash, ...S.parts].find(q => q.id === itemDrag.id);
+      const gh = document.createElement("div"); gh.id = "ghost"; gh.textContent = it ? elE(it.k) : "?"; document.body.appendChild(gh);
+    }
+    if (itemDrag.moved) { const gh = $("ghost"); if (gh) { gh.style.left = ev.clientX + "px"; gh.style.top = ev.clientY + "px"; }
+      document.querySelectorAll("#mixbar .slot").forEach(e => e.classList.remove("over")); const sl = slotAt(ev.clientX, ev.clientY); if (sl && sl.classList.contains("slot")) sl.classList.add("over"); }
+    return;
+  }
   if (!drag || ev.pointerId !== drag.id) return;
   if (!drag.moved && Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) > 10) { drag.moved = true; closeRing(); startDrag(); }
   if (drag.moved) { const s = Math.min(H * 0.46 / 430, W * 0.8 / 560); oct.px = ev.clientX + drag.dx; oct.py = Math.min(ev.clientY + drag.dy, H * 0.88 + 6 - 195 * s); }
 });
 cv.addEventListener("pointerup", ev => {
+  if (itemDrag && ev.pointerId === itemDrag.pid) {
+    const d = itemDrag; itemDrag = null; $("ghost")?.remove();
+    document.querySelectorAll("#mixbar .slot").forEach(e => e.classList.remove("over"));
+    if (!d.moved) return d.kind === "trash" ? pickTrash(d.id) : pickPart(d.id);
+    const it = [...S.trash, ...S.parts].find(q => q.id === d.id); if (!it) return;
+    if (slotAt(ev.clientX, ev.clientY) && canMixNow() && mixSel.length < 5) {
+      quietPick = true; d.kind === "trash" ? pickTrash(d.id) : pickPart(d.id); quietPick = false;
+      addToMix(it.k); return;
+    }
+    if (chestBox && Math.hypot(ev.clientX - chestBox.x, ev.clientY - chestBox.y) < chestBox.r * 1.3) return d.kind === "trash" ? pickTrash(d.id) : pickPart(d.id);
+    return;
+  }
   if (drag && ev.pointerId === drag.id) {
     const d = drag; drag = null;
     if (d.moved) return endDrag(d);
@@ -1924,7 +2133,7 @@ cv.addEventListener("pointerup", ev => {
   }
   if (inGame && ringOpen) closeRing();
 });
-cv.addEventListener("pointercancel", () => { if (drag && drag.moved) endDrag(drag); drag = null; });
+cv.addEventListener("pointercancel", () => { itemDrag = null; $("ghost")?.remove(); if (drag && drag.moved) endDrag(drag); drag = null; });
 function startDrag() {
   hideUntil = 0;
   const happy = S.mood >= (S.stage === "teen" ? 65 : 50) && !S.hurt && !S.asleep && S.hunger < 75;
@@ -2012,7 +2221,7 @@ setInterval(() => {
     lastMinuteCheck = now;
     S = JSON.parse(viewBase); catchUp(now); render();
   }
-  updateBubble();
+  updateBubble(); renderHud();
 }, 1000);
 document.addEventListener("visibilitychange", () => { if (document.hidden) save(true); });
 window.addEventListener("pagehide", () => save(true));

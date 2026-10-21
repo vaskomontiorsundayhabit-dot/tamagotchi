@@ -7,7 +7,7 @@
 //   st     – обект за частиците ({}), пази се между кадрите
 //   ground – null във вода; иначе y на пода (в същите координати като y)
 (function () {
-const VER = 19;
+const VER = 20;
 const AGES = {
   baby:  { k: 0.5,  head: 1.32, tL: 0.5,  tW: 1.15, gog: "none", eye: 36, paci: true, speed: 1.2,
            col: { body: "#fba383", shade: "#e3825e", back: "#e1866a", backShade: "#c86f54", spot: "#ec9374" } },
@@ -25,7 +25,7 @@ const C = { line: "#2b2a33", rim: "#3c4350", lens: "#c6ece6", cheek: "rgba(255,1
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
-let g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
+let SAD = false, g, mode, A, COL, GROUND, SP, DROP, CUTE, STATIC, LOOK, LIE, TR = [];
 
 const TENT = [
   { dx: -70, side: -1, kind: "arm", back: false, L: 210, ph: 0.0 },
@@ -93,10 +93,10 @@ function goggles(hx, ey, t, look, up) {
   const r = 46, gap = 56;
   const y = up ? ey - 95 : ey;
   g.lineCap = "butt";
-  for (const [w, c, e] of [[15, C.line, 0], [9, C.rim, 2]]) {
-    g.lineWidth = w; g.strokeStyle = c;
-    g.beginPath(); g.moveTo(hx - gap - r, y + 4); g.lineTo(hx - gap - r - 30 + e, y + 2); g.stroke();
-    g.beginPath(); g.moveTo(hx + gap + r, y + 4); g.lineTo(hx + gap + r + 25 - e, y + 2); g.stroke();
+  for (const sd of [-1, 1]) {           // вместо каишка: малки месингови нитове
+    const nx = hx + sd * (gap + r + 6);
+    g.fillStyle = "#e0b25a"; g.strokeStyle = C.line; g.lineWidth = 4; ell(nx, y + 2, 9, 9); g.fill(); g.stroke();
+    g.fillStyle = "rgba(255,255,255,.6)"; ell(nx - 2, y - 1, 3, 3); g.fill();
   }
   g.fillStyle = C.rim; g.strokeStyle = C.line; g.lineWidth = 4;
   g.beginPath(); g.roundRect(hx - 18, y - 2, 36, 16, 5); g.fill(); g.stroke();
@@ -381,7 +381,7 @@ function body(t, mt, st) {
   }
 
   const ey = CUTE ? hy - 6 : hy + 6;
-  const look = mode === "read" ? [Math.sin(t * 1.3) * 0.6, 0.8] : mode === "work" ? [Math.sin(t * 3) * 0.5, 0.75] : [Math.sin(t * 0.5) * 0.7, Math.sin(t * 0.33) * 0.3];
+  const look = SAD ? [Math.sin(t * 0.4) * 0.3, 0.7] : mode === "read" ? [Math.sin(t * 1.3) * 0.6, 0.8] : mode === "work" ? [Math.sin(t * 3) * 0.5, 0.75] : [Math.sin(t * 0.5) * 0.7, Math.sin(t * 0.33) * 0.3];
   if (mode !== "hurt") { g.fillStyle = C.cheek; for (const s of [-1, 1]) { ell(hx + s * (CUTE ? 86 : 80), ey + (CUTE ? 34 : 46), 13, 7.5); g.fill(); } }
   if (A.freckles) { g.fillStyle = COL.spot; for (const s of [-1, 1]) for (const [dx, dy] of [[-8, 0], [6, -4], [4, 8]]) { ell(hx + s * (80 + dx), ey + 44 + dy, 2.5, 2.5); g.fill(); } }
   const my = ey + (CUTE ? 46 : 62);
@@ -393,8 +393,14 @@ function body(t, mt, st) {
   else if (mode === "hurt") { g.moveTo(hx - 14, my + 4); g.quadraticCurveTo(hx - 7, my - 5, hx, my + 2); g.quadraticCurveTo(hx + 7, my + 9, hx + 14, my); }
   else if (mode === "sleep") ell(hx, my, 6, 4 + Math.sin(t * 0.9) * 2);
   else if (mode === "work") { g.moveTo(hx - 12, my + 1); g.quadraticCurveTo(hx, my - 3, hx + 12, my + 1); }
+  else if (SAD) { g.moveTo(hx - 14, my + 6); g.quadraticCurveTo(hx, my - 6, hx + 14, my + 6); }
   else { g.moveTo(hx - 13, my - 3); g.quadraticCurveTo(hx, my + 7, hx + 13, my - 3); }
   g.stroke();
+  if (SAD) {                 // сълза
+    const ty = ey + 40 + ((t * 30) % 40);
+    g.fillStyle = "#8fd3ff"; g.strokeStyle = C.line; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(hx - 60, ty - 12); g.quadraticCurveTo(hx - 52, ty, hx - 60, ty + 4); g.quadraticCurveTo(hx - 68, ty, hx - 60, ty - 12); g.fill(); g.stroke();
+  }
   if (A.paci && mode !== "party") {   // биберонче за бебето
     g.fillStyle = "#7cc8f2"; g.strokeStyle = C.line; g.lineWidth = 4;
     g.beginPath(); g.ellipse(hx, my + 4, 22, 12, 0, 0, Math.PI * 2); g.fill(); g.stroke();
@@ -956,8 +962,28 @@ function skEgg(t) {
   g.restore();
 }
 
-function draw(ctx, o) {
-  g = ctx; mode = o.mode || "idle"; TR = o.traits || [];
+let PXC = null;
+function drawPixel(ctx, o) {
+  const P = 6, sc = o.s || 1, w = Math.ceil(800 * sc / P), h = Math.ceil(860 * sc / P);
+  PXC = PXC || document.createElement("canvas");
+  if (PXC.width !== w || PXC.height !== h) { PXC.width = w; PXC.height = h; }
+  const c = PXC.getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h);
+  const ox = o.x - 400 * sc, oy = o.y - 600 * sc;
+  c.setTransform(1 / P, 0, 0, 1 / P, -ox / P, -oy / P);
+  const res = drawReal(c, { ...o, style: "goggles" });
+  const im = c.getImageData(0, 0, w, h), d = im.data;
+  for (let i = 0; i < d.length; i += 4) {                  // твърди ръбове и малко цветове
+    if (d[i + 3] < 110) { d[i + 3] = 0; continue; }
+    const a = d[i + 3] / 255; d[i + 3] = 255;
+    for (let j = 0; j < 3; j++) d[i + j] = Math.round(d[i + j] / a / 40) * 40;
+  }
+  c.putImageData(im, 0, 0);
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(PXC, ox, oy, w * P, h * P); ctx.restore();
+  return res;
+}
+function draw(ctx, o) { return o.style === "pixel" ? drawPixel(ctx, o) : drawReal(ctx, o); }
+function drawReal(ctx, o) {
+  g = ctx; mode = o.mode || "idle"; SAD = mode === "sad"; if (SAD) mode = "idle"; TR = o.traits || [];
   if (mode === "swim" && o.style !== "sketch") mode = "idle";
   const st = o.st || (o.st = {});
   st.parts = st.parts || [];
