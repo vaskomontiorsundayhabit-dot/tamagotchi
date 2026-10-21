@@ -751,7 +751,7 @@ function spoil(t) {
 // сутрин: наспал се е, но е огладнял, около него е мръсно, а настроението и сърцето са на средата
 function morningState(t) {
   const day = new Date(t).toDateString(), h = new Date(t).getHours();
-  if (S.mornDay === day || h < 5 || h > 12 || !S.hatched) return;
+  if (S.mornDay === day || h < 5 || !S.hatched) return;
   S.mornDay = day;
   S.energy = 100;
   S.hunger = Math.max(S.hunger, rnd(85, 90));
@@ -1737,7 +1737,7 @@ function minute(t, offline, ev) {
   const st = S.stage, drain = (st === "baby" ? 1.4 : st === "aging" ? 1.3 : st === "old" ? 1.5 : 1) * (has("chubby") ? 1.15 : 1);
   if (S.asleep) {
     S.energy = clamp(S.energy + 1.2);
-    if (S.energy >= 100 && !night(t)) { S.asleep = false; log("☀️ Събуди се бодър.", t); morningState(t); }
+    if (S.energy >= 100 && !night(t)) { S.asleep = false; log("☀️ Събуди се бодър.", t); S.mornDue = new Date(t).toDateString(); }   // сутрешното състояние идва, щом toshik влезе
   } else {
     if (offline && nt && S.energy < 92) { S.asleep = true; log("😴 Нощ е. Легна да спи.", t); }
     S.energy = clamp(S.energy - (night(t) ? 0.25 : 1 / 6) * drain * f * (S.sick ? 1.3 : 1));
@@ -4483,6 +4483,7 @@ setInterval(() => {
     if (!document.hidden && p - ptr.t < 15 * 60000 && now - lastLive > 1500) livePush();
     babySecond(p, now);
     dailyGift(p); doctorTick(p); krillTick(p);
+    if (S.mornDue === new Date().toDateString() && !S.asleep && p - ptr.t < 60000) { S.mornDue = null; morningState(now); render(); }   // часът за грижа тръгва, щом влезе
     if (S.asleep && S.hatched && p > bubbleUntil + 30000 && Math.random() < 1 / 300) { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }   // понякога бълнува
     if (placedAny(MUSIC) && S.hatched && !S.asleep && !working && p > nextDance) { nextDance = p + rnd(3, 6) * 60000; danceUntil = p + 6000; say("", pick(["Обичам тази песен!", "Бълбук-бълбук, танцувам!", "Не гледай. Танцувам."])); }
     if (sickSay) { say("", sickSay === "well" ? "Оздравях! Благодаря, че се погрижи за мен." : "Не ми е добре… Май се разболях.", 7000); sickSay = false; }
