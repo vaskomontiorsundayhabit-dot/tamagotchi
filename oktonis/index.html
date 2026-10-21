@@ -2459,7 +2459,7 @@ function fillSheet(kind) {
     sh.innerHTML = ghostHtml(head);
     if (keepTxt) $("ghIn").value = keepTxt; if (hadFocus) $("ghIn").focus();
     const lg = sh.querySelector(".glog"); if (lg) lg.scrollTop = lg.scrollHeight;
-    if ($("ghOn")) $("ghOn").onclick = () => { ghostSend({ t: ghost.on ? "off" : "on" }); fillSheet("ghost"); };
+    if ($("ghOn")) $("ghOn").onclick = () => { if (!ghost.on && !S.asleep) return; ghostSend({ t: ghost.on ? "off" : "on" }); fillSheet("ghost"); };
     $("ghForm").onsubmit = ev => { ev.preventDefault(); const x = $("ghIn").value.trim(); if (!x) return;
       ghostSend({ t: role === "viewer" ? "msg" : "reply", x }); $("ghIn").value = ""; fillSheet("ghost"); setTimeout(() => $("ghIn")?.focus(), 50); };
   } else if (kind === "album") {
@@ -3460,7 +3460,7 @@ const SEA = {
   g_angler: ["@angler", "Рибата-фенер", "guest", "", 1.2, "guest", "r", "night", "Носи си лампа. Нощем минава съвсем бавно."],
   croc: ["@m:croc", "Морски крокодил", "rep", "", 2.4, "slow", "v", "any", "Най-големият крокодил. Добре, че само минава."],
 };
-let seaForce = null, vis = null, nextVis = performance.now() + rnd(1, 2.5) * 60000, flashAt = -1e9, albTab = "fish", albPick = null;
+let seaForce = null, vis = null, nextVis = performance.now() + rnd(3, 8) * 60000, flashAt = -1e9, albTab = "fish", albPick = null;
 const THUMB = {}, TIER_W = { c: 10, r: 3, v: 1, l: 0.6 }, TIER_N = { c: "Обикновен", r: "Рядък", v: "Много рядък", l: "⭐ Легендарен" };
 function seaChance(id) {                    // колко вероятно е да го видиш (в проценти)
   const c = SEA[id];
@@ -3488,7 +3488,7 @@ function seaTick(p) {
     return;
   }
   if (vis || role !== "keeper" || !inGame || !S || p < nextVis || p - ptr.t > 120000 || sheetKind) return;
-  nextVis = p + rnd(1.5, 4) * 60000; setTimeout(() => { seaForce = null; }, 0);
+  nextVis = p + rnd(7, 15) * 60000; setTimeout(() => { seaForce = null; }, 0);
   const id = seaForce || seaPick(), c = SEA[id], m = c[5], dir = Math.random() < 0.5 ? 1 : -1;
   const sp = { slow: 45, fast: 190, jump: 140, jet: 110, floor: 40, glide: 70, drift: 28, surface: 35, far: 35, wave: 70, bob: 30, glow: 60, school: 90 }[m] || 80;
   const ground = H * 0.88;
@@ -4014,20 +4014,18 @@ function ghostSend(o) {
   ghostApply({ ...o, by: role, at: Date.now(), local: true });     // при мен веднага
 }
 function ghostApply(m) {
-  if (m.t === "on" && !ghost.on) {
+  if (m.t === "on" && !ghost.on && S && S.asleep) {              // идва само докато спи
     ghost.on = true; ghost.at = performance.now(); ghost.x = W * 0.2; ghost.y = H * 0.35;
-    if (role === "keeper" && S.hatched) setTimeout(() => say("", pick(["Р-р-риба-дух?! Свети… и е прозрачна… Здравей?", "Ох! Риба-дух! Не се страхувам. Почти."]), 6000), 900);
+    if (role === "keeper" && S.hatched) setTimeout(() => { sleepTalking = true; say("", pick(["Хрр… риба… светеща риба… хрр…", "Мм… кой е там… прозрачен… хрр…"]), 5000); sleepTalking = false; }, 900);
   }
-  if (m.t === "off" && ghost.on) {
-    ghost.on = false;
-    if (role === "keeper" && S.hatched) setTimeout(() => say("", "Рибата-дух изчезна… Ще дойде ли пак?", 5000), 600);
-  }
+  if (m.t === "off" && ghost.on) ghost.on = false;
   if (m.t === "msg" || m.t === "reply") {
     if (!m.local && m.by === role) return;                        // моето вече е показано
     ghost.msgs.push({ who: m.t === "msg" ? "g" : "t", x: String(m.x || "").slice(0, 200), at: m.at || Date.now() });
     ghost.msgs = ghost.msgs.slice(-40);
     if (m.t === "msg") ghost.last = { x: String(m.x || "").slice(0, 200), at: performance.now() };
     if (m.t === "msg" && !ghost.on) ghostApply({ t: "on" });
+    if (m.t === "msg" && !ghost.on) return;                      // буден е: духът не идва
     if (sheetKind === "ghost") fillSheet("ghost");
     renderGhostBtn(m.t === "msg" && role === "keeper" || m.t === "reply" && role === "viewer");
   }
@@ -4055,6 +4053,11 @@ function renderGhostBtn(ping) {
   if (ping) b.classList.add("ping");
 }
 function drawGhost(t, s) {
+  if (ghost.on && S && !S.asleep) {                              // събуди се: духът изчезва
+    ghost.on = false;
+    if (role === "keeper") { ghostSend({ t: "off" }); if (S.hatched) setTimeout(() => say("", pick(["Сънувах риба-дух… Или не беше сън?", "Имаше ли тук една прозрачна риба? Не? Сигурно съм сънувал."]), 6000), 1500); }
+    renderGhostBtn(); if (sheetKind === "ghost") fillSheet("ghost");
+  }
   if (!ghost.on) return;
   const p = performance.now(), a = Math.min(1, (p - ghost.at) / 1500);
   const tx = oct.x - Math.max(140, oct.r * 1.5) * (oct.x > W * 0.45 ? 1 : -1), ty = oct.cy - oct.r * 0.4;
@@ -4070,7 +4073,9 @@ function drawGhost(t, s) {
 }
 function ghostHtml(head) {
   const log = ghost.msgs.map(m => `<div class="gm ${m.who}"><b>${m.who === "g" ? "👻" : "🐙"}</b> ${esc(m.x)}</div>`).join("") || `<div class="sub">${role === "viewer" ? "Пусни рибата-дух и пиши. Toshik ще вижда съобщенията ти над нея." : "Рибата-дух още мълчи…"}</div>`;
-  return head("👻 Рибата-дух") + (role === "viewer" ? `<div class="row2"><button class="ans ${ghost.on ? "" : "yes"}" id="ghOn">${ghost.on ? "Скрий рибата-дух" : "Покажи рибата-дух"}</button></div>` : "") +
+  const awake = !S.asleep && !ghost.on;
+  return head("👻 Рибата-дух") + (role === "viewer" ? `<div class="row2"><button class="ans ${ghost.on ? "" : "yes"}" id="ghOn" ${awake ? "disabled" : ""}>${ghost.on ? "Скрий рибата-дух" : "Покажи рибата-дух"}</button></div>` +
+    (awake ? `<div class="sub">Рибата-дух идва само докато Октонис спи. Сега е буден.</div>` : "") : "") +
     `<div class="glog">${log}</div><form id="ghForm" class="gform"><input id="ghIn" maxlength="200" autocomplete="off" placeholder="${role === "viewer" ? "Напиши като рибата-дух…" : "Отговори на рибата-дух…"}"><button>Прати</button></form>`;
 }
 let frameN = 0;
