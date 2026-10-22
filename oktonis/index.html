@@ -500,6 +500,9 @@ Object.assign(EL, {             // изобретенията от книгит�
 REC.push(["can", "spring", "tinguitar"], ["lamp", "star", "seasun"], ["bread", "weed", "seapizza"], ["blackbanana", "coral", "coralfeed"], ["gear", "spring", "tentclock"], ["bottle", "feather", "flute"], ["bottle", "compass", "spyglass"], ["bubblemeter", "drum", "smiler"], ["yawnmeter", "mech", "backclock"], ["motor", "tire", "train"], ["float", "shell", "bath"], ["mail", "feather", "pigeon"], ["shell", "megaphone", "horn"], ["quill", "bottle", "inkwell"], ["spring", "sock", "springshoes"], ["coral", "banana", "candycoral"], ["glowcoral", "bottle", "firefly"], ["motor", "plastic", "jetpack"], ["pebble", "bottle", "hourglass"], ["star", "compass", "navstar"], ["arm", "can", "robocrab"], ["cup", "weed", "tea"], ["cup", "sock", "noseclip"], ["papyrus", "feather", "oldnotes"], ["treasure", "coral", "crown"]);
 Object.assign(EL, { thermo: ["🌡️", "Термометър", 1, "made", 12], medkit: ["🩺", "Аптечка", 2, "made", 20] });
 REC.push(["bottle", "bulb", "thermo"], ["plastic", "weed", "medkit"]);
+REC.push(["bolt", "bone", "hammer"], ["pebble", "bone", "stoneaxe"], ["star", "coral", "wand"], ["mech", "feather", "mechbird"], ["moldbread", "weed", "elixir"],
+  ["tentclock", "moldbread", "backmold"], ["teapot", "hotstone", "dragonpot"], ["sock", "magnet", "magsock"], ["arm", "yogurt", "hopshoe"], ["wire", "glowcoral", "lightwire"],
+  ["magnet", "spoon", "magspoon"], ["pan", "icecube", "frozenpan"]);
 const BOOK_INV = { tinguitar: "b_tin", seasun: "b_light", seapizza: "b_kitchen", coralfeed: "b_spoil", tentclock: "b_mech", flute: "b_sound", spyglass: "b_maps", smiler: "b_great", backclock: "b_great2", train: "b_mach", bath: "b_bubbles", pigeon: "b_post", horn: "b_whales", inkwell: "b_ink", springshoes: "b_jump", candycoral: "b_sweets", firefly: "b_nightl", jetpack: "b_rocket", hourglass: "b_sand", navstar: "b_ways", robocrab: "b_robots", tea: "b_tea", noseclip: "b_stink", oldnotes: "b_diary", crown: "b_legend" };
 const BOOK_DESC = { tinguitar: "Дрънка. Не винаги в тон, но с чувство.", seasun: "Малко слънце за дъното. Топли пипалата.", coralfeed: "Миризлив, но коралите го обожават.", tentclock: "Всяко пипало показва различен час. Удобно.", flute: "Свири сама, когато мине течение.", spyglass: "Вижда чак до другия риф. И мъничко по-нататък.", smiler: "Който го погледне, се усмихва. Проверено.", backclock: "Връща времето с една минута. Само веднъж на ден.", train: "Чуф-чуф-бълбук. Возят се рибките.", bath: "Пълна с мехурчета, които никога не свършват.", pigeon: "Лети с писмата между рифовете.", horn: "Когато духнеш в него, китовете отговарят.", inkwell: "Мастилото никога не свършва. Калмарът е съгласен.", springshoes: "Осем обувки. Осем пъти по-високо.", firefly: "Светулки под вода. Никой не знае как.", jetpack: "Бззз! И си на другия край на дъното.", hourglass: "Пясъкът тече нагоре. Под вода всичко е наопаки.", navstar: "Сочи към дома, където и да си.", robocrab: "Ходи настрани. Като истински рак, само че с болтове.", noseclip: "Вече нищо не мирише. Дори хубавите неща.", oldnotes: "Пълна с недовършени идеи. Може би ще ги довършим.", crown: "Короната на морския цар. Пасва на всяко пипало." };
 // ---------- Свойства, начини (загрей, охлади, разглоби) и скрити рецепти ----------
@@ -574,6 +577,47 @@ const NEW_EL = {
   dew: ["💧", "Бутилка утринна роса", 25, [["bottle", 0, 0, 0.8]], "drops", 15, "Събрана с първите лъчи. Освежава."],
   moonmagnet: ["🧲", "Лунен магнит", 50, [["magnet", 0, 0, 0.8]], "moon glow", 0, "Привлича приливите. Рядко се прави."],
   memoir: ["📖", "Мемоари", 40, [["paper", 0, 0, 0.8], ["shell", 0.18, 0.18, 0.35]], "", 0, "Целият му живот, записан с треперещо пипало."],
+  // от чата: загряване и охлаждане на още неща
+  rubberball: ["🏀", "Гумено топче", 6, [["tire", 0, 0, 0.6]], "bounce", 0, "Беше гума. Сега подскача до тавана. Под водата няма таван."],
+  pan: ["🍳", "Тенекиен тиган", 8, [["can", 0, 0.05, 0.7]], "steam", 0, "Консервата се разля и стана тиган. Готвачите ще завиждат."],
+  warmsock: ["🧦", "Топъл чорап", 3, [["sock", 0, 0, 0.8]], "steam", 0, "Изсушен и топъл. Мирише малко по-добре."],
+  ash: ["🌑", "Шепа пепел", 1, [["pebble", 0, 0.1, 0.6]], "steam", 0, "Беше вестник. Новините изгоряха."],
+  singed: ["🪶", "Опърлено перо", 2, [["feather", 0, 0, 0.8]], "rust steam", 0, "Мирише на пушек. Не става за писане."],
+  broth: ["🍲", "Бульон от кокал", 9, [["bone", 0, -0.05, 0.55]], "plate steam", 30, "Като на баба октоподка. Стопля всичко."],
+  bentspoon: ["🥄", "Огъната лъжица", 3, [["spoon", 0, 0, 0.8]], "steam", 0, "Огъна се от жегата. Сега гребе настрани."],
+  hotbolt: ["🔩", "Нажежен болт", 6, [["bolt", 0, 0, 0.8]], "glow steam", 0, "Свети в червено. Не го пипай."],
+  burntbulb: ["💡", "Изгоряла крушка", 1, [["bulb", 0, 0, 0.8]], "rust", 0, "Свети само в спомените."],
+  heater: ["♨️", "Нагревател", 14, [["wire", 0, 0, 0.8]], "glow steam", 0, "Жица, която топли. Пипалата обичат."],
+  smokedfish: ["🐟", "Опушена риба", 8, [["stinkyfish", 0, -0.02, 0.7]], "plate steam", 30, "Беше вмирисана. Сега е опушена. Голяма разлика!"],
+  bananabread: ["🍞", "Бананов хляб", 12, [["bread", 0, 0.08, 0.6], ["blackbanana", 0, -0.12, 0.45]], "steam", 40, "Черните банани стават за най-хубавия хляб."],
+  icecube: ["🧊", "Ледено кубче", 4, [["cup", 0, 0, 0.6]], "ice", 0, "Студено. Много студено. Под водата!"],
+  supermagnet: ["🧲", "Свръхмагнит", 30, [["magnet", 0, 0, 0.8]], "ice zap", 0, "От студа стана двойно по-силен."],
+  // от чата: сглобки и примерни рецепти, пренесени под водата
+  hammer: ["🔨", "Чук", 12, [["bone", 0, 0.1, 0.7], ["bolt", 0.1, -0.18, 0.5]], "", 0, "С него може да се сглобява."],
+  stoneaxe: ["🪓", "Каменна брадва", 10, [["bone", 0, 0.1, 0.7], ["pebble", 0.1, -0.18, 0.5]], "", 0, "Първият инструмент на всеки изобретател."],
+  wand: ["🪄", "Вълшебна пръчка", 30, [["coral", 0, 0.1, 0.6], ["star", 0.1, -0.22, 0.4]], "spark", 0, "Мъничко магия. Само мъничко."],
+  mechbird: ["🐦", "Механична птица", 20, [["mech", 0, 0, 0.6], ["feather", 0.16, -0.12, 0.4]], "eyes", 0, "Пее, когато я навиеш. Иска да лети."],
+  elixir: ["🧪", "Нестабилен еликсир", 15, [["bottle", 0, 0, 0.8]], "bubbles spark", 0, "Не го клати. Сериозно."],
+  backmold: ["🍄", "Мухъл, който расте назад", 25, [["moldbread", 0, 0.05, 0.7], ["tentclock", 0.2, -0.2, 0.3]], "", 0, "Утре ще е хляб. Вчера беше мухъл."],
+  dragonpot: ["🫖", "Драконов чайник", 40, [["teapot", 0, 0, 0.8]], "glow steam", 0, "Вари чай с дъх на дракон. Само внимавай с веждите."],
+  magsock: ["🧦", "Магнитен чорап", 8, [["sock", 0, 0, 0.7], ["magnet", 0.18, -0.18, 0.35]], "", 0, "Лепне за всичко метално. Никога няма да се изгуби."],
+  hopshoe: ["👟", "Самоподскачаща обувка", 25, [["arm", 0, 0, 0.6], ["yogurt", 0.2, 0.18, 0.3]], "bounce", 0, "Подскача сама. Ти само се дръж."],
+  lightwire: ["✨", "Светлинен проводник", 18, [["wire", 0, 0, 0.8]], "glow spark", 0, "Пуска светлина по жицата. Като река от светлина."],
+  magspoon: ["🥄", "Магнитна лъжица", 9, [["spoon", 0, 0, 0.7], ["magnet", 0.18, -0.18, 0.35]], "", 0, "Гребе болтове вместо супа."],
+  frozenpan: ["🍳", "Замразен тиган", 6, [["pan", 0, 0, 0.8]], "ice", 0, "Готви студени палачинки. Никой не ги иска."],
+  cart: ["🛒", "Количка", 18, [["can", 0, -0.08, 0.6], ["tire", -0.18, 0.22, 0.3], ["tire", 0.18, 0.22, 0.3]], "", 0, "Вози неща по дъното. И мен, ако се събера."],
+  clockwork: ["⚙️", "Часовников механизъм", 20, [["gear", -0.1, 0, 0.6], ["gear", 0.17, 0.12, 0.4]], "", 0, "Тик-так. Сърцето на всяка машина."],
+  catapult: ["🥄", "Катапулт за закуски", 14, [["spoon", 0, -0.05, 0.7], ["spring", 0, 0.22, 0.4]], "", 0, "Изстрелва бисквитки право в устата. Понякога в окото."],
+  shipbottle: ["🍾", "Кораб в бутилка", 25, [["bottle", 0, 0, 0.85], ["gear", 0, 0.08, 0.2]], "", 0, "Как влезе вътре? Тайна на занаята."],
+  flyumbrella: ["☂️", "Летящ чадър", 30, [["paper", 0, 0.05, 0.6], ["motor", 0, -0.25, 0.35]], "bubbles", 0, "Чадър с витло. Под водата вали ли изобщо?"],
+  pearl: ["⚪", "Перла", 30, [["shell", 0, 0.05, 0.7]], "glow", 0, "Истинска перла от камъче. Чиста магия."],
+  flysock: ["🧦", "Летящ чорап", 12, [["sock", 0, 0, 0.8]], "bubbles spark", 0, "Лети сам. Търси другия чорап от чифта."],
+  goldfish: ["🐠", "Златна рибка", 50, [["fish", 0, 0, 0.8]], "glow spark", 0, "Изпълнява желания. Засега само едно: да не я ядат."],
+  flyartifact: ["🕊️", "Самолетяща птица", 60, [["mechbird", 0, 0, 0.85]], "glow spark", 0, "Лети сама, без навиване. Магия плюс механика."],
+  flytire: ["🛸", "Летяща гума", 25, [["tire", 0, 0, 0.7]], "glow bubbles", 0, "Гума, която лети като чиния. Извънземните ще завидят."],
+  silvercan: ["🥫", "Сребърна консерва", 20, [["can", 0, 0, 0.8]], "spark", 0, "Блести като луна. Вътре има… тишина."],
+  ideabulb: ["💡", "Крушка на идеите", 45, [["bulb", 0, 0, 0.8]], "glow spark", 0, "Светва, когато му хрумне нещо."],
+  krillradio: ["📻", "Радио за рачетата Крил", 40, [["shell", 0, 0, 0.6], ["magnet", 0.2, 0.15, 0.3]], "notes", 0, "Рачетата Крил пускат по него своите песни."],
 };
 // свойствата на нещата от дъното (направените ги наследяват от съставките си)
 const TAG0 = { can: "metal sound", cup: "float sound", plastic: "soft float", sock: "soft", bone: "nature", paper: "soft", bottle: "glass float", tire: "bounce",
@@ -591,16 +635,20 @@ const WILD = { "bounce+food": "jumpjelly", "bounce+metal": "pogo", "bounce+natur
   "soft+soft": "blanket", "float+soft": "kite", "power+soft": "staticsock", "soft+sound": "earmuffs", "float+float": "bubbleballoon", "sound+sound": "echo",
   "stink+stink": "perfume", "metal+stink": "perfume", "soft+stink": "perfume", "float+stink": "perfume", "glass+stink": "perfume", "nature+stink": "perfume", "power+power": "thunderball" };
 const HEAT = { egg: "boiledegg", fish: "grilledfish", bread: "toast", cheese: "meltcheese", banana: "bakedbanana", milk: "hotmilk", plastic: "blob", bottle: "lens",
-  weed: "dryweed", pebble: "hotstone", "bread+cheese": "grilledsand", "can+fish": "tinfish", rottenegg: "!boom" };
-const COOL = { milk: "icecream", banana: "frozenbanana", fish: "frozenfish", star: "snowstar", yogurt: "froyo", "banana+milk": "bananaice" };
+  weed: "dryweed", pebble: "hotstone", "bread+cheese": "grilledsand", "can+fish": "tinfish", rottenegg: "!boom",
+  tire: "rubberball", can: "pan", sock: "warmsock", paper: "ash", feather: "singed", bone: "broth", spoon: "bentspoon", bolt: "hotbolt", gear: "hotbolt",
+  bulb: "burntbulb", wire: "heater", cup: "blob", stinkyfish: "smokedfish", bluecheese: "fondue", "blackbanana+bread": "bananabread", bat: "!pop" };
+const COOL = { milk: "icecream", banana: "frozenbanana", fish: "frozenfish", star: "snowstar", yogurt: "froyo", "banana+milk": "bananaice", cup: "icecube", magnet: "supermagnet", egg: "!cold" };
+const ASM = { "can+tire": "cart", "gear+wire": "clockwork", "spoon+spring": "catapult", "bottle+gear": "shipbottle", "motor+paper": "flyumbrella" };   // 🔨 сглобяване (трябва чук)
+const MAGIC = { pebble: "pearl", sock: "flysock", fish: "goldfish", mechbird: "flyartifact", tire: "flytire", can: "silvercan" };                         // ✨ магия (трябва пръчка)
 const APART = { tire: ["wire"], can: ["bolt"], cup: ["plastic"] };          // боклуци, които се разглобяват (направените: на съставките си)
-const HOW = { mix: { i: "⚗️", n: "Смеси" }, heat: { i: "🔥", n: "Загрей" }, cool: { i: "❄️", n: "Охлади" }, apart: { i: "🔧", n: "Разглоби" } };
+const HOW = { mix: { i: "⚗️", n: "Смеси" }, heat: { i: "🔥", n: "Загрей" }, cool: { i: "❄️", n: "Охлади" }, apart: { i: "🔧", n: "Разглоби" }, asm: { i: "🔨", n: "Сглоби" }, magic: { i: "✨", n: "Магия" } };
 // скрити: [а, б, резултат, кога става]
 const HIDDEN = [["star", "bottle", "starjar", "night"], ["pebble", "star", "moonstone", "light"], ["shell", "spring", "dancingshell", "music"], ["feather", "cup", "laughcup", "happy"],
-  ["bottle", "weed", "dew", "morning"], ["star", "magnet", "moonmagnet", "moon"], ["paper", "shell", "memoir", "old"]];
-const COND_SAY = { night: "е нощ", light: "лампата свети", music: "свири музика", happy: "съм толкова щастлив", morning: "е рано сутрин", moon: "е пълнолуние", old: "съм стар и мъдър" };
+  ["bottle", "weed", "dew", "morning"], ["star", "magnet", "moonmagnet", "moon"], ["paper", "shell", "memoir", "old"], ["bulb", "papyrus", "ideabulb", "smart"], ["shell", "magnet", "krillradio", "krill"]];
+const COND_SAY = { night: "е нощ", light: "лампата свети", music: "свири музика", happy: "съм толкова щастлив", morning: "е рано сутрин", moon: "е пълнолуние", old: "съм стар и мъдър", smart: "съм прочел толкова книги", krill: "рачетата Крил са ми приятели" };
 const METHOD_OF = {};
-for (const [m, T] of [["heat", HEAT], ["cool", COOL]]) for (const [k, r] of Object.entries(T)) if (r[0] !== "!") METHOD_OF[r] = { m, i: k.split("+") };
+for (const [m, T] of [["heat", HEAT], ["cool", COOL], ["asm", ASM], ["magic", MAGIC]]) for (const [k, r] of Object.entries(T)) if (r[0] !== "!") METHOD_OF[r] = { m, i: k.split("+") };
 for (const [k, v] of Object.entries(NEW_EL)) { EL[k] = [v[0], v[1], HIDDEN.some(h => h[2] === k) ? 3 : 1, "made", v[2]]; if (v[6]) BOOK_DESC[k] = v[6]; }
 const BOOK_INV_OF = Object.fromEntries(Object.entries(BOOK_INV).map(([c, b]) => [b, c]));
 const locked = c => BOOK_INV[c] && !(S.libRead || []).includes(BOOK_INV[c]);
@@ -622,7 +670,8 @@ function wildOf(a, b) {                           // странно открит
 }
 const COND = { night: () => { const h = new Date().getHours(); return h >= 21 || h < 6; }, light: () => !!placedAny(LIGHTS), music: () => !!placedAny(MUSIC),
   happy: () => S.mood >= 85, morning: () => { const h = new Date().getHours(); return h >= 5 && h < 9; },
-  moon: () => { const d = (Date.now() - 947182440000) / 864e5, ph = (d % 29.530588) / 29.530588; return ph > 0.43 && ph < 0.57; }, old: () => ["aging", "old"].includes(S.stage) };
+  moon: () => { const d = (Date.now() - 947182440000) / 864e5, ph = (d % 29.530588) / 29.530588; return ph > 0.43 && ph < 0.57; }, old: () => ["aging", "old"].includes(S.stage),
+  smart: () => (S.smarts || 0) >= 5, krill: () => kr().st >= 10 };
 const FOODS = {   // емоджи → [име, глад, здраве, настроение, вид]
   "🍕": ["Пица", 45, 0, 3, "junk"], "🥦": ["Броколи", 30, 6, 2, "veg"], "🦐": ["Скариди", 40, 2, 5, ""], "🍣": ["Суши", 40, 3, 6, ""],
   "🥕": ["Морков", 25, 5, 1, "veg"], "🍪": ["Бисквитка", 20, -1, 8, "junk"],
@@ -1005,8 +1054,9 @@ const ACTS = {
   tidier: "Сам прибира по някой боклук в сандъка.", sockfinder: "От време на време намира изгубени неща.", teapot: "Вечер му прави чай и го ободрява.",
 };
 const MUSIC = ["radio", "speaker", "disco", "organ", "singbolt", "dancingshell"];
-LIGHTS.push("starjar", "zaplamp", "moonstone");
-Object.assign(ACTS, { starjar: "Свети около него нощем.", zaplamp: "Свети около него нощем.", moonstone: "Свети около него нощем.", dancingshell: "Танцува и пее. Понякога и той танцува." });
+LIGHTS.push("starjar", "zaplamp", "moonstone", "lightwire", "ideabulb");
+MUSIC.push("krillradio");
+Object.assign(ACTS, { starjar: "Свети около него нощем.", zaplamp: "Свети около него нощем.", moonstone: "Свети около него нощем.", dancingshell: "Танцува и пее. Понякога и той танцува.", lightwire: "Свети около него нощем.", ideabulb: "Свети около него нощем.", krillradio: "Пуска песните на рачетата Крил. Понякога той танцува." });
 const placed = k => S && (S.placed || []).includes(k) && cnt(k) > 0;           // сложено на дъното
 const active = k => placed(k) && (k === "trampoline" || (S.active || []).includes(k));   // и пуснато
 const placedAny = list => list.find(active);
@@ -1271,6 +1321,8 @@ let workN = Math.floor(Math.random() * 10);
 const HOW_SAY = {
   heat: ["Паля горелката! Под вода е трудно, но аз съм изобретател.", "Топлим, топлим… Не пипай, пари!", "Горещият извор е точно тук. Сега чакаме.", "Мирише на нещо… Добро или лошо, ще видим."],
   cool: ["Студеното течение! Държа го вътре.", "Брррр. Изстудявам. И пипалата ми изстиват.", "Ледът идва от дълбокото. Търпение.", "Духам студено. Ффффф."],
+  asm: ["Чукът! Тук малко, там малко…", "Тук-тук-тук. Не се плаши, само сглобявам.", "Държа го с едно пипало, чукам с друго.", "Внимавай за пипалата. Моите, не твоите."],
+  magic: ["Абра-кадабра-бълбук!", "Размахвам пръчката… Само да не стана жаба.", "Шшш… Магията обича тишина.", "Искрици! Виждаш ли искриците?"],
   apart: ["Отвертката! Къде ми е отвертката?", "Внимателно… всеки болт си има място.", "Разглобявам. После може и да го сглобя. Може.", "Едно винтче, второ винтче…"],
 };
 function mix(a, b, who, more = [], how = "mix") {
@@ -1278,6 +1330,8 @@ function mix(a, b, who, more = [], how = "mix") {
   const items = [a, b, ...more].filter(Boolean);
   if (how === "apart" && items.length !== 1) return say("", "Разглобявам само по едно нещо наведнъж.");
   if (how === "mix" && items.length < 2) return say("", "За смесване ми трябват поне две неща.");
+  if (how === "asm" && !cnt("hammer")) { toast("🔨 Трябва му чук, за да сглобява."); return say("", pick(["Без чук не мога да сглобявам. Трябва ми нещо твърдо и нещо тежко…", "Чук! Трябва ми чук. Нямам."]), 6000); }
+  if (how === "magic" && !cnt("wand")) { toast("✨ Трябва му нещо вълшебно."); return say("", pick(["Магия без пръчка? Не става. Трябва ми нещо вълшебно.", "Нямам вълшебна пръчка. Може би от нещо, което свети в морето…"]), 6000); }
   if (!haveAll(items)) return say("", "Нямам достатъчно от тези неща.");
   if (S.asleep) return say("", "Шшш… спи.");
   if (S.energy < 12) return say("", "Нямам сили. Първо да поспя.");
@@ -1367,13 +1421,22 @@ function methodDone(how, all, key, who) {            // загряване, ох
     say("", `Разглобих ${elN(k).toLowerCase()}! Получих ${got.map(x => elN(x).toLowerCase()).join(" и ")}.${lost ? ` Само ${elN(lost).toLowerCase()} се счупи. Ох.` : " Всичко е цяло!"}`, 7000);
     return save(), render();
   }
-  const r = (how === "heat" ? HEAT : COOL)[key];
-  if (!r) {
+  const r = { heat: HEAT, cool: COOL, asm: ASM, magic: MAGIC }[how][key];
+  if (!r || r === "!cold") {
     nope(); gotPop(k, `${HOW[how].i} ${all.map(elN).join(" + ")}: нищо не стана.`);
+    if (r === "!cold") { say("", "Яйцата не обичат студ. Това го знае всяка майка октоподка.", 6000); return save(), render(); }
+    if (how === "asm") { say("", pick(["Чуках, чуках… Нищо не се сглоби. Само ме заболя пипалото.", "Тези двете не искат да стоят заедно. Дори с чук."]), 6000); return save(), render(); }
+    if (how === "magic") { say("", pick(["Искри… искри… и нищо. Магията не иска.", "Пръчката се изкашля и спря. Нищо."]), 6000); return save(), render(); }
     say("", how === "heat" ? pick(["Затоплих го. Нищо не стана. Само стана топло.", "Стопли се и пак си е същото. Записвам."]) : pick(["Изстудих го. Сега е студено. Това е всичко.", "Замръзна и после пак се размрази. Нищо."]), 6000);
     return save(), render();
   }
   all.forEach(x => takeMat(x));
+  if (r === "!pop") {
+    S.mood = clamp(S.mood - 3); fx.hurt = performance.now(); log("💥 Загря батерия. Изпука.");
+    gotPop(null, "💥 Батерията се поду и изпука!");
+    say("", "Пук! Батерията се поду и изпука. Добре, че бях с очилата.", 7000);
+    return save(), render();
+  }
   if (r === "!boom") {
     S.mood = clamp(S.mood - 5); fx.hurt = performance.now(); log("💥 Загря развалено яйце. Гръмна.");
     gotPop(null, "💥 ПУФ! Развалено яйце гръмна.");
@@ -1386,7 +1449,7 @@ function methodDone(how, all, key, who) {            // загряване, ох
   if (who === "me") td("mix");
   log(first ? `🎉 ${HOW[how].i} Откри ${elFull(r)}! (${all.map(elN).join(" + ")})` : `${HOW[how].i} Направи пак ${elFull(r)}.`);
   gotPop(r, `${HOW[how].i} ${first ? "Ново! " : ""}${elN(r)}. Отиде в сандъка${EDIBLE[r] ? " и в „Рецепти“" : " и в шкафа"}.`);
-  say("", first ? `${how === "heat" ? "Затоплих" : "Изстудих"} ${all.map(x => elN(x).toLowerCase()).join(" и ")} и стана ${elN(r).toLowerCase()}! Записвам го ${EDIBLE[r] ? "в рецептите" : "в шкафа"}.` : `Още ${elN(r).toLowerCase()}. Готово!`, 7000);
+  say("", first ? `${{ heat: "Затоплих", cool: "Изстудих", asm: "Сглобих", magic: "Омагьосах" }[how]} ${all.map(x => elN(x).toLowerCase()).join(" и ")} и стана ${elN(r).toLowerCase()}! Записвам го ${EDIBLE[r] ? "в рецептите" : "в шкафа"}.` : `Още ${elN(r).toLowerCase()}. Готово!`, 7000);
   save(); render();
 }
 // ---------- Книги ----------
@@ -2945,7 +3008,7 @@ function renderMix() {
 }
 function howMenu() {                         // какво да прави с нещата в полетата
   closeHowMenu();
-  const n = mixSel.length, opts = n === 1 ? ["heat", "cool", "apart"] : n === 2 ? ["mix", "heat", "cool"] : ["mix"];
+  const n = mixSel.length, opts = n === 1 ? ["heat", "cool", "apart", "magic"] : n === 2 ? ["mix", "heat", "cool", "asm"] : ["mix"];
   const go = how => { closeHowMenu(); const [a, b, ...more] = mixSel; mixSel = []; renderMix(); mix(a, b || null, "me", more, how); };
   if (opts.length === 1) return go(opts[0]);
   const m = document.createElement("div"); m.id = "howmenu";
