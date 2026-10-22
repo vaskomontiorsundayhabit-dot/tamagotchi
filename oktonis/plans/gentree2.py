@@ -42,6 +42,8 @@ for a, b, r, em, w in g['MIX2'] + g['MIX3L']: add(r, "mix", [a, b])
 for ins, r, em, w in g['MIX3'] + g['M34']: add(r, "mix", ins)
 add("Къщичка за рачетата Крил", "mix", ["Кирпич"] * 3); EMO["Къщичка за рачетата Крил"] = "🏠"
 for _a, _b, r, em, _w in g["MIX3L"]: EMO[r] = em
+for _i, r, em, _w in g["MIX3"]:
+    if em: EMO[r] = em
 names = set(base) | set(par) | {x for rs in par.values() for r in rs for x in r[1]}
 # depth
 INF = 99
