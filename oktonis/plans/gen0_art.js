@@ -159,3 +159,12 @@
       F("rgba(80,140,120,.25)", sh); c.save(); c.beginPath(); sh(); c.clip();
       c.strokeStyle = "#4a8a6a"; c.lineWidth = 0.02; for (let i = -6; i <= 6; i++) { c.beginPath(); c.moveTo(i * 0.1 - 0.4, -0.4); c.lineTo(i * 0.1 + 0.4, 0.4); c.stroke(); c.beginPath(); c.moveTo(i * 0.1 + 0.4, -0.4); c.lineTo(i * 0.1 - 0.4, 0.4); c.stroke(); } c.restore(); st();
       c.beginPath(); sh(); c.stroke(); c.fillStyle = "#ffb02e"; for (const [x, y] of [[-0.3, -0.26], [0.3, -0.24]]) { c.beginPath(); c.arc(x, y, 0.05, 0, 7); c.fill(); c.stroke(); } },
+    // ---- части от разглобяване ----
+    thread: () => { F("#e9d7b0", () => rr(-0.16, -0.26, 0.32, 0.5, 0.05)); F("#b8875a", () => rr(-0.2, -0.32, 0.4, 0.08, 0.03)); F("#b8875a", () => rr(-0.2, 0.22, 0.4, 0.08, 0.03));
+      c.strokeStyle = "#c8a878"; c.lineWidth = 0.02; for (let y = -0.2; y < 0.22; y += 0.05) { c.beginPath(); c.moveTo(-0.15, y); c.lineTo(0.15, y + 0.03); c.stroke(); } st();
+      c.lineWidth = 0.02; c.beginPath(); c.moveTo(0.15, 0.1); c.bezierCurveTo(0.3, 0.12, 0.28, 0.3, 0.4, 0.34); c.stroke(); st(); },
+    hoop: () => { c.lineWidth = 0.11; c.strokeStyle = L; c.beginPath(); c.ellipse(0, 0.04, 0.32, 0.22, 0, 0, 7); c.stroke(); c.lineWidth = 0.065; c.strokeStyle = "#8e98a3"; c.stroke(); st();
+      c.fillStyle = "#c0612b"; for (const [x, y] of [[-0.3, 0.0], [0.2, 0.22], [0.26, -0.12]]) { c.beginPath(); c.arc(x, y, 0.025, 0, 7); c.fill(); } c.fillStyle = L; for (const a of [0.5, 2.2, 4]) { c.beginPath(); c.arc(Math.cos(a) * 0.32, 0.04 + Math.sin(a) * 0.22, 0.02, 0, 7); c.fill(); } },
+    cocoshell: () => { F("#6b4a2e", () => { c.moveTo(-0.32, -0.04); c.lineTo(0.32, -0.04); c.arc(0, -0.04, 0.32, 0, Math.PI); c.closePath(); }); F("#f4efe2", () => ell(0, -0.04, 0.32, 0.08)); F("#d9cfb8", () => ell(0, -0.03, 0.24, 0.05)); },
+    cocomilk: () => { F("#f4efe2", () => { c.moveTo(-0.16, -0.24); c.lineTo(0.16, -0.24); c.lineTo(0.2, 0.3); c.lineTo(-0.2, 0.3); c.closePath(); }); M("coconut", 0.18, 0.18, 0.45); c.fillStyle = "rgba(255,255,255,.7)"; c.fillRect(-0.12, -0.18, 0.03, 0.36); },
+    glasslens: () => { F("#c9a13a", () => c.arc(0, 0, 0.3, 0, 7)); F("rgba(200,230,250,.9)", () => c.arc(0, 0, 0.23, 0, 7)); c.fillStyle = "rgba(255,255,255,.85)"; c.beginPath(); ell(-0.08, -0.08, 0.08, 0.04, -0.7); c.fill(); },
