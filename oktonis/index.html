@@ -78,8 +78,12 @@
   .rb.want { background: var(--gold); animation: wig .5s infinite; }
   @keyframes wig { 25% { rotate: -8deg; } 75% { rotate: 8deg; } }
 
-  #top { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 72px); left: 0; right: 0; text-align: center; font-size: 13px;
-    color: #eaf6ff; text-shadow: 0 1px 3px rgba(0,0,0,.6); pointer-events: none; z-index: 2; }
+  #top { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 96px); left: 10px; right: 76px; display: flex; flex-wrap: wrap; gap: 6px; font-size: 14px;
+    color: #fff; pointer-events: none; z-index: 2; }
+  #top .tp { padding: 5px 11px; border-radius: 14px; font-weight: 800; background: rgba(20,30,50,.75); box-shadow: 0 2px 6px rgba(0,0,0,.3); white-space: nowrap; }
+  #top .tp.live { background: #e5383b; } #top .tp.live i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #fff; margin-right: 6px; animation: blink 1s infinite; }
+  #top .tp.ok { background: rgba(46,160,90,.9); } #top .tp.old { background: #e8902a; }
+  @keyframes blink { 50% { opacity: .2; } }
   #hint { position: fixed; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 36px); left: 0; right: 0; text-align: center; font-size: 14px;
     color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); pointer-events: none; animation: fade 2.4s infinite; z-index: 2; }
   @keyframes fade { 50% { opacity: .45; } }
@@ -2274,7 +2278,7 @@ function ago(t) {
 function esc(s) { return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 function render() {
   if (!S) return;
-  $("top").textContent = role === "viewer" ? topText() : "";
+  $("top").innerHTML = role === "viewer" ? topText() : "";
   if (sheetKind) fillSheet(sheetKind);
   if (ringOpen) paintRing();
   renderHud(); renderMix(); renderAlbBadge(); renderGhostBtn();
@@ -3016,7 +3020,11 @@ function babyPhoto() {                        // бебешка снимка в 
 
 // ---------- На живо: toshik праща какво става, vasko го вижда същото ----------
 let keeperV = 0;
-const topText = () => (liveOn() ? "🔴 На живо: toshik е тук" : `👀 Само гледаш · toshik беше тук ${ago(Math.max(S.lastCare || 0, (L && L.at) || 0))}`) + ` · при него v${(L && L.v) || keeperV || "31 или по-стара"}`;
+const topText = () => {                         // при vasko: ясни етикети на живо/версия
+  const v = (L && L.v) || keeperV, live = liveOn();
+  return `<span class="tp ${live ? "live" : "off"}">${live ? "<i></i>НА ЖИВО · toshik е тук" : `⚪ toshik не е тук · ${ago(Math.max(S.lastCare || 0, (L && L.at) || 0))}`}</span>` +
+    `<span class="tp ${v >= PAGE_V ? "ok" : "old"}">${v ? (v >= PAGE_V ? `✅ при него v${v}` : `⚠️ при него v${v} (стара)`) : "⚠️ при него стара версия"}</span>`;
+};
 let liveRef = null, liveUnsub = null, L = null, lastLive = 0, lastDraw = "idle", liveSay = "";
 const liveOn = () => role === "viewer" && L && !L.gone && Date.now() - L.at < 9000;
 function liveSnap() {
@@ -4598,7 +4606,7 @@ setInterval(() => {
     schedNotify();
     if (sickSay === true && document.hidden && S.notify) ntfy("", 0, `${S.name} се разболя… Ела да го видиш.`);
   } else if (role === "viewer" && S) {
-    $("top").textContent = topText();
+    $("top").innerHTML = topText();
     if (viewBase && now - lastMinuteCheck > 20000) { lastMinuteCheck = now; S = JSON.parse(viewBase); catchUp(now); render(); }
   }
   updateBubble(); renderHud();
