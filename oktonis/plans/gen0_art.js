@@ -215,3 +215,4 @@
       F("#ffe14d", () => c.arc(-0.2, -0.26, 0.08, 0, 7)); c.lineWidth = 0.03; c.beginPath(); c.moveTo(0.06, -0.26); c.lineTo(0.14, -0.44); c.stroke(); st(); },
     recpaper: () => { c.save(); c.rotate(-0.1); F("#ece4cc", () => { c.moveTo(-0.3, -0.26); c.lineTo(0.3, -0.24); c.lineTo(0.28, 0.26); c.lineTo(-0.28, 0.28); c.closePath(); }); c.fillStyle = "rgba(150,130,100,.35)"; for (const [x, y] of [[-0.1, -0.1], [0.12, 0.02], [-0.02, 0.14], [0.18, -0.16]]) { c.beginPath(); c.arc(x, y, 0.025, 0, 7); c.fill(); }
       c.strokeStyle = "#58b862"; c.lineWidth = 0.03; c.beginPath(); c.arc(0.16, 0.16, 0.06, 0.3, 5.8); c.stroke(); c.restore(); st(); },
+    cannedfish: () => { M("emptycan", 0, 0.08, 0.85); M("fish", 0.02, -0.2, 0.55); },

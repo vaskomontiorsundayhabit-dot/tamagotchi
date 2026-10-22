@@ -11,3 +11,4 @@ K.update({"Обсидиан":"obsidian","Лимонов сорбет":"sorbet","
 K.update({"Компост":"compost","Ръжда":"rust","Хартиена каша":"papermush","Кокосов кълн":"cocosprout","Мухлясал лимон":"moldlemon","Празна кесийка":"emptypurse"})
 K.update({"Кокосово масло":"cocooil","Стъклена топчица":"marble","Студен чай":"icedtea","Рециклирана хартия":"recpaper"})
 K.update({"Свръхмагнит":"supermagnet"})
+K.update({"Риба от консерва":"cannedfish"})
