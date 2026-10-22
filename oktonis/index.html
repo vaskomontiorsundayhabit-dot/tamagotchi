@@ -276,6 +276,9 @@
   .gm { padding: 7px 11px; border-radius: 14px; max-width: 85%; font-size: 15px; background: rgba(185,246,255,.25); align-self: flex-start; }
   .gm.t { align-self: flex-end; background: rgba(255,179,107,.3); }
   .gq { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; } .gq button { padding: 7px 10px; border-radius: 12px; font-size: 13px; text-align: left; background: rgba(185,246,255,.18); color: inherit; border: 1px solid rgba(185,246,255,.4); }
+  #gmenu { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 70; width: min(380px, 92vw); max-height: 80vh; overflow-y: auto; background: rgba(16,30,52,.96); color: #fff;
+    border: 2px solid rgba(185,246,255,.5); border-radius: 18px; padding: 12px 12px 6px; box-shadow: 0 10px 40px rgba(0,0,0,.6), 0 0 30px rgba(185,246,255,.25); }
+  #gmenu .x { position: absolute; right: 10px; top: 6px; background: none; border: 0; color: #fff; font-size: 20px; } #gmenu .sub { color: #b9f6ff; margin: 4px 0; font-weight: 700; }
   .gq.drop button { padding: 4px; width: 44px; height: 44px; display: grid; place-items: center; } .gq.drop img.ei { width: 32px; height: 32px; } .gq button.sent { outline: 3px solid #b9f6ff; }
   .gq.snd button { background: rgba(255,120,120,.18); border-color: rgba(255,150,150,.5); }
   .gform { display: flex; gap: 6px; } .gform input { flex: 1; padding: 10px 12px; border-radius: 12px; border: 2px solid rgba(0,0,0,.2); font-size: 16px; } .gform button { padding: 10px 14px; border-radius: 12px; font-weight: 700; }
@@ -283,7 +286,15 @@
     border-radius: 14px; font-weight: 700; font-size: 15px; max-width: 86vw; text-align: center; opacity: 0; pointer-events: none; transition: all .25s; }
   #toast.on { opacity: 1; transform: translate(-50%, 0); }
   .cell { position: relative; } .cell .fin { position: absolute; left: 4px; top: 2px; font-style: normal; font-size: 13px; color: #ffd23f; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
-  .finl { display: inline-block; font-size: 11px; font-weight: 800; color: #3a2410; background: #ffd23f; border-radius: 8px; padding: 0 6px; vertical-align: 2px; }
+  .spine.my em { font-size: 12px; } .spine.lockb i { font-size: 13px; } .spine.lockb em { padding-top: 22px; } .spine.my { flex-basis: 40px; border-color: rgba(0,0,0,.55); }
+  #sheet .back { background: none; border: 0; color: inherit; font-weight: 700; padding: 2px 0 8px; cursor: pointer; opacity: .85; }
+  .finl { display: inline-block; font-size: 9px; font-weight: 800; color: #3a2410; background: #ffd23f; border-radius: 6px; padding: 0 4px; vertical-align: 2px; line-height: 1.5; }
+  .cshelf { background: #6b4226; border-radius: 8px; padding: 6px 8px 0; box-shadow: inset 0 0 0 4px #4e2e18; margin: 8px 0; }
+  .crow { display: flex; align-items: flex-end; justify-content: space-around; gap: 4px; min-height: 72px; border-bottom: 12px solid #8b5a34; box-shadow: 0 6px 0 #4e2e18; margin-bottom: 14px; padding: 0 4px; }
+  .cit { position: relative; width: 58px; height: 62px; display: grid; place-items: end center; cursor: pointer; transition: transform .15s; }
+  .cit img.ei { width: 52px; height: 52px; filter: drop-shadow(0 3px 2px rgba(0,0,0,.45)); } .cit.zero { opacity: .35; } .cit.sel { transform: translateY(-6px); } .cit.sel img.ei { filter: drop-shadow(0 0 6px #ffd23f); }
+  .cit.out::after { content: "на дъното"; position: absolute; bottom: -12px; font-size: 8px; color: #ffe7a8; white-space: nowrap; } .cit .fin { position: absolute; left: 0; top: 2px; font-style: normal; font-size: 11px; color: #ffd23f; text-shadow: 0 1px 2px #000; }
+  .cab.one { grid-template-columns: 1fr; }
   .snap.go { left: calc(100% - 34px); top: 340px; transform: translate(-50%, -50%) scale(.12); opacity: .2; }
   @keyframes snapin { from { transform: translate(-50%, -50%) scale(.3) rotate(10deg); opacity: 0; } }
   #chatBtn.ping i { display: block; } #chatBtn.ping { animation: wig .6s infinite; }
@@ -2253,7 +2264,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 41;
+const PAGE_V = 42;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -2314,7 +2325,7 @@ $("scrim").onclick = () => { if (performance.now() - dragEndAt > 600) closeSheet
 $("chatBtn").onclick = ev => { ev.stopPropagation(); if (S) togglePop(); };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#pop") && !ev.target.closest("#chatBtn")) closePop(); });
 function lastAsked() { return Math.max(0, ...Object.values(S.asked || {})); }
-let cabTab = "inv", libPick = null, journalPage = 0, libTab = "shelf", mixSel = [], invPick = null, invDrag = null;
+let cabPick = null, cabTab = "inv", libPick = null, journalPage = 0, libTab = "shelf", mixSel = [], invPick = null, invDrag = null;
 function priceOf(k) {
   let p2 = YUCK.includes(k) ? 0 : EL[k][4];
   if (EL[k][3] === "junk" && has("recycler")) p2 *= 2;
@@ -2352,9 +2363,8 @@ function fillSheet(kind) {
   sh.classList.toggle("bare", kind === "journal");
   const head = (title, extra = "") => `<h2>${title} <span>${extra}<button class="x" id="sx">✕</button></span></h2>`;
   if (kind === "lib") {
-    const tabs = [["shelf", "📚 Рафт"], ["notes", "📓 Тетрадка"], ["secret", "🔒 Личен"]];
     if (libTab === "found") libTab = "shelf";
-    let h = head("📚 Библиотека") + `<div class="tabs">${tabs.map(([k, n]) => `<button data-t="${k}" class="${libTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
+    let h = head(libTab === "notes" ? "📓 Тетрадка" : libTab === "secret" ? "🔒 Личен дневник" : "📚 Библиотека") + (libTab !== "shelf" ? `<button class="back" id="libBack">← към рафта</button>` : "");
     if (libTab === "found") {
       h += `<div class="sub">Книгата на откритията</div>`;
       const card = c => { const r = ingOf(c); return `<div><span>${elE(c)}</span><b>${esc(elN(c))}</b><small>${r ? esc(r.map(elN).join(" + ")) : ""}</small></div>`; };
@@ -2375,27 +2385,31 @@ function fillSheet(kind) {
       const spine = (b, shopB) => { const i = SHOP.indexOf(b), hh = 78 + (i * 37) % 30, read = (S.libRead || []).includes(b.id);
         return `<span class="spine${libPick === b.id ? " sel" : ""}" data-b="${b.id}" style="height:${hh}%;background:${COLS[i % COLS.length]}"><em>${esc(b.n)}</em>${read ? "<i>✓</i>" : ""}${shopB ? `<u>◉${b.p}</u>` : ""}</span>`; };
       h += `<div class="sub">Прочел е ${S.books || 0} ${S.books === 1 ? "книга" : "книги"}.</div>`;
-      h += `<div class="shelf"><div class="row">${own.length ? own.map(b => spine(b, false)).join("") : `<span class="empty">Рафтът още е празен</span>`}<span class="deco">🪴</span></div></div>`;
+      const myb = `<span class="spine my" data-my="journal" style="height:96%;background:#7a4a26"><em>📔 Дневник</em></span><span class="spine my" data-my="notes" style="height:86%;background:#3a6ea5"><em>📓 Тетрадка</em></span>` +
+        `<span class="spine my lockb" data-my="secret" style="height:90%;background:#8a3a5e"><em>Личен дневник</em><i>🔒</i></span>`;
+      h += `<div class="shelf"><div class="row">${myb}${own.map(b => spine(b, false)).join("")}<span class="deco">🪴</span></div></div>`;
       h += `<div class="sub grp">Книжарницата на рифа <b class="cash">${money(S.pearls)}</b></div>`;
       h += shop.length ? `<div class="shelf shop"><div class="row">${shop.map(b => spine(b, true)).join("")}</div></div>` : `<div class="sub">Купил е всички книги. Истински книжен октопод.</div>`;
       const pb = SHOP.find(b => b.id === libPick);
       if (pb) { const mine = (S.lib || []).includes(pb.id), read = (S.libRead || []).includes(pb.id);
         h += `<div class="pick"><span class="ii">${mine ? "📕" : "📗"}</span><span class="in">${esc(pb.n)}<small>${pb.a ? esc(pb.a) + " · " : ""}${mine ? (read ? "прочетена ✓" : "още не е прочетена. Чети от менюто около него.") : money(pb.p)}</small></span>
           <span class="btns">${!mine && role === "keeper" ? `<button class="sell buy" data-b="${pb.id}" ${S.pearls < pb.p ? "disabled" : ""}>Купи</button>` : ""}</span></div>`;
-        if (pb.d) h += `<div class="bookd">${esc(pb.d)}${pb.ch ? `<ul class="bch">${pb.ch.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${read && BOOK_INV_OF[pb.id] ? `<div class="bin">${S.found.includes(BOOK_INV_OF[pb.id]) ? `Чертеж: ${elE(BOOK_INV_OF[pb.id])} ${esc(elN(BOOK_INV_OF[pb.id]))}` : "В книгата има чертеж на изобретение…"}</div>` : ""}${read && pb.q ? `<div class="bq">${pb.q.map(x => `<p>„${esc(x)}“</p>`).join("")}</div>` : ""}</div>`; }
+        if (pb.d) h += `<div class="bookd">${esc(pb.d)}${pb.ch ? `<ul class="bch">${pb.ch.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${read && BOOK_INV_OF[pb.id] ? `<div class="bin">${S.found.includes(BOOK_INV_OF[pb.id]) ? `Чертеж: ${elE(BOOK_INV_OF[pb.id])} ${esc(elN(BOOK_INV_OF[pb.id]))}` : "В книгата има чертеж на изобретение…"}</div>` : ""}${read && pb.q && pb.id === "b_tin" ? `<div class="bq">${pb.q.map(x => `<p>„${esc(x)}“</p>`).join("")}</div>` : ""}</div>`; }
     } else {
       if (role !== "viewer") h += `<div class="lock">🔒<div>Личният дневник е заключен.<br><small>Пази го под пипалото си.</small></div></div>`;
       else h += `<div class="sub">👀 Само ти като наблюдател го виждаш. Той не знае.</div>` + `<div class="sub grp">Какво мисля за теб</div><ul class="journal">${myThoughts().map(x => `<li>${esc(x)}</li>`).join("")}</ul>` +
         `<div class="sub grp">Записки</div>` + ((S.pdiary || []).length ? `<ul class="journal">${S.pdiary.slice().reverse().map(e => `<li><time>${new Date(e.t).toLocaleDateString("bg-BG", { day: "numeric", month: "short" })}</time>${esc(e.x)}</li>`).join("")}</ul>` : `<div class="sub">Празно. Само една рисунка на теб. Доста прилича.</div>`);
     }
     sh.innerHTML = h;
-    sh.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
-      libTab = b.dataset.t;
+    if ($("libBack")) $("libBack").onclick = () => { libTab = "shelf"; fillSheet("lib"); };
+    sh.querySelectorAll("[data-my]").forEach(b => b.onclick = () => {
+      const t = b.dataset.my; if (t === "journal") return openSheet("journal");
+      libTab = t;
       if (libTab === "secret" && !S.asleep && S.hatched) { say("", pick(["Ей! Това е личното ми! Не надничай.", "Не! Там пише за теб. Тайно е.", "Заключено е. И ключът е у мен. Някъде."])); if (role === "keeper") { S.mood = clamp(S.mood - 1); dirty = true; } }
       fillSheet("lib");
     });
     sh.querySelectorAll(".buy").forEach(b => b.onclick = () => buyBook(b.dataset.b));
-    sh.querySelectorAll(".spine").forEach(b => b.onclick = () => { libPick = libPick === b.dataset.b ? null : b.dataset.b; fillSheet("lib"); });
+    sh.querySelectorAll(".spine:not(.my)").forEach(b => b.onclick = () => { libPick = libPick === b.dataset.b ? null : b.dataset.b; fillSheet("lib"); });
   } else if (kind === "bag") {
     // като инвентара в Minecraft: мрежа от полета, по най-много 20 в поле
     const ORDER = ["made", "food", "spoiled", "nature", "part", "junk"];
@@ -2449,8 +2463,14 @@ function fillSheet(kind) {
     const hats = S.hats || [], accs = myAccs();
     const tabs = `<div class="tabs">${[["inv", "⚙️ Изобретения"], ["wear", "🎩 Дрехи"]].map(([k, n]) => `<button data-c="${k}" class="${cabTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
     sh.innerHTML = head("🗄️ Шкаф") + tabs + (cabTab === "wear" ? (hats.length || accs.length ? `<div class="cab">${hats.map(h => `<div class="gd${S.hat === h ? " on" : ""}"><span>${HATS[h][0]}</span><b>${esc(HATS[h][1])}</b>${role === "keeper" ? `<button class="tg hat" data-h="${h}">${S.hat === h ? "Свали" : "Сложи"}</button>` : ""}</div>`).join("")}${accs.map(a => `<div class="gd${accOff(a) ? "" : " on"}"><span>${ACC[a][0]}</span><b>${esc(ACC[a][1])}</b><small>${esc(ACC[a][2])}</small>${role === "keeper" ? `<button class="tg acc" data-a="${a}">${accOff(a) ? "Сложи" : "Свали"}</button>` : ""}</div>`).join("")}</div>`
-      : `<div class="sub">Още няма дрехи. Понякога рибата-пощальон носи подаръци…</div>`) : made.length ? `<div class="cab">${act.map(card).join("")}${rest.map(card).join("")}</div>`
+      : `<div class="sub">Още няма дрехи. Понякога рибата-пощальон носи подаръци…</div>`) : made.length ? (() => {       // рафтове с изобретенията; докосваш едно и долу излиза картата му
+        const all = [...act, ...rest], per = 5, rows = [];
+        for (let i = 0; i < all.length; i += per) rows.push(all.slice(i, i + per));
+        if (!cabPick || !all.includes(cabPick)) cabPick = null;
+        return (cabPick ? `<div class="cab one">${card(cabPick)}</div>` : `<div class="sub">Докосни изобретение от рафта.</div>`) +
+          `<div class="cshelf">${rows.map(r => `<div class="crow">${r.map(k => `<span class="cit${cabPick === k ? " sel" : ""}${cnt(k) || placed(k) ? "" : " zero"}${placed(k) ? " out" : ""}" data-ck="${k}">${isFinal(k) ? `<i class="fin">★</i>` : ""}${elI(k)}</span>`).join("")}</div>`).join("")}</div>`; })()
       : `<div class="sub">Шкафът е празен. Тук ще стоят изобретенията.</div>`);
+    sh.querySelectorAll("[data-ck]").forEach(b => b.onclick = () => { cabPick = cabPick === b.dataset.ck ? null : b.dataset.ck; fillSheet("cab"); });
     sh.querySelectorAll(".tg:not(.hat):not(.acc)").forEach(b => b.onclick = () => togglePlace(b.dataset.k));
     sh.querySelectorAll(".rm").forEach(b => b.onclick = () => remake(b.dataset.k));
     sh.querySelectorAll(".hat").forEach(b => b.onclick = () => wearHat(b.dataset.h));
@@ -2686,7 +2706,7 @@ $("profBtn").onclick = ev => {
 };
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#profMenu") && !ev.target.closest("#profBtn")) $("profMenu").classList.add("hidden"); });
 // ---------- Бутоните по екрана ----------
-$("side").innerHTML = [["bag", "🧰", "Сандък"], ["cab", "🗄️", "Шкаф"], ["lib", "📚", "Книги"], ["family", "🌳", "Род"], ["journal", "📖", "Дневник"], ["album", "📷", "Албум"], ["ghost", "👻", "Дух"]]
+$("side").innerHTML = [["bag", "🧰", "Сандък"], ["cab", "🗄️", "Шкаф"], ["lib", "📚", "Книги"], ["family", "🌳", "Род"], ["album", "📷", "Албум"], ["ghost", "👻", "Дух"]]
   .map(([k, i, n]) => `<button data-k="${k}" title="${n}">${i}<small>${n}</small></button>`).join("");
 $("side").querySelectorAll("button").forEach(b => b.onclick = ev => { ev.stopPropagation(); if (S) openSheet(b.dataset.k); });
 $("hud").onclick = () => S && openSheet("stats");
@@ -4083,7 +4103,7 @@ function albumHtml(head) {
   return h;
 }
 // ---------- Рибата-дух: vasko я пуска и пише през нея, toshik вижда и отговаря (през ntfy.sh) ----------
-const ghost = { on: false, msgs: [], last: "", x: 0, y: 0, at: -1e9, poll: 0, seen: new Set(), boot: 0 };
+const ghost = { bub: [], mv: null, on: false, msgs: [], last: "", x: 0, y: 0, at: -1e9, poll: 0, seen: new Set(), boot: 0 };
 const ghostTopic = () => S && S.wid ? "okt-ghost-" + String(S.wid).replace(/[^\w-]/g, "") : null;
 function ghostSend(o) {
   const tp = ghostTopic(); if (!tp) return;
@@ -4097,6 +4117,11 @@ function ghostApply(m) {
     if (role === "keeper" && S.hatched) setTimeout(() => { sleepTalking = true; say("", pick(["Хрр… риба… светеща риба… хрр…", "Мм… кой е там… прозрачен… хрр…"]), 5000); sleepTalking = false; }, 900);
   }
   if (m.t === "off" && ghost.on) { ghost.on = false; renderGhostBtn(); }
+  if (m.t === "move" && ghost.on && GHOST_MV[m.m]) { ghost.mv = { m: m.m, at: performance.now() }; return; }
+  if (m.t === "take" && ghost.on) {                              // духът си взима обратно предмета
+    if (role === "keeper") { const n = S.parts.filter(x => x.ghost).length; S.parts = S.parts.filter(x => !x.ghost); if (n) { dirty = true; save(); } }
+    ghost.last = { x: pick(["Размислих… взимам си го обратно… хи-хи…", "Не, това е мое… бууу…"]), at: performance.now() }; return;
+  }
   if (m.t === "drop" && ghost.on && EL[m.k]) {                   // духът пуска предмет на дъното
     if (role === "keeper" && S.parts.length < 8) { S.parts.push({ id: uid(), k: m.k, x: clamp(ghost.x / W + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true }); dirty = true; save(); }
     ghost.last = { x: pick(["Подарък… от отвъдното…", "Вземи го… ако смееш…", "Това е за теб… бууу…"]), at: performance.now() };
@@ -4149,18 +4174,49 @@ function drawGhost(t, s) {
     renderGhostBtn(); if (sheetKind === "ghost") fillSheet("ghost");
   }
   if (!ghost.on) return;
-  const p = performance.now(), a = Math.min(1, (p - ghost.at) / 1500);
-  const tx = oct.x - Math.max(140, oct.r * 1.5) * (oct.x > W * 0.45 ? 1 : -1), ty = oct.cy - oct.r * 0.4;
-  ghost.x += (Math.max(60, Math.min(W - 90, tx)) - ghost.x) * 0.02; ghost.y += (ty + Math.sin(t * 1.3) * 18 - ghost.y) * 0.03;
-  const z = Math.max(60, 95 * s);
-  g.save(); g.globalAlpha = 0.55 * a + Math.sin(t * 2) * 0.08; g.shadowColor = "#b9f6ff"; g.shadowBlur = 30;
+  const p = performance.now(); let a = Math.min(1, (p - ghost.at) / 1500);
+  let tx = oct.x - Math.max(140, oct.r * 1.5) * (oct.x > W * 0.45 ? 1 : -1), ty = oct.cy - oct.r * 0.4 + Math.sin(t * 1.3) * 18, k = 0.025, sc = 1, clip = false;
+  const mv = ghost.mv && p - ghost.mv.at < GHOST_MV[ghost.mv.m] ? ghost.mv : null, e = mv ? (p - mv.at) / 1000 : 0;
+  if (mv && mv.m === "circle") { const an = e * 1.3; tx = oct.x + Math.cos(an) * oct.r * 1.5; ty = oct.cy + Math.sin(an) * oct.r * 0.9; k = 0.09; }
+  if (mv && mv.m === "close") { tx = oct.x + (ghost.x < oct.x ? -1 : 1) * oct.r * 0.7; ty = oct.cy - oct.r * 0.15; k = 0.03; sc = 1.3; }
+  if (mv && mv.m === "rock") { const R = rockGeom(); tx = R.cx - R.rw * 0.15; ty = R.top + 30 - Math.abs(Math.sin(e * 1.1)) * 70; k = 0.05; clip = R.top + 14; }
+  if (mv && mv.m === "jump") {                                     // излиза от екрана… и изскача точно пред него
+    if (e < 2) { tx = -300; k = 0.06; }
+    else if (e < 3.2) { a = 0; ghost.x = oct.x + oct.r * 0.1; ghost.y = oct.cy - oct.r * 0.05; tx = ghost.x; ty = ghost.y; }
+    else { tx = ghost.x = oct.x + oct.r * 0.1 + Math.sin(e * 60) * 6; ty = ghost.y = oct.cy - oct.r * 0.05 + Math.cos(e * 50) * 6; sc = 2.8; a = 1; if (!mv.boo) { mv.boo = 1; flashAt = p; if (role === "keeper" && S.hatched) setTimeout(() => { sleepTalking = true; say("", pick(["Ааа!!! …хрр… к-какво беше това… хрр…", "Мамо!!! …хрр…"]), 4500); sleepTalking = false; }, 300); ghost.last = { x: "БУУУУУ!!!", at: p }; } }
+  }
+  if (mv && mv.m === "bubbles" && Math.random() < 0.35) ghost.bub.push({ x: ghost.x + rnd(-20, 20), y: ghost.y - 10, r: rnd(4, 12), vy: rnd(0.6, 1.6), ph: Math.random() * 6, at: p });
+  ghost.sc = (ghost.sc || 1) + (sc - (ghost.sc || 1)) * 0.15;
+  ghost.x += (Math.max(-320, Math.min(W + 320, tx)) - ghost.x) * k; ghost.y += (ty - ghost.y) * k * 1.3;
+  for (let i = ghost.bub.length - 1; i >= 0; i--) { const b = ghost.bub[i]; b.y -= b.vy; b.x += Math.sin(p / 400 + b.ph) * 0.6; if (b.y < 60 || p - b.at > 7000) { ghost.bub.splice(i, 1); continue; }
+    g.save(); g.globalAlpha = 0.75; g.shadowColor = "#b9f6ff"; g.shadowBlur = 16; g.strokeStyle = "#d9fbff"; g.lineWidth = 2; g.fillStyle = "rgba(185,246,255,.25)"; g.beginPath(); g.arc(b.x, b.y, b.r, 0, 7); g.fill(); g.stroke(); g.restore(); }
+  const z = Math.max(60, 95 * s) * ghost.sc;
+  g.save(); if (clip) { g.beginPath(); g.rect(0, 0, W, clip); g.clip(); }
+  g.globalAlpha = Math.max(0, 0.55 * a + Math.sin(t * 2) * 0.08); g.shadowColor = "#b9f6ff"; g.shadowBlur = 30;
   g.translate(ghost.x, ghost.y); if (oct.x < ghost.x) g.scale(-1, 1);
   g.lineWidth = Math.max(2, z * 0.035); g.strokeStyle = "#d9fbff";
   fishBody(g, { l: 1.1, h: 0.55, c: "#e8fdff", b: "#bdf1ff", tail: "round", fin: "tall" }, z, t * 0.6, "#9fe6f5");
   g.globalAlpha = 0.35 * a; g.fillStyle = "#e8fdff"; for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(-z * (0.55 + i * 0.18), Math.sin(t * 3 + i) * 6, z * (0.1 - i * 0.02), 0, 7); g.fill(); }   // опашка от мъгла
   g.restore();
-  if (ghost.last && p - ghost.last.at < 9000) talkBubble(ghost.x, ghost.y - z * 0.45, ghost.last.x);
+  if (ghost.last && p - ghost.last.at < 9000 && !(mv && mv.m === "jump" && e < 3.2)) talkBubble(Math.max(60, Math.min(W - 60, ghost.x)), ghost.y - z * 0.45, ghost.last.x);
+  ghost.hit = { x: ghost.x, y: ghost.y, r: Math.max(60, z * 0.6) };
 }
+const GHOST_MV = { circle: 12000, close: 8000, jump: 6000, rock: 14000, bubbles: 9000 };
+const GHOST_MOVES = [["circle", "🌀 Обикаля около него"], ["close", "👀 Приближава се"], ["jump", "😱 Изчезва и изскача"], ["rock", "🪨 Крие се зад камъка"], ["bubbles", "🫧 Сияйни мехурчета"]];
+function ghostMenu(x, y) {                       // при vasko: докосваш духа и излиза меню
+  closeGhostMenu();
+  const m = document.createElement("div"); m.id = "gmenu";
+  m.innerHTML = `<button class="x" id="gmX">✕</button><div class="sub">💬 Реплики</div><div class="gq">${GHOST_LINES.map((l, i) => `<button data-gl="${i}">${esc(l)}</button>`).join("")}</div>
+    <div class="sub">🌀 Движения</div><div class="gq">${GHOST_MOVES.map(([k, n]) => `<button data-gm="${k}">${n}</button>`).join("")}</div>
+    <div class="sub">🎁 Пусни предмет</div><div class="gq drop">${GHOST_DROPS.map(k => `<button data-gd="${k}" title="${esc(elN(k))}">${elI(k)}</button>`).join("")}<button data-gt="1" title="Вземи обратно">↩️</button></div>`;
+  document.body.appendChild(m);
+  m.querySelector("#gmX").onclick = closeGhostMenu;
+  m.querySelectorAll("[data-gl]").forEach(b => b.onclick = () => { ghostSend({ t: "msg", x: GHOST_LINES[+b.dataset.gl] }); closeGhostMenu(); });
+  m.querySelectorAll("[data-gm]").forEach(b => b.onclick = () => { ghostSend({ t: "move", m: b.dataset.gm }); closeGhostMenu(); });
+  m.querySelectorAll("[data-gd]").forEach(b => b.onclick = () => { ghostSend({ t: "drop", k: b.dataset.gd }); b.classList.add("sent"); setTimeout(() => b.classList.remove("sent"), 700); });
+  m.querySelector("[data-gt]").onclick = () => { ghostSend({ t: "take" }); closeGhostMenu(); };
+}
+function closeGhostMenu() { $("gmenu")?.remove(); }
 const GHOST_LINES = ["Бууууу… аз съм рибата-дух…", "Чувам те как дишаш… хи-хи-хи…", "Под камъка има нещо… и то те гледа…", "Не поглеждай зад себе си…", "Тази нощ водата е студена… като мен…",
   "Някога и аз бях октопод… преди сто години…", "Шшшт… ако кажеш името ми, ще се върна…", "Броя пипалата ти… едно… две… липсва едно!", "Сандъкът ти скърца нощем… знаеш ли защо?", "Ще дойда пак… когато луната е пълна…"];
 const GHOST_DROPS = ["star", "shell", "coral", "feather", "pebble", "bulb", "bat", "magnet", "gear", "spring", "bolt", "cheese", "banana", "fish"];
@@ -4187,9 +4243,7 @@ function ghostHtml(head) {
   const awake = !S.asleep && !ghost.on;
   return head("👻 Рибата-дух") + (role === "viewer" ? `<div class="row2"><button class="ans ${ghost.on ? "" : "yes"}" id="ghOn" ${awake ? "disabled" : ""}>${ghost.on ? "Скрий рибата-дух" : "Покажи рибата-дух"}</button></div>` +
     (awake ? `<div class="sub">Рибата-дух идва само докато Октонис спи. Сега е буден.</div>` : "") : "") +
-    `<div class="glog">${log}</div>` + (role === "viewer" && ghost.on ? `<div class="sub">Бързи страшни фрази:</div><div class="gq">${GHOST_LINES.map((x, i) => `<button data-gl="${i}">${esc(x)}</button>`).join("")}</div>
-      <div class="sub">Страшни звуци:</div><div class="gq snd">${GHOST_SOUNDS.map(([k, n]) => `<button data-gs="${k}">${n}</button>`).join("")}</div>
-      <div class="sub">Пусни предмет на дъното:</div><div class="gq drop">${GHOST_DROPS.map(k => `<button data-gd="${k}" title="${esc(elN(k))}">${elI(k)}</button>`).join("")}</div>` : "") +
+    `<div class="glog">${log}</div>` + (role === "viewer" && ghost.on ? `<div class="sub">👆 Докосни рибата-дух на екрана за реплики, движения и предмети.</div>` : "") +
     (role === "viewer" && !ghost.on ? `<div class="sub">Пиши, след като покажеш рибата-дух.</div>` : `<form id="ghForm" class="gform"><input id="ghIn" maxlength="200" autocomplete="off" placeholder="${role === "viewer" ? "Напиши като рибата-дух…" : "Отговори на рибата-дух…"}"><button>Прати</button></form>`);
 }
 // ---------- Историята с рачетата Крил (шестимата, които не обичат снимки) ----------
@@ -4444,6 +4498,7 @@ const onOcto = (x, y) => Math.hypot(x - oct.x, y - oct.cy) < oct.r * 0.6;
 const onRock = (x, y) => rockBox && ((x - rockBox.x) / rockBox.rx) ** 2 + ((y - rockBox.y) / rockBox.ry) ** 2 < 1;
 let drag = null, noHover = false;
 cv.addEventListener("pointerdown", ev => {
+  if (inGame && S && role === "viewer" && ghost.on && ghost.hit && Math.hypot(ev.clientX - ghost.hit.x, ev.clientY - ghost.hit.y) < ghost.hit.r) return ghostMenu(ev.clientX, ev.clientY);
   if (!inGame || !S || sheetKind || role !== "keeper") return;
   const x = ev.clientX, y = ev.clientY;
   if (babyInput("down", x, y)) { closeRing(); return; }
@@ -4672,7 +4727,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 10 * 60; i++) minute(t0 + i * MIN, true, {}); return { food: Math.round(100 - S.hunger), clean: Math.max(0, 100 - S.trash.length * 15), energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, pickPart: id => pickPart(id), items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 10 * 60; i++) minute(t0 + i * MIN, true, {}); return { food: Math.round(100 - S.hunger), clean: Math.max(0, 100 - S.trash.length * 15), energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, pickPart: id => pickPart(id), ghost: () => ghost, gmove: m => { ghost.mv = { m, at: performance.now() }; }, items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
