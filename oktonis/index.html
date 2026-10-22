@@ -500,7 +500,7 @@ Object.assign(EL, {             // изобретенията от книгит�
 REC.push(["can", "spring", "tinguitar"], ["lamp", "star", "seasun"], ["bread", "weed", "seapizza"], ["blackbanana", "coral", "coralfeed"], ["gear", "spring", "tentclock"], ["bottle", "feather", "flute"], ["bottle", "compass", "spyglass"], ["bubblemeter", "drum", "smiler"], ["yawnmeter", "mech", "backclock"], ["motor", "tire", "train"], ["float", "shell", "bath"], ["mail", "feather", "pigeon"], ["shell", "megaphone", "horn"], ["quill", "bottle", "inkwell"], ["spring", "sock", "springshoes"], ["coral", "banana", "candycoral"], ["glowcoral", "bottle", "firefly"], ["motor", "plastic", "jetpack"], ["pebble", "bottle", "hourglass"], ["star", "compass", "navstar"], ["arm", "can", "robocrab"], ["cup", "weed", "tea"], ["cup", "sock", "noseclip"], ["papyrus", "feather", "oldnotes"], ["treasure", "coral", "crown"]);
 Object.assign(EL, { thermo: ["🌡️", "Термометър", 1, "made", 12], medkit: ["🩺", "Аптечка", 2, "made", 20] });
 REC.push(["bottle", "bulb", "thermo"], ["plastic", "weed", "medkit"]);
-REC.push(["bolt", "bone", "hammer"], ["pebble", "bone", "stoneaxe"], ["star", "coral", "wand"], ["mech", "feather", "mechbird"], ["moldbread", "weed", "elixir"],
+REC.push(["bolt", "bone", "hammer"], ["pebble", "bone", "stoneaxe"], ["mech", "feather", "mechbird"], ["moldbread", "weed", "elixir"],
   ["tentclock", "moldbread", "backmold"], ["teapot", "hotstone", "dragonpot"], ["sock", "magnet", "magsock"], ["arm", "yogurt", "hopshoe"], ["wire", "glowcoral", "lightwire"],
   ["magnet", "spoon", "magspoon"], ["pan", "icecube", "frozenpan"]);
 const BOOK_INV = { tinguitar: "b_tin", seasun: "b_light", seapizza: "b_kitchen", coralfeed: "b_spoil", tentclock: "b_mech", flute: "b_sound", spyglass: "b_maps", smiler: "b_great", backclock: "b_great2", train: "b_mach", bath: "b_bubbles", pigeon: "b_post", horn: "b_whales", inkwell: "b_ink", springshoes: "b_jump", candycoral: "b_sweets", firefly: "b_nightl", jetpack: "b_rocket", hourglass: "b_sand", navstar: "b_ways", robocrab: "b_robots", tea: "b_tea", noseclip: "b_stink", oldnotes: "b_diary", crown: "b_legend" };
@@ -595,7 +595,6 @@ const NEW_EL = {
   // от чата: сглобки и примерни рецепти, пренесени под водата
   hammer: ["🔨", "Чук", 12, [["bone", 0, 0.1, 0.7], ["bolt", 0.1, -0.18, 0.5]], "", 0, "С него може да се сглобява."],
   stoneaxe: ["🪓", "Каменна брадва", 10, [["bone", 0, 0.1, 0.7], ["pebble", 0.1, -0.18, 0.5]], "", 0, "Първият инструмент на всеки изобретател."],
-  wand: ["🪄", "Вълшебна пръчка", 30, [["coral", 0, 0.1, 0.6], ["star", 0.1, -0.22, 0.4]], "spark", 0, "Мъничко магия. Само мъничко."],
   mechbird: ["🐦", "Механична птица", 20, [["mech", 0, 0, 0.6], ["feather", 0.16, -0.12, 0.4]], "eyes", 0, "Пее, когато я навиеш. Иска да лети."],
   elixir: ["🧪", "Нестабилен еликсир", 15, [["bottle", 0, 0, 0.8]], "bubbles spark", 0, "Не го клати. Сериозно."],
   backmold: ["🍄", "Мухъл, който расте назад", 25, [["moldbread", 0, 0.05, 0.7], ["tentclock", 0.2, -0.2, 0.3]], "", 0, "Утре ще е хляб. Вчера беше мухъл."],
@@ -610,12 +609,6 @@ const NEW_EL = {
   catapult: ["🥄", "Катапулт за закуски", 14, [["spoon", 0, -0.05, 0.7], ["spring", 0, 0.22, 0.4]], "", 0, "Изстрелва бисквитки право в устата. Понякога в окото."],
   shipbottle: ["🍾", "Кораб в бутилка", 25, [["bottle", 0, 0, 0.85], ["gear", 0, 0.08, 0.2]], "", 0, "Как влезе вътре? Тайна на занаята."],
   flyumbrella: ["☂️", "Летящ чадър", 30, [["paper", 0, 0.05, 0.6], ["motor", 0, -0.25, 0.35]], "bubbles", 0, "Чадър с витло. Под водата вали ли изобщо?"],
-  pearl: ["⚪", "Перла", 30, [["shell", 0, 0.05, 0.7]], "glow", 0, "Истинска перла от камъче. Чиста магия."],
-  flysock: ["🧦", "Летящ чорап", 12, [["sock", 0, 0, 0.8]], "bubbles spark", 0, "Лети сам. Търси другия чорап от чифта."],
-  goldfish: ["🐠", "Златна рибка", 50, [["fish", 0, 0, 0.8]], "glow spark", 0, "Изпълнява желания. Засега само едно: да не я ядат."],
-  flyartifact: ["🕊️", "Самолетяща птица", 60, [["mechbird", 0, 0, 0.85]], "glow spark", 0, "Лети сама, без навиване. Магия плюс механика."],
-  flytire: ["🛸", "Летяща гума", 25, [["tire", 0, 0, 0.7]], "glow bubbles", 0, "Гума, която лети като чиния. Извънземните ще завидят."],
-  silvercan: ["🥫", "Сребърна консерва", 20, [["can", 0, 0, 0.8]], "spark", 0, "Блести като луна. Вътре има… тишина."],
   ideabulb: ["💡", "Крушка на идеите", 45, [["bulb", 0, 0, 0.8]], "glow spark", 0, "Светва, когато му хрумне нещо."],
   krillradio: ["📻", "Радио за рачетата Крил", 40, [["shell", 0, 0, 0.6], ["magnet", 0.2, 0.15, 0.3]], "notes", 0, "Рачетата Крил пускат по него своите песни."],
 };
@@ -640,15 +633,14 @@ const HEAT = { egg: "boiledegg", fish: "grilledfish", bread: "toast", cheese: "m
   bulb: "burntbulb", wire: "heater", cup: "blob", stinkyfish: "smokedfish", bluecheese: "fondue", "blackbanana+bread": "bananabread", bat: "!pop" };
 const COOL = { milk: "icecream", banana: "frozenbanana", fish: "frozenfish", star: "snowstar", yogurt: "froyo", "banana+milk": "bananaice", cup: "icecube", magnet: "supermagnet", egg: "!cold" };
 const ASM = { "can+tire": "cart", "gear+wire": "clockwork", "spoon+spring": "catapult", "bottle+gear": "shipbottle", "motor+paper": "flyumbrella" };   // 🔨 сглобяване (трябва чук)
-const MAGIC = { pebble: "pearl", sock: "flysock", fish: "goldfish", mechbird: "flyartifact", tire: "flytire", can: "silvercan" };                         // ✨ магия (трябва пръчка)
 const APART = { tire: ["wire"], can: ["bolt"], cup: ["plastic"] };          // боклуци, които се разглобяват (направените: на съставките си)
-const HOW = { mix: { i: "⚗️", n: "Смеси" }, heat: { i: "🔥", n: "Загрей" }, cool: { i: "❄️", n: "Охлади" }, apart: { i: "🔧", n: "Разглоби" }, asm: { i: "🔨", n: "Сглоби" }, magic: { i: "✨", n: "Магия" } };
+const HOW = { mix: { i: "⚗️", n: "Смеси" }, heat: { i: "🔥", n: "Загрей" }, cool: { i: "❄️", n: "Охлади" }, apart: { i: "🔧", n: "Разглоби" }, asm: { i: "🔨", n: "Сглоби" } };
 // скрити: [а, б, резултат, кога става]
 const HIDDEN = [["star", "bottle", "starjar", "night"], ["pebble", "star", "moonstone", "light"], ["shell", "spring", "dancingshell", "music"], ["feather", "cup", "laughcup", "happy"],
   ["bottle", "weed", "dew", "morning"], ["star", "magnet", "moonmagnet", "moon"], ["paper", "shell", "memoir", "old"], ["bulb", "papyrus", "ideabulb", "smart"], ["shell", "magnet", "krillradio", "krill"]];
 const COND_SAY = { night: "е нощ", light: "лампата свети", music: "свири музика", happy: "съм толкова щастлив", morning: "е рано сутрин", moon: "е пълнолуние", old: "съм стар и мъдър", smart: "съм прочел толкова книги", krill: "рачетата Крил са ми приятели" };
 const METHOD_OF = {};
-for (const [m, T] of [["heat", HEAT], ["cool", COOL], ["asm", ASM], ["magic", MAGIC]]) for (const [k, r] of Object.entries(T)) if (r[0] !== "!") METHOD_OF[r] = { m, i: k.split("+") };
+for (const [m, T] of [["heat", HEAT], ["cool", COOL], ["asm", ASM]]) for (const [k, r] of Object.entries(T)) if (r[0] !== "!") METHOD_OF[r] = { m, i: k.split("+") };
 for (const [k, v] of Object.entries(NEW_EL)) { EL[k] = [v[0], v[1], HIDDEN.some(h => h[2] === k) ? 3 : 1, "made", v[2]]; if (v[6]) BOOK_DESC[k] = v[6]; }
 const BOOK_INV_OF = Object.fromEntries(Object.entries(BOOK_INV).map(([c, b]) => [b, c]));
 const locked = c => BOOK_INV[c] && !(S.libRead || []).includes(BOOK_INV[c]);
@@ -1322,7 +1314,6 @@ const HOW_SAY = {
   heat: ["Паля горелката! Под вода е трудно, но аз съм изобретател.", "Топлим, топлим… Не пипай, пари!", "Горещият извор е точно тук. Сега чакаме.", "Мирише на нещо… Добро или лошо, ще видим."],
   cool: ["Студеното течение! Държа го вътре.", "Брррр. Изстудявам. И пипалата ми изстиват.", "Ледът идва от дълбокото. Търпение.", "Духам студено. Ффффф."],
   asm: ["Чукът! Тук малко, там малко…", "Тук-тук-тук. Не се плаши, само сглобявам.", "Държа го с едно пипало, чукам с друго.", "Внимавай за пипалата. Моите, не твоите."],
-  magic: ["Абра-кадабра-бълбук!", "Размахвам пръчката… Само да не стана жаба.", "Шшш… Магията обича тишина.", "Искрици! Виждаш ли искриците?"],
   apart: ["Отвертката! Къде ми е отвертката?", "Внимателно… всеки болт си има място.", "Разглобявам. После може и да го сглобя. Може.", "Едно винтче, второ винтче…"],
 };
 function mix(a, b, who, more = [], how = "mix") {
@@ -1331,7 +1322,6 @@ function mix(a, b, who, more = [], how = "mix") {
   if (how === "apart" && items.length !== 1) return say("", "Разглобявам само по едно нещо наведнъж.");
   if (how === "mix" && items.length < 2) return say("", "За смесване ми трябват поне две неща.");
   if (how === "asm" && !cnt("hammer")) { toast("🔨 Трябва му чук, за да сглобява."); return say("", pick(["Без чук не мога да сглобявам. Трябва ми нещо твърдо и нещо тежко…", "Чук! Трябва ми чук. Нямам."]), 6000); }
-  if (how === "magic" && !cnt("wand")) { toast("✨ Трябва му нещо вълшебно."); return say("", pick(["Магия без пръчка? Не става. Трябва ми нещо вълшебно.", "Нямам вълшебна пръчка. Може би от нещо, което свети в морето…"]), 6000); }
   if (!haveAll(items)) return say("", "Нямам достатъчно от тези неща.");
   if (S.asleep) return say("", "Шшш… спи.");
   if (S.energy < 12) return say("", "Нямам сили. Първо да поспя.");
@@ -1421,12 +1411,11 @@ function methodDone(how, all, key, who) {            // загряване, ох
     say("", `Разглобих ${elN(k).toLowerCase()}! Получих ${got.map(x => elN(x).toLowerCase()).join(" и ")}.${lost ? ` Само ${elN(lost).toLowerCase()} се счупи. Ох.` : " Всичко е цяло!"}`, 7000);
     return save(), render();
   }
-  const r = { heat: HEAT, cool: COOL, asm: ASM, magic: MAGIC }[how][key];
+  const r = { heat: HEAT, cool: COOL, asm: ASM }[how][key];
   if (!r || r === "!cold") {
     nope(); gotPop(k, `${HOW[how].i} ${all.map(elN).join(" + ")}: нищо не стана.`);
     if (r === "!cold") { say("", "Яйцата не обичат студ. Това го знае всяка майка октоподка.", 6000); return save(), render(); }
     if (how === "asm") { say("", pick(["Чуках, чуках… Нищо не се сглоби. Само ме заболя пипалото.", "Тези двете не искат да стоят заедно. Дори с чук."]), 6000); return save(), render(); }
-    if (how === "magic") { say("", pick(["Искри… искри… и нищо. Магията не иска.", "Пръчката се изкашля и спря. Нищо."]), 6000); return save(), render(); }
     say("", how === "heat" ? pick(["Затоплих го. Нищо не стана. Само стана топло.", "Стопли се и пак си е същото. Записвам."]) : pick(["Изстудих го. Сега е студено. Това е всичко.", "Замръзна и после пак се размрази. Нищо."]), 6000);
     return save(), render();
   }
@@ -1449,7 +1438,7 @@ function methodDone(how, all, key, who) {            // загряване, ох
   if (who === "me") td("mix");
   log(first ? `🎉 ${HOW[how].i} Откри ${elFull(r)}! (${all.map(elN).join(" + ")})` : `${HOW[how].i} Направи пак ${elFull(r)}.`);
   gotPop(r, `${HOW[how].i} ${first ? "Ново! " : ""}${elN(r)}. Отиде в сандъка${EDIBLE[r] ? " и в „Рецепти“" : " и в шкафа"}.`);
-  say("", first ? `${{ heat: "Затоплих", cool: "Изстудих", asm: "Сглобих", magic: "Омагьосах" }[how]} ${all.map(x => elN(x).toLowerCase()).join(" и ")} и стана ${elN(r).toLowerCase()}! Записвам го ${EDIBLE[r] ? "в рецептите" : "в шкафа"}.` : `Още ${elN(r).toLowerCase()}. Готово!`, 7000);
+  say("", first ? `${{ heat: "Затоплих", cool: "Изстудих", asm: "Сглобих" }[how]} ${all.map(x => elN(x).toLowerCase()).join(" и ")} и стана ${elN(r).toLowerCase()}! Записвам го ${EDIBLE[r] ? "в рецептите" : "в шкафа"}.` : `Още ${elN(r).toLowerCase()}. Готово!`, 7000);
   save(); render();
 }
 // ---------- Книги ----------
@@ -2518,6 +2507,8 @@ function afterLoad() {
   if (!S.v || S.v < 3) { const keep = { ntfy: S.ntfy, notify: S.notify }; S = fresh(Date.now()); Object.assign(S, keep); dirty = true; }    // нов свят (v3): отначало с яйце
   S.pearls = S.pearls || 0;
   if (!S.mat) migrateMat();
+  for (const k of Object.keys(S.mat)) if (!EL[k]) { delete S.mat[k]; if (S.age) delete S.age[k]; }          // махнати неща (напр. магията)
+  if (S.found) S.found = S.found.filter(k => EL[k]); if (S.placed) S.placed = S.placed.filter(k => EL[k]); if (S.active) S.active = S.active.filter(k => EL[k]);
   if (S.placed && !S.active) S.active = [...S.placed];
   if (!S.placed) S.placed = Object.keys(S.mat).filter(k => cnt(k) > 0 && ["lamp", "glowcoral", "nightlight", "starlamp", "lighthouse", "dreamlamp", "compass", "snackcompass", "trampoline"].includes(k));
   if (S.task && (!EL[S.task.a] || !EL[S.task.b])) S.task = null;        // повредена задача от стара версия
@@ -3008,7 +2999,7 @@ function renderMix() {
 }
 function howMenu() {                         // какво да прави с нещата в полетата
   closeHowMenu();
-  const n = mixSel.length, opts = n === 1 ? ["heat", "cool", "apart", "magic"] : n === 2 ? ["mix", "heat", "cool", "asm"] : ["mix"];
+  const n = mixSel.length, opts = n === 1 ? ["heat", "cool", "apart"] : n === 2 ? ["mix", "heat", "cool", "asm"] : ["mix"];
   const go = how => { closeHowMenu(); const [a, b, ...more] = mixSel; mixSel = []; renderMix(); mix(a, b || null, "me", more, how); };
   if (opts.length === 1) return go(opts[0]);
   const m = document.createElement("div"); m.id = "howmenu";
