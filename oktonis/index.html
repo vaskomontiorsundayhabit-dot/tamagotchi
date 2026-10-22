@@ -276,6 +276,7 @@
   .gm { padding: 7px 11px; border-radius: 14px; max-width: 85%; font-size: 15px; background: rgba(185,246,255,.25); align-self: flex-start; }
   .gm.t { align-self: flex-end; background: rgba(255,179,107,.3); }
   .gq { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; } .gq button { padding: 7px 10px; border-radius: 12px; font-size: 13px; text-align: left; background: rgba(185,246,255,.18); color: inherit; border: 1px solid rgba(185,246,255,.4); }
+  .gq.drop button { padding: 4px; width: 44px; height: 44px; display: grid; place-items: center; } .gq.drop img.ei { width: 32px; height: 32px; } .gq button.sent { outline: 3px solid #b9f6ff; }
   .gq.snd button { background: rgba(255,120,120,.18); border-color: rgba(255,150,150,.5); }
   .gform { display: flex; gap: 6px; } .gform input { flex: 1; padding: 10px 12px; border-radius: 12px; border: 2px solid rgba(0,0,0,.2); font-size: 16px; } .gform button { padding: 10px 14px; border-radius: 12px; font-weight: 700; }
   #toast { position: fixed; left: 50%; top: calc(max(10px, env(safe-area-inset-top)) + 70px); transform: translate(-50%, -20px); z-index: 60; background: rgba(43,42,51,.92); color: #fff; padding: 10px 16px;
@@ -824,7 +825,17 @@ function queueGrab(id, kind) {
   if (grabQ.length === 1) grabT = performance.now();
 }
 function pickTrash(id) { if (role === "keeper") queueGrab(id, "t"); }
-function pickPart(id) { if (role === "keeper") queueGrab(id, "p"); }
+function pickPart(id) {
+  if (role !== "keeper") return;
+  const gi = S.parts.find(x => x.id === id && x.ghost);
+  if (gi) { pickFloor(id, "me");                                // от духа: прибира се тихо
+    if (S.asleep) S.ghostLoot = [...(S.ghostLoot || []), gi.k].slice(-5); else setTimeout(() => say("", pick(GHOST_PUZZLE)(gi.k), 7000), 1200);
+    dirty = true; save(); return; }
+  queueGrab(id, "p");
+}
+const GHOST_PUZZLE = [k => `Чакай… Откъде е ${elN(k).toLowerCase()} в сандъка? Вчера го нямаше!`, k => `${elN(k)}?! Не помня да съм го взимал. Някой е бил тук нощес…`,
+  k => `Странно… Сънувах светеща риба, а сега в сандъка има ${elN(k).toLowerCase()}. Съвпадение ли е?`, k => `Кой ми е оставил ${elN(k).toLowerCase()}? Тошик, ти ли беше? Не? Ох…`,
+  k => `${elN(k)}… Студено е на пипане. Като че ли е от друг свят. Брр.`, k => `Броих нещата преди сън. ${elN(k)} не беше там. Никога не греша в броенето!`];
 // ---------- Изобретенията вършат работа ----------
 const LIGHTS = ["lamp", "glowcoral", "nightlight", "starlamp", "lighthouse", "dreamlamp"];
 // ---------- Шкафът: изобретенията, които вършат работа ----------
@@ -2511,6 +2522,7 @@ function fillSheet(kind) {
     if ($("ghOn")) $("ghOn").onclick = () => { if (!ghost.on && !S.asleep) return; ghostSend({ t: ghost.on ? "off" : "on" }); fillSheet("ghost"); };
     sh.querySelectorAll("[data-gl]").forEach(b => b.onclick = () => { ghostSend({ t: "msg", x: GHOST_LINES[+b.dataset.gl] }); fillSheet("ghost"); });
     sh.querySelectorAll("[data-gs]").forEach(b => b.onclick = () => { ghostSend({ t: "sound", k: b.dataset.gs }); });
+    sh.querySelectorAll("[data-gd]").forEach(b => b.onclick = () => { ghostSend({ t: "drop", k: b.dataset.gd }); b.classList.add("sent"); setTimeout(() => b.classList.remove("sent"), 800); });
     if ($("ghForm")) $("ghForm").onsubmit = ev => { ev.preventDefault(); const x = $("ghIn").value.trim(); if (!x) return; if (role === "viewer" && !ghost.on) return;
       ghostSend({ t: role === "viewer" ? "msg" : "reply", x }); $("ghIn").value = ""; fillSheet("ghost"); setTimeout(() => $("ghIn")?.focus(), 50); };
   } else if (kind === "ransom" || kind === "krill") {
@@ -4085,6 +4097,11 @@ function ghostApply(m) {
     if (role === "keeper" && S.hatched) setTimeout(() => { sleepTalking = true; say("", pick(["Хрр… риба… светеща риба… хрр…", "Мм… кой е там… прозрачен… хрр…"]), 5000); sleepTalking = false; }, 900);
   }
   if (m.t === "off" && ghost.on) { ghost.on = false; renderGhostBtn(); }
+  if (m.t === "drop" && ghost.on && EL[m.k]) {                   // духът пуска предмет на дъното
+    if (role === "keeper" && S.parts.length < 8) { S.parts.push({ id: uid(), k: m.k, x: clamp(ghost.x / W + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true }); dirty = true; save(); }
+    ghost.last = { x: pick(["Подарък… от отвъдното…", "Вземи го… ако смееш…", "Това е за теб… бууу…"]), at: performance.now() };
+    return;
+  }
   if (m.t === "sound" && ghost.on) {                            // страшен звук
     if (!m.local || role === "viewer") ghostSound(m.k);
     if (role === "keeper" && S.hatched) setTimeout(() => { sleepTalking = true; say("", pick(["Хрр… к-кой е там… хрр…", "Мм… страх ме е… хрр…", "…мамо… хрр…"]), 4000); sleepTalking = false; }, 1500);
@@ -4146,6 +4163,7 @@ function drawGhost(t, s) {
 }
 const GHOST_LINES = ["Бууууу… аз съм рибата-дух…", "Чувам те как дишаш… хи-хи-хи…", "Под камъка има нещо… и то те гледа…", "Не поглеждай зад себе си…", "Тази нощ водата е студена… като мен…",
   "Някога и аз бях октопод… преди сто години…", "Шшшт… ако кажеш името ми, ще се върна…", "Броя пипалата ти… едно… две… липсва едно!", "Сандъкът ти скърца нощем… знаеш ли защо?", "Ще дойда пак… когато луната е пълна…"];
+const GHOST_DROPS = ["star", "shell", "coral", "feather", "pebble", "bulb", "bat", "magnet", "gear", "spring", "bolt", "cheese", "banana", "fish"];
 const GHOST_SOUNDS = [["wail", "👻 Вой"], ["wind", "🌬️ Вятър"], ["heart", "💓 Сърце"], ["creak", "🚪 Скърцане"], ["bell", "🔔 Камбана"], ["laugh", "😈 Смях"]];
 let actx = null;
 addEventListener("pointerdown", () => { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); } catch {} });
@@ -4170,7 +4188,8 @@ function ghostHtml(head) {
   return head("👻 Рибата-дух") + (role === "viewer" ? `<div class="row2"><button class="ans ${ghost.on ? "" : "yes"}" id="ghOn" ${awake ? "disabled" : ""}>${ghost.on ? "Скрий рибата-дух" : "Покажи рибата-дух"}</button></div>` +
     (awake ? `<div class="sub">Рибата-дух идва само докато Октонис спи. Сега е буден.</div>` : "") : "") +
     `<div class="glog">${log}</div>` + (role === "viewer" && ghost.on ? `<div class="sub">Бързи страшни фрази:</div><div class="gq">${GHOST_LINES.map((x, i) => `<button data-gl="${i}">${esc(x)}</button>`).join("")}</div>
-      <div class="sub">Страшни звуци:</div><div class="gq snd">${GHOST_SOUNDS.map(([k, n]) => `<button data-gs="${k}">${n}</button>`).join("")}</div>` : "") +
+      <div class="sub">Страшни звуци:</div><div class="gq snd">${GHOST_SOUNDS.map(([k, n]) => `<button data-gs="${k}">${n}</button>`).join("")}</div>
+      <div class="sub">Пусни предмет на дъното:</div><div class="gq drop">${GHOST_DROPS.map(k => `<button data-gd="${k}" title="${esc(elN(k))}">${elI(k)}</button>`).join("")}</div>` : "") +
     (role === "viewer" && !ghost.on ? `<div class="sub">Пиши, след като покажеш рибата-дух.</div>` : `<form id="ghForm" class="gform"><input id="ghIn" maxlength="200" autocomplete="off" placeholder="${role === "viewer" ? "Напиши като рибата-дух…" : "Отговори на рибата-дух…"}"><button>Прати</button></form>`);
 }
 // ---------- Историята с рачетата Крил (шестимата, които не обичат снимки) ----------
@@ -4565,6 +4584,8 @@ setInterval(() => {
     }
     if (p - ptr.t < 60000 && now - (lastMinTick || 0) > 60000) { lastMinTick = now; td().mins++; }
     if (wasAsleep === false && S.asleep && S.hatched && new Date().getHours() >= 18) daySummary();   // вечер заспива: записва деня
+    if (wasAsleep && !S.asleep && S.hatched && (S.ghostLoot || []).length) { const k = S.ghostLoot[0]; S.ghostLoot = S.ghostLoot.slice(1); dirty = true; sulkFace = performance.now();
+      setTimeout(() => say("", pick(GHOST_PUZZLE)(k), 8000), 3500); log(`❓ Намери ${elN(k).toLowerCase()} в сандъка и не знае откъде е.`); }
     if (wasAsleep && !S.asleep && S.hatched) { const hh = new Date().getHours(); if (hh >= 5 && hh < 13) S.mornDue = new Date().toDateString(); }   // сутрин, както и да се е събудил
     if (wasAsleep && !S.asleep && S.hatched && S.stage !== "baby") {          // току-що се събуди
       S.sleeps = (S.sleeps || 0) + 1; dirty = true;
@@ -4651,7 +4672,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 10 * 60; i++) minute(t0 + i * MIN, true, {}); return { food: Math.round(100 - S.hunger), clean: Math.max(0, 100 - S.trash.length * 15), energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 10 * 60; i++) minute(t0 + i * MIN, true, {}); return { food: Math.round(100 - S.hunger), clean: Math.max(0, 100 - S.trash.length * 15), energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, pickPart: id => pickPart(id), items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
