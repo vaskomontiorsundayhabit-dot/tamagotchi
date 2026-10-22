@@ -135,6 +135,11 @@ HT = {  # 🔥 загряване: предмет → [(резултат, бел
 }
 PLASTIC = {"Торбичка", "Пластмасова бутилка", "Капачка", "Опаковка", "Сламка", "Пластмасова чаша", "Джапанка", "Спукан балон", "Маска за лице", "Рибарска корда", "Изгубена мрежа", "Гума"}
 HT2 = [(["Писмо", "Лимон"], "Тайно послание", "лимоненият сок е невидимо мастило, топлината го показва"), (["Буркан с мед", "Лимон"], "Чай с мед и лимон", "лекува гърлото")]
+CL = {  # ❄️ охлаждане (студеното течение от дълбокото)
+ "Черен вулканичен камък": [("Обсидиан", "вулканично стъкло, остро като нож")], "Буркан": [("Ледено кубче", "водата вътре замръзва")], "Пластмасова чаша": [("Ледено кубче", "")],
+ "Лимон": [("Лимонов сорбет", "")], "Буркан с мед": "не (медът не замръзва, само се сгъстява)", "Корал": "не (студът го наранява)",
+}
+CL2 = [(["Буркан с мед", "Лимон"], "Лимонада", "с лед, за горещите дни"), (["Кокосово мляко", "Буркан с мед"], "Кокосов сладолед", "")]
 LIVING = {"Водата и дъното": "", "Живите (малки животинки)": "живо"}
 RAR = {"о": ("обикновено", "c"), "р": ("рядко", "r"), "м": ("много рядко", "v")}
 total = sum(len(c[2]) for c in CATS); old = sum(1 for c in CATS for i in c[2] if i[6])
@@ -150,10 +155,16 @@ def ht(n, cat):
     if cat.startswith("Живите"): return '<small class="no">живо, не се пипа</small>'
     if n in PLASTIC: return '<small class="no">отказва (пластмаса и гума смърдят и тровят водата)</small>'
     return '<small class="no">нищо не става</small>'
+def cl(n, cat):
+    if n in CL:
+        v = CL[n]
+        return "".join(chipn(p, note) for p, note in v) if isinstance(v, list) else f'<small class="no">{e(v)}</small>'
+    if cat.startswith("Живите"): return '<small class="no">живо, не се пипа</small>'
+    return '<small class="no">нищо не става</small>'
 secs = ""
 for name, sub, items in CATS:
-    rows = "".join(f'<tr><td class="em"><i class="im i-{K[i[1]]}"></i></td><td><b>{e(i[1])}</b>{" <span class=\"old\">вече я има</span>" if i[6] else ""}{f"<br><small>{e(i[2])}</small>" if i[2] else ""}</td><td>{e(i[3])}</td><td><span class="r {RAR[i[4]][1]}">{RAR[i[4]][0]}</span></td><td>{e(i[5])}</td><td>{ap(i[1], name)}</td><td>{ht(i[1], name)}</td></tr>' for i in items)
-    secs += f'<section><h2>{e(name)} <span class="cnt">{len(items)}</span></h2><p class="muted">{e(sub)}</p><div class="tw"><table><tr><th></th><th>Предмет</th><th>Свойства</th><th>Колко често</th><th>Бележка</th><th>🔧 Разглобява се на</th><th>🔥 Загрява се на</th></tr>{rows}</table></div></section>'
+    rows = "".join(f'<tr><td class="em"><i class="im i-{K[i[1]]}"></i></td><td><b>{e(i[1])}</b>{" <span class=\"old\">вече я има</span>" if i[6] else ""}{f"<br><small>{e(i[2])}</small>" if i[2] else ""}</td><td>{e(i[3])}</td><td><span class="r {RAR[i[4]][1]}">{RAR[i[4]][0]}</span></td><td>{e(i[5])}</td><td>{ap(i[1], name)}</td><td>{ht(i[1], name)}</td><td>{cl(i[1], name)}</td></tr>' for i in items)
+    secs += f'<section><h2>{e(name)} <span class="cnt">{len(items)}</span></h2><p class="muted">{e(sub)}</p><div class="tw"><table><tr><th></th><th>Предмет</th><th>Свойства</th><th>Колко често</th><th>Бележка</th><th>🔧 Разглобява се на</th><th>🔥 Загрява се на</th><th>❄️ Охлажда се на</th></tr>{rows}</table></div></section>'
 newp = "".join(f'<tr><td class="em"><i class="im i-{K[n]}"></i></td><td><b>{e(n)}</b><br><small>{e(d)}</small></td></tr>' for n, d in NEWP)
 secs += f'<section><h2>Нови части от разглобяването <span class="cnt">{len(NEWP)}</span></h2><p class="muted">Те не падат на дъното. Получават се само като разглобиш нещо.</p><div class="tw"><table>{newp}</table></div></section>'
 ht2 = "".join(f'<tr><td>{" + ".join(chipn(x) for x in ins)}</td><td class="op">🔥</td><td>{chipn(r)}<br><small class="no">{e(why)}</small></td></tr>' for ins, r, why in HT2)
@@ -161,10 +172,15 @@ secs += f'<section><h2>Загряване на две неща</h2><div class="t
 newh = ["Тухла", "Чипс от ламинария", "Въглен", "Восък", "Изсушена книга", "Костен прах", "Тайно послание", "Чай с мед и лимон"]
 oldh = ["Горещо камъче", "Сушено водорасло", "Шепа пепел", "Изгоряла крушка"]
 secs += f'<section><h2>Нови неща от загряването <span class="cnt">{len(newh)}</span></h2><div class="row">{"".join(chipn(n) for n in newh)}</div><p class="muted">И тези, които вече са нарисувани в демото:</p><div class="row">{"".join(chipn(n) for n in oldh)}</div></section>'
+cl2 = "".join(f'<tr><td>{" + ".join(chipn(x) for x in ins)}</td><td class="op">❄️</td><td>{chipn(r)}{f"<br><small class=no>{e(why)}</small>" if why else ""}</td></tr>' for ins, r, why in CL2)
+secs += f'<section><h2>Охлаждане на две неща</h2><div class="tw"><table>{cl2}</table></div></section>'
+newc = ["Обсидиан", "Ледено кубче", "Лимонов сорбет", "Лимонада", "Кокосов сладолед"]
+secs += f'<section><h2>Нови неща от охлаждането <span class="cnt">{len(newc)}</span></h2><div class="row">{"".join(chipn(n) for n in newc)}</div></section>'
+ncl = sum(1 for v in CL.values() if isinstance(v, list))
 nht = sum(1 for v in HT.values() if isinstance(v, list))
 nap = len(AP)
 dropped = ["Сирене", "Банан", "Хляб", "Мляко", "Яйце", "Синьо сирене и другите развалени храни", "Вестник (разпада се във водата)", "Магнит (сам почти не се намира)"]
 tpl = open(S + "/gen0_tpl.html").read().replace("/*IMGCSS*/", "".join(f".i-{k}{{background-image:url({v})}}" for k, v in IMGS.items()))
-out = tpl.replace("{{SECS}}", secs).replace("{{TOTAL}}", str(total)).replace("{{NEW}}", str(total - old)).replace("{{OLD}}", str(old)).replace("{{NAP}}", str(nap)).replace("{{NHT}}", str(nht)).replace("{{DROPPED}}", ", ".join(dropped))
+out = tpl.replace("{{SECS}}", secs).replace("{{TOTAL}}", str(total)).replace("{{NEW}}", str(total - old)).replace("{{OLD}}", str(old)).replace("{{NAP}}", str(nap)).replace("{{NHT}}", str(nht)).replace("{{NCL}}", str(ncl)).replace("{{DROPPED}}", ", ".join(dropped))
 open(S + "/art/oktonis-gen0.html", "w").write(out)
 print(total, old)
