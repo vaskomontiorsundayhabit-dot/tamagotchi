@@ -8,3 +8,4 @@ K.update({"Конец":"thread","Метален обръч":"hoop","Кокосо
 K.update({"Парче стъкло":"glassshard","Стоманена нишка":"steelwire","Празна консерва":"emptycan","Тухла":"brick","Чипс от ламинария":"kelpchips","Въглен":"charcoal","Восък":"wax","Изсушена книга":"driedbook","Карамел":"caramel","Тайно послание":"secretnote","Чай с мед и лимон":"honeytea","Горещо камъче":"hotstone","Сушено водорасло":"dryweed","Бульон от кокал":"broth","Опърлено перо":"singed","Шепа пепел":"ash","Нажежен болт":"hotbolt","Огъната лъжица":"bentspoon","Изгоряла крушка":"burntbulb","Нагревател":"heater","Топъл чорап":"warmsock"})
 K.update({"Костен прах":"bonedust"})
 K.update({"Обсидиан":"obsidian","Лимонов сорбет":"sorbet","Лимонада":"lemonade","Кокосов сладолед":"cocoicecream","Ледено кубче":"icecube2"})
+K.update({"Компост":"compost","Ръжда":"rust","Хартиена каша":"papermush","Кокосов кълн":"cocosprout","Мухлясал лимон":"moldlemon","Празна кесийка":"emptypurse"})
