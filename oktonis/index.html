@@ -274,6 +274,9 @@
   .gq { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; } .gq button { padding: 7px 10px; border-radius: 12px; font-size: 13px; text-align: left; background: rgba(185,246,255,.18); color: inherit; border: 1px solid rgba(185,246,255,.4); }
   .gq.snd button { background: rgba(255,120,120,.18); border-color: rgba(255,150,150,.5); }
   .gform { display: flex; gap: 6px; } .gform input { flex: 1; padding: 10px 12px; border-radius: 12px; border: 2px solid rgba(0,0,0,.2); font-size: 16px; } .gform button { padding: 10px 14px; border-radius: 12px; font-weight: 700; }
+  #toast { position: fixed; left: 50%; top: calc(max(10px, env(safe-area-inset-top)) + 70px); transform: translate(-50%, -20px); z-index: 60; background: rgba(43,42,51,.92); color: #fff; padding: 10px 16px;
+    border-radius: 14px; font-weight: 700; font-size: 15px; max-width: 86vw; text-align: center; opacity: 0; pointer-events: none; transition: all .25s; }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
   .snap.go { left: calc(100% - 34px); top: 340px; transform: translate(-50%, -50%) scale(.12); opacity: .2; }
   @keyframes snapin { from { transform: translate(-50%, -50%) scale(.3) rotate(10deg); opacity: 0; } }
   #chatBtn.ping i { display: block; } #chatBtn.ping { animation: wig .6s infinite; }
@@ -756,6 +759,7 @@ function morningState(t) {
   if (S.mornDay === day || h < 5 || !S.hatched) return;
   S.mornDay = day;
   S.energy = 100;
+  if (S.hurt) { S.hurt = 0; S.plaster = 0; log("🩹 Контузията мина през нощта.", t); }
   S.hunger = Math.max(S.hunger, rnd(85, 90));
   while (S.trash.length < 6) S.trash.push({ id: uid(), k: pick(FLOOR.junk), x: rnd(0.08, 0.92), t });
   S.mood = Math.min(S.mood, rnd(50, 60)); S.health = Math.min(S.health, rnd(50, 60));
@@ -1227,9 +1231,14 @@ function myThoughts() {
 const EDIBLE = { seapizza: 45, candycoral: 25, tea: 15, soup: 45, pancake: 40, omelet: 40, pudding: 30, cheese: 22, banana: 18, fish: 28, bread: 22, egg: 20, milk: 15, bluecheese: 25, yogurt: 20, blackbanana: 12,
   sandwich: 40, shake: 35, fishburger: 45, cake: 40, fondue: 50 };
 const YUCK = ["stinkyfish", "rottenegg", "moldbread"];
+function toast(x) {                            // кратко съобщение над панелите (за да се вижда защо нещо не става)
+  let el = $("toast"); if (!el) { el = document.createElement("div"); el.id = "toast"; document.body.appendChild(el); }
+  el.textContent = x; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 3200);
+}
 function feed(k) {
   if (role !== "keeper" || !S.hatched || !cnt(k)) return;
-  if (S.asleep) return say("", "Шшш… спи.");
+  if (S.asleep) return toast("😴 Спи. Насън не може да яде. Събуди го първо.");
+  if (sheetKind) closeSheet();                   // да се види как яде
   if (YUCK.includes(k)) {                   // яде го, но се разболява
     takeMat(k); startEat(k); S.hunger = clamp(S.hunger - 15); S.mood = clamp(S.mood - 8); S.health = clamp(S.health - 12);
     if (!S.sick) { S.sick = S.t; S.goodMin = 0; S.badMin = 0; }
@@ -1246,7 +1255,7 @@ function feed(k) {
     say("", k === "soup" ? "Чорба като на баба октоподка… Вече ми е по-добре." : "Топъл чай… Гърлото спря да ме боли. Благодаря.", 6000);
     return save(), render();
   }
-  if (S.hunger < 20) return say("", "Не съм гладен. Режимът си е режим!");
+  if (S.hunger < 20) { toast("🍕 Не е гладен. Сит е."); return say("", "Не съм гладен. Режимът си е режим!"); }
   takeMat(k); startEat(k); S.hunger = clamp(S.hunger - EDIBLE[k]); S.mood = clamp(S.mood + (EL[k][3] === "made" ? 8 : 3)); S.lastCare = Date.now(); dirty = true;
   log(`${elE(k)} Хапна ${elN(k).toLowerCase()} от сандъка.`);
   say("", k === "bluecheese" ? "Синьо сирене! Звучи развалено, ама е деликатес." : EL[k][3] === "made" ? `${elN(k)}! Сами го направихме. Двойно вкусно.` : pick(["Ммм! Прясно. Проверих датата.", "Вкусно! Ядох най-старото първо, както трябва."]));
@@ -2225,7 +2234,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 39;
+const PAGE_V = 40;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -4544,6 +4553,7 @@ setInterval(() => {
     }
     if (p - ptr.t < 60000 && now - (lastMinTick || 0) > 60000) { lastMinTick = now; td().mins++; }
     if (wasAsleep === false && S.asleep && S.hatched && new Date().getHours() >= 18) daySummary();   // вечер заспива: записва деня
+    if (wasAsleep && !S.asleep && S.hatched) { const hh = new Date().getHours(); if (hh >= 5 && hh < 13) S.mornDue = new Date().toDateString(); }   // сутрин, както и да се е събудил
     if (wasAsleep && !S.asleep && S.hatched && S.stage !== "baby") {          // току-що се събуди
       S.sleeps = (S.sleeps || 0) + 1; dirty = true;
       if (!S.dreamAt) S.dreamAt = S.sleeps + Math.floor(rnd(6, 9));
