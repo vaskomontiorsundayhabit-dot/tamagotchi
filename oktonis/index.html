@@ -61,6 +61,8 @@
   #mixbar .slot.over { background: rgba(255,209,102,.6); }
   #mixbar button { height: 52px; border-radius: 14px; padding: 0; font-size: 24px; background: var(--peach); border: 3px solid var(--ink); }
   #mixbar button:disabled { opacity: .5; }
+  #howmenu { position: fixed; right: 12px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 66px); z-index: 30; display: flex; flex-direction: column; gap: 6px; animation: uiin .2s ease; }
+  #howmenu button { font: 700 16px system-ui, sans-serif; padding: 10px 16px; border-radius: 14px; border: 3px solid var(--ink); background: var(--peach); color: var(--ink); text-align: left; box-shadow: 0 3px 0 rgba(0,0,0,.25); cursor: pointer; }
   body.hasbar #sheet { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 62px); border-bottom: 3px solid var(--ink); border-radius: 24px; }
   body.hasbar #hint { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 70px); }
   #ghost { position: fixed; z-index: 10; pointer-events: none; font-size: 46px; transform: translate(-50%, -75%) scale(1.1); filter: drop-shadow(0 4px 4px rgba(0,0,0,.4)); }
@@ -288,7 +290,7 @@
   .cell { position: relative; } .cell .fin { position: absolute; left: 4px; top: 2px; font-style: normal; font-size: 13px; color: #ffd23f; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
   .spine.my em { font-size: 12px; } .spine.lockb i { font-size: 13px; } .spine.lockb em { padding-top: 22px; } .spine.my { flex-basis: 40px; border-color: rgba(0,0,0,.55); }
   #sheet .back { background: none; border: 0; color: inherit; font-weight: 700; padding: 2px 0 8px; cursor: pointer; opacity: .85; }
-  .finl { display: inline-block; font-size: 9px; font-weight: 800; color: #3a2410; background: #ffd23f; border-radius: 6px; padding: 0 4px; vertical-align: 2px; line-height: 1.5; }
+  .finl, .gd span.finl { display: inline-block; font-size: 9px; font-weight: 800; color: #3a2410; background: #ffd23f; border-radius: 6px; padding: 0 4px; vertical-align: 2px; line-height: 1.5; }
   .cshelf { background: #6b4226; border-radius: 8px; padding: 6px 8px 0; box-shadow: inset 0 0 0 4px #4e2e18; margin: 8px 0; }
   .crow { display: flex; align-items: flex-end; justify-content: space-around; gap: 4px; min-height: 72px; border-bottom: 12px solid #8b5a34; box-shadow: 0 6px 0 #4e2e18; margin-bottom: 14px; padding: 0 4px; }
   .cit { position: relative; width: 58px; height: 62px; display: grid; place-items: end center; cursor: pointer; transition: transform .15s; }
@@ -499,12 +501,127 @@ Object.assign(EL, { thermo: ["🌡️", "Термометър", 1, "made", 12], 
 REC.push(["bottle", "bulb", "thermo"], ["plastic", "weed", "medkit"]);
 const BOOK_INV = { tinguitar: "b_tin", seasun: "b_light", seapizza: "b_kitchen", coralfeed: "b_spoil", tentclock: "b_mech", flute: "b_sound", spyglass: "b_maps", smiler: "b_great", backclock: "b_great2", train: "b_mach", bath: "b_bubbles", pigeon: "b_post", horn: "b_whales", inkwell: "b_ink", springshoes: "b_jump", candycoral: "b_sweets", firefly: "b_nightl", jetpack: "b_rocket", hourglass: "b_sand", navstar: "b_ways", robocrab: "b_robots", tea: "b_tea", noseclip: "b_stink", oldnotes: "b_diary", crown: "b_legend" };
 const BOOK_DESC = { tinguitar: "Дрънка. Не винаги в тон, но с чувство.", seasun: "Малко слънце за дъното. Топли пипалата.", coralfeed: "Миризлив, но коралите го обожават.", tentclock: "Всяко пипало показва различен час. Удобно.", flute: "Свири сама, когато мине течение.", spyglass: "Вижда чак до другия риф. И мъничко по-нататък.", smiler: "Който го погледне, се усмихва. Проверено.", backclock: "Връща времето с една минута. Само веднъж на ден.", train: "Чуф-чуф-бълбук. Возят се рибките.", bath: "Пълна с мехурчета, които никога не свършват.", pigeon: "Лети с писмата между рифовете.", horn: "Когато духнеш в него, китовете отговарят.", inkwell: "Мастилото никога не свършва. Калмарът е съгласен.", springshoes: "Осем обувки. Осем пъти по-високо.", firefly: "Светулки под вода. Никой не знае как.", jetpack: "Бззз! И си на другия край на дъното.", hourglass: "Пясъкът тече нагоре. Под вода всичко е наопаки.", navstar: "Сочи към дома, където и да си.", robocrab: "Ходи настрани. Като истински рак, само че с болтове.", noseclip: "Вече нищо не мирише. Дори хубавите неща.", oldnotes: "Пълна с недовършени идеи. Може би ще ги довършим.", crown: "Короната на морския цар. Пасва на всяко пипало." };
+// ---------- Свойства, начини (загрей, охлади, разглоби) и скрити рецепти ----------
+// нови неща: id → [емоджи, име, цена, рисунка [[предмет, x, y, мащаб]…], ефекти по рисунката, колко засища (ако се яде), описание]
+const NEW_EL = {
+  // странни открития по свойствата
+  jumpjelly: ["🍮", "Подскачащо желе", 8, [["yogurt", 0, 0, 0.9]], "bounce eyes", 30, "Не стои мирно в чинията. Трябва да го хванеш."],
+  pogo: ["🔩", "Пого-болт", 6, [["spring", 0, 0.15, 0.7], ["bolt", 0, -0.15, 0.7]], "bounce", 0, "Скача сам. Никой не знае накъде."],
+  hoppebble: ["🪨", "Скачащо камъче", 5, [["pebble", 0, 0, 0.9]], "bounce eyes", 0, "Камъче, което не иска да стои на едно място."],
+  slippers: ["🥿", "Подскачащи пантофи", 8, [["sock", -0.1, -0.06, 0.65], ["spring", 0.16, 0.16, 0.5]], "bounce", 0, "Ходиш и подскачаш. Особено по стълби."],
+  boingtower: ["🗼", "Пружинена кула", 7, [["spring", 0, 0.16, 0.6], ["spring", 0, -0.16, 0.6]], "bounce", 0, "Пада и пак се изправя. Цял ден."],
+  mush: ["🥣", "Мистериозна каша", 5, [["egg", -0.12, 0, 0.45], ["banana", 0.13, 0, 0.45]], "plate steam", 35, "Не питай какво има вътре. Вкусно е. Мисля."],
+  boltsandwich: ["🥪", "Сандвич с болтове", 4, [["bread", 0, 0, 0.8], ["bolt", 0.1, -0.05, 0.4]], "", 0, "Изглежда вкусно. Не е. Не се яде."],
+  seasalad: ["🥗", "Морска салата", 9, [["weed", 0, -0.08, 0.6]], "plate", 35, "Хрупкава и зелена. Много здравословна."],
+  breadpillow: ["🍞", "Хлебна възглавница", 6, [["bread", 0, 0.05, 0.9]], "zzz", 0, "Мека и топла. И малко трохи по пипалата."],
+  picnic: ["🧺", "Плаващ пикник", 8, [["bottle", -0.15, 0, 0.6], ["bread", 0.15, 0.06, 0.55]], "bubbles", 0, "Обядът сам плува към теб."],
+  glowbanana: ["🍌", "Светещ банан", 9, [["banana", 0, 0, 0.85]], "glow spark", 20, "Ядеш го и после светиш. Малко."],
+  buzzbanana: ["🍌", "Бръмчащ банан", 6, [["banana", 0, 0, 0.85]], "zap", 0, "Бзззз. Не е ясно защо. Просто бръмчи."],
+  singcheese: ["🧀", "Пеещо сирене", 8, [["cheese", 0, 0.05, 0.8]], "notes eyes", 0, "Пее, когато го режеш. Затова никой не го реже."],
+  stinkstew: ["🍲", "Яхния „Не питай“", 1, [["stinkyfish", 0, -0.02, 0.6]], "plate stink", 0, "Миризмата пристига преди нея. Не се яде."],
+  prism: ["🔮", "Призма-дъга", 12, [["bottle", 0, 0, 0.8]], "rainbow spark", 0, "Хваща светлината и я пуска на цветни ивици."],
+  terrarium: ["🫙", "Подводен терариум", 10, [["bottle", 0, 0, 0.85], ["weed", 0, 0.1, 0.35]], "", 0, "Цяла малка градина в бутилка."],
+  periscope: ["🔭", "Перископ", 10, [["bottle", 0, 0.05, 0.7], ["spoon", 0.16, -0.16, 0.5]], "", 0, "Гледаш над водата, без да излизаш."],
+  bubblejar: ["🫧", "Буркан с мехурчета", 8, [["bottle", 0, 0, 0.85]], "bubbles", 0, "Мехурчетата вътре никога не свършват."],
+  shinybolt: ["🔩", "Блестящ болт", 7, [["bolt", 0, 0, 0.8]], "glow spark", 0, "Толкова лъскав, че се оглеждаш в него."],
+  glowgarden: ["🌿", "Светеща градинка", 10, [["weed", 0, 0, 0.85]], "glow spark", 0, "Водорасли, които светят като малки звезди."],
+  glowpillow: ["🪶", "Светеща възглавничка", 9, [["feather", 0, 0, 0.85]], "glow", 0, "Мека и свети. За сънища без страх."],
+  zaplamp: ["💡", "Мълниеносна лампа", 14, [["bulb", 0, 0, 0.85]], "glow zap", 0, "Свети ярко и пука от ток."],
+  clanker: ["🤖", "Тракащ робот-джудже", 12, [["gear", 0, 0.05, 0.75]], "eyes", 0, "Трака, върти се и не прави нищо полезно. Но е сладък."],
+  rustweed: ["🌿", "Ръждясало водорасло", 3, [["weed", 0, 0, 0.85]], "rust", 0, "Водорасло с вкус на болт. Странно."],
+  armorsock: ["🧦", "Чорап с броня", 9, [["sock", 0, 0.05, 0.8], ["can", 0.14, -0.16, 0.35]], "", 0, "Най-здравият чорап на дъното. Не се къса."],
+  tinboat: ["⛵", "Тенекиена лодчица", 9, [["can", 0, 0.08, 0.7]], "bubbles", 0, "Плава. Почти не потъва."],
+  gong: ["🔔", "Гонг", 10, [["can", 0, 0, 0.8]], "notes", 0, "БОНГ. Чува се чак до другия риф."],
+  buzzer: ["🔋", "Бръмчалка", 7, [["bat", 0, 0, 0.8]], "zap", 0, "Бзз! Не я пипай с мокро пипало. Всичко е мокро."],
+  minigarden: ["🪴", "Мини градинка", 10, [["coral", -0.12, 0, 0.6], ["weed", 0.15, 0.05, 0.55]], "", 0, "Малко парче риф, само наше."],
+  nest: ["🪺", "Гнездо от водорасли", 8, [["weed", 0, 0.05, 0.8], ["feather", 0.1, -0.1, 0.4]], "", 0, "Уютно. Някой може да се засели."],
+  raft: ["🛶", "Сал от водорасли", 8, [["weed", -0.1, 0, 0.6], ["weed", 0.1, 0, 0.6]], "bubbles", 0, "Плава отгоре. Като малък остров."],
+  shellwhistle: ["🐚", "Свирка от раковина", 9, [["shell", 0, 0, 0.85]], "notes", 0, "Свири като вятъра горе над водата."],
+  zapcoral: ["🪸", "Наелектризиран корал", 9, [["coral", 0, 0, 0.85]], "zap", 0, "Пука, ако го докоснеш. Рибките го избягват."],
+  blanket: ["🧶", "Кърпено одеяло", 7, [["sock", -0.12, 0, 0.55], ["paper", 0.14, 0.05, 0.5]], "", 0, "Ушито от всичко меко на дъното."],
+  kite: ["🪁", "Подводно хвърчило", 8, [["paper", 0, 0, 0.75]], "bubbles", 0, "Хвърчи с теченията. Бавно и красиво."],
+  staticsock: ["🧦", "Наелектризиран чорап", 5, [["sock", 0, 0, 0.85]], "zap", 0, "Лепне за всичко. Особено за пипала."],
+  earmuffs: ["🎧", "Антифони", 6, [["sock", -0.15, 0, 0.55], ["sock", 0.15, 0, 0.55]], "", 0, "Тишина. Най-сетне. Не чуваш дори мехурчетата."],
+  bubbleballoon: ["🎈", "Мехурен балон", 7, [["plastic", 0, 0, 0.8]], "bubbles", 0, "Пълен с мехурчета. Иска да полети нагоре."],
+  echo: ["🥤", "Ехо в чаша", 6, [["cup", 0, 0, 0.8]], "notes", 0, "Кажеш нещо и то ти отговаря. Със закъснение."],
+  perfume: ["🧴", "Парфюм „Отлив“", 3, [["bottle", 0, 0, 0.8]], "stink spark", 0, "Мирише на… приключение. Силно приключение."],
+  thunderball: ["⚡", "Кълбо мълния", 14, [["bat", 0, 0, 0.6]], "glow zap", 0, "Малка гръмотевица в пипалата. Внимавай."],
+  // загрято и изстудено
+  boiledegg: ["🥚", "Варено яйце", 4, [["egg", 0, 0, 0.8]], "steam", 25, "Твърдо и топло. Идеално за закуска."],
+  grilledfish: ["🐟", "Печена риба", 7, [["fish", 0, -0.02, 0.8]], "plate steam", 40, "Хрупкава коричка. Мирише прекрасно."],
+  toast: ["🍞", "Препечен хляб", 4, [["bread", 0, 0, 0.8]], "steam", 28, "Хрупка. Трохите плуват наоколо."],
+  meltcheese: ["🧀", "Разтопено сирене", 6, [["cheese", 0, 0, 0.8]], "steam", 28, "Точи се на конци. Цели метри конци."],
+  bakedbanana: ["🍌", "Печен банан", 4, [["banana", 0, -0.02, 0.8]], "plate steam", 25, "Сладък като карамел."],
+  hotmilk: ["🥛", "Топло мляко", 5, [["milk", 0, 0, 0.8]], "steam", 22, "Преди сън. Сънищата стават по-хубави."],
+  blob: ["🟣", "Пластмасова топка", 2, [["plastic", 0, 0, 0.7]], "steam", 0, "Беше торбичка. Вече е топка. Кой знае защо."],
+  lens: ["🔍", "Стъклена леща", 9, [["bottle", 0, 0, 0.7]], "spark", 0, "Всичко през нея е голямо. Дори проблемите."],
+  dryweed: ["🌿", "Сушено водорасло", 3, [["weed", 0, 0, 0.8]], "steam", 12, "Хрупкава закуска. Солена като морето."],
+  hotstone: ["🪨", "Горещо камъче", 3, [["pebble", 0, 0, 0.8]], "steam", 0, "Топли пипалата в студена нощ."],
+  grilledsand: ["🥪", "Топъл сандвич", 12, [["bread", 0, 0.05, 0.8], ["cheese", 0, -0.08, 0.45]], "steam", 50, "Сиренето се разтопи точно колкото трябва."],
+  tinfish: ["🥫", "Риба в консерва", 6, [["can", 0, 0.05, 0.8], ["fish", 0, -0.25, 0.4]], "", 35, "Пази се дълго. Отваря се трудно."],
+  icecream: ["🍦", "Сладолед", 8, [["milk", 0, 0, 0.8]], "ice", 25, "Сладолед под водата. Не се топи!"],
+  frozenbanana: ["🍌", "Замразен банан", 4, [["banana", 0, 0, 0.8]], "ice", 18, "Можеш да чукаш пирони с него. После го изяж."],
+  frozenfish: ["🐟", "Замразена риба", 5, [["fish", 0, 0, 0.8]], "ice", 28, "Не се разваля. Никога. Е, почти."],
+  snowstar: ["❄️", "Снежна звезда", 9, [["star", 0, 0, 0.8]], "ice spark", 0, "Звезда, която е и снежинка. Много рядко."],
+  froyo: ["🍧", "Замразено кисело мляко", 7, [["yogurt", 0, 0, 0.8]], "ice", 22, "Кисело и студено. Пипалата треперят."],
+  bananaice: ["🍨", "Бананов сладолед", 12, [["milk", -0.12, 0, 0.6], ["banana", 0.15, 0, 0.55]], "ice", 40, "Най-хубавият сладолед на дъното. Без конкуренция."],
+  // скрити (стават само при нещо специално)
+  starjar: ["🫙", "Буркан със звездна светлина", 30, [["bottle", 0, 0, 0.85]], "glow spark", 0, "Звездна светлина, хваната през нощта. Свети вечно."],
+  moonstone: ["🌕", "Лунен камък", 35, [["pebble", 0, 0, 0.8]], "moon glow", 0, "Свети меко. Като луната, но по-малък."],
+  dancingshell: ["🐚", "Танцуваща раковина", 30, [["shell", 0, 0, 0.85]], "notes eyes", 0, "Танцува, щом чуе музика. Понякога и без музика."],
+  laughcup: ["🥤", "Чаша смях", 25, [["cup", 0, 0, 0.8]], "smile spark", 0, "Смехът вътре не изтича. Пий по малко."],
+  dew: ["💧", "Бутилка утринна роса", 25, [["bottle", 0, 0, 0.8]], "drops", 15, "Събрана с първите лъчи. Освежава."],
+  moonmagnet: ["🧲", "Лунен магнит", 50, [["magnet", 0, 0, 0.8]], "moon glow", 0, "Привлича приливите. Рядко се прави."],
+  memoir: ["📖", "Мемоари", 40, [["paper", 0, 0, 0.8], ["shell", 0.18, 0.18, 0.35]], "", 0, "Целият му живот, записан с треперещо пипало."],
+};
+// свойствата на нещата от дъното (направените ги наследяват от съставките си)
+const TAG0 = { can: "metal sound", cup: "float sound", plastic: "soft float", sock: "soft", bone: "nature", paper: "soft", bottle: "glass float", tire: "bounce",
+  shell: "nature sound", coral: "nature", weed: "nature", pebble: "nature", feather: "soft", star: "nature light", bolt: "metal", gear: "metal", bat: "power metal",
+  magnet: "power metal", bulb: "light glass", wire: "power metal", spring: "bounce metal", spoon: "metal", cheese: "food", banana: "food", fish: "food", bread: "food",
+  egg: "food", milk: "food", yogurt: "food", bluecheese: "food stink", blackbanana: "food stink", stinkyfish: "stink", moldbread: "stink", rottenegg: "stink" };
+const TAG_SAY = { metal: "е метално", sound: "звънти", float: "плава", soft: "е меко", nature: "е от рифа", glass: "е стъклено", bounce: "пружинира", light: "свети",
+  power: "има ток", food: "е за ядене", stink: "мирише" };
+const WILD = { "bounce+food": "jumpjelly", "bounce+metal": "pogo", "bounce+nature": "hoppebble", "bounce+soft": "slippers", "bounce+bounce": "boingtower",
+  "food+food": "mush", "food+metal": "boltsandwich", "food+nature": "seasalad", "food+soft": "breadpillow", "float+food": "picnic", "food+light": "glowbanana",
+  "food+power": "buzzbanana", "food+sound": "singcheese", "food+stink": "stinkstew", "glass+light": "prism", "light+light": "prism", "glass+nature": "terrarium",
+  "glass+metal": "periscope", "float+glass": "bubblejar", "light+metal": "shinybolt", "light+nature": "glowgarden", "light+soft": "glowpillow", "light+power": "zaplamp",
+  "metal+metal": "clanker", "metal+nature": "rustweed", "metal+soft": "armorsock", "float+metal": "tinboat", "metal+sound": "gong", "metal+power": "buzzer",
+  "nature+nature": "minigarden", "nature+soft": "nest", "float+nature": "raft", "nature+sound": "shellwhistle", "nature+power": "zapcoral",
+  "soft+soft": "blanket", "float+soft": "kite", "power+soft": "staticsock", "soft+sound": "earmuffs", "float+float": "bubbleballoon", "sound+sound": "echo",
+  "stink+stink": "perfume", "metal+stink": "perfume", "soft+stink": "perfume", "float+stink": "perfume", "glass+stink": "perfume", "nature+stink": "perfume", "power+power": "thunderball" };
+const HEAT = { egg: "boiledegg", fish: "grilledfish", bread: "toast", cheese: "meltcheese", banana: "bakedbanana", milk: "hotmilk", plastic: "blob", bottle: "lens",
+  weed: "dryweed", pebble: "hotstone", "bread+cheese": "grilledsand", "can+fish": "tinfish", rottenegg: "!boom" };
+const COOL = { milk: "icecream", banana: "frozenbanana", fish: "frozenfish", star: "snowstar", yogurt: "froyo", "banana+milk": "bananaice" };
+const APART = { tire: ["wire"], can: ["bolt"], cup: ["plastic"] };          // боклуци, които се разглобяват (направените: на съставките си)
+const HOW = { mix: { i: "⚗️", n: "Смеси" }, heat: { i: "🔥", n: "Загрей" }, cool: { i: "❄️", n: "Охлади" }, apart: { i: "🔧", n: "Разглоби" } };
+// скрити: [а, б, резултат, кога става]
+const HIDDEN = [["star", "bottle", "starjar", "night"], ["pebble", "star", "moonstone", "light"], ["shell", "spring", "dancingshell", "music"], ["feather", "cup", "laughcup", "happy"],
+  ["bottle", "weed", "dew", "morning"], ["star", "magnet", "moonmagnet", "moon"], ["paper", "shell", "memoir", "old"]];
+const COND_SAY = { night: "е нощ", light: "лампата свети", music: "свири музика", happy: "съм толкова щастлив", morning: "е рано сутрин", moon: "е пълнолуние", old: "съм стар и мъдър" };
+const METHOD_OF = {};
+for (const [m, T] of [["heat", HEAT], ["cool", COOL]]) for (const [k, r] of Object.entries(T)) if (r[0] !== "!") METHOD_OF[r] = { m, i: k.split("+") };
+for (const [k, v] of Object.entries(NEW_EL)) { EL[k] = [v[0], v[1], HIDDEN.some(h => h[2] === k) ? 3 : 1, "made", v[2]]; if (v[6]) BOOK_DESC[k] = v[6]; }
 const BOOK_INV_OF = Object.fromEntries(Object.entries(BOOK_INV).map(([c, b]) => [b, c]));
 const locked = c => BOOK_INV[c] && !(S.libRead || []).includes(BOOK_INV[c]);
 const REC3 = [[["motor", "bat", "bottle"], "rocket"], [["mech", "spring", "float"], "carousel"], [["shell", "shell", "speaker"], "organ"],
   [["pancake", "cheese", "milk", "banana"], "bdaycake"], [["pebble", "pebble", "shell", "coral"], "castle"], [["sub", "lighthouse", "arm", "spring"], "bubbleship"]];
 const MACHINES = REC3.map(r => r[1]);
-const ingOf = c => { const r = REC.find(x => x[2] === c); if (r) return [r[0], r[1]]; const m = REC3.find(x => x[1] === c); return m ? m[0] : null; };
+const ingOf = c => { const r = REC.find(x => x[2] === c); if (r) return [r[0], r[1]]; const m = REC3.find(x => x[1] === c); if (m) return m[0];
+  const h = HIDDEN.find(x => x[2] === c); if (h) return [h[0], h[1]]; return (S && S.wildRec && S.wildRec[c]) || null; };
+const howOf = c => METHOD_OF[c] || (ingOf(c) ? { m: "mix", i: ingOf(c) } : null);      // как се прави (и с какъв начин)
+function tagsOf(k, d = 0) {                       // свойствата: от дъното или наследени от съставките
+  if (TAG0[k]) return TAG0[k].split(" ");
+  if (d > 3 || NEW_EL[k]) return [];
+  const r = ingOf(k); return r ? [...new Set(r.flatMap(x => tagsOf(x, d + 1)))].slice(0, 3) : [];
+}
+function wildOf(a, b) {                           // странно откритие по свойствата (когато няма рецепта)
+  if (!b || NEW_EL[a] || NEW_EL[b]) return null;
+  for (const x of tagsOf(a)) for (const y of tagsOf(b)) { const w = WILD[[x, y].sort().join("+")]; if (w) return [w, x, y]; }
+  return null;
+}
+const COND = { night: () => { const h = new Date().getHours(); return h >= 21 || h < 6; }, light: () => !!placedAny(LIGHTS), music: () => !!placedAny(MUSIC),
+  happy: () => S.mood >= 85, morning: () => { const h = new Date().getHours(); return h >= 5 && h < 9; },
+  moon: () => { const d = (Date.now() - 947182440000) / 864e5, ph = (d % 29.530588) / 29.530588; return ph > 0.43 && ph < 0.57; }, old: () => ["aging", "old"].includes(S.stage) };
 const FOODS = {   // емоджи → [име, глад, здраве, настроение, вид]
   "🍕": ["Пица", 45, 0, 3, "junk"], "🥦": ["Броколи", 30, 6, 2, "veg"], "🦐": ["Скариди", 40, 2, 5, ""], "🍣": ["Суши", 40, 3, 6, ""],
   "🥕": ["Морков", 25, 5, 1, "veg"], "🍪": ["Бисквитка", 20, -1, 8, "junk"],
@@ -701,6 +818,32 @@ const IART = (() => {
       c.beginPath(); c.moveTo(-0.12, -0.22); c.lineTo(-0.12, -0.32); c.lineTo(0.12, -0.32); c.lineTo(0.12, -0.22); c.stroke(); },
     yogurt: () => { F("#fff8f0", () => poly([[-0.24, -0.15], [0.24, -0.15], [0.18, 0.3], [-0.18, 0.3]])); c.fillStyle = "#ff7eb6"; c.fillRect(-0.21, 0.0, 0.42, 0.12); st(); F("#e8eef6", () => ell(0, -0.15, 0.25, 0.06)); },
   };
+  const FX = {                                    // украси за новите неща
+    glow: () => { const gr = c.createRadialGradient(0, 0, 0.05, 0, 0, 0.5); gr.addColorStop(0, "rgba(255,240,150,.9)"); gr.addColorStop(1, "rgba(255,240,150,0)"); c.fillStyle = gr; c.beginPath(); c.arc(0, 0, 0.5, 0, 7); c.fill(); },
+    plate: () => { F("#fff", () => ell(0, 0.24, 0.42, 0.12)); c.strokeStyle = "#b9c4d0"; c.beginPath(); ell(0, 0.22, 0.3, 0.07); c.stroke(); st(); },
+    rainbow: () => { c.save(); c.lineWidth = 0.05; ["#e8463a", "#ffb02e", "#ffe14d", "#58b862", "#3a83f7", "#924ff7"].forEach((col, i) => { c.strokeStyle = col; c.beginPath(); c.arc(0, 0.25, 0.48 - i * 0.05, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); }); c.restore(); },
+    spark: () => { c.fillStyle = "#fff3a0"; for (const [x, y, r] of [[-0.32, -0.3, 0.06], [0.33, -0.22, 0.045], [0.27, 0.3, 0.05]]) { c.beginPath(); poly([[x, y - r * 2], [x + r * 0.45, y - r * 0.45], [x + r * 2, y], [x + r * 0.45, y + r * 0.45], [x, y + r * 2], [x - r * 0.45, y + r * 0.45], [x - r * 2, y], [x - r * 0.45, y - r * 0.45]]); c.closePath(); c.fill(); c.lineWidth = 0.012; c.stroke(); } },
+    steam: () => { c.save(); c.strokeStyle = "rgba(255,255,255,.95)"; c.lineWidth = 0.035; for (const dx of [-0.13, 0.02, 0.17]) { c.beginPath(); c.moveTo(dx, -0.26); c.bezierCurveTo(dx - 0.08, -0.32, dx + 0.08, -0.38, dx, -0.47); c.stroke(); } c.restore(); },
+    ice: () => { c.save(); c.fillStyle = "rgba(190,230,255,.45)"; c.strokeStyle = "#6fb4e0"; c.lineWidth = 0.03; c.beginPath(); rr(-0.38, -0.38, 0.76, 0.76, 0.09); c.fill(); c.stroke(); c.fillStyle = "rgba(255,255,255,.8)"; c.fillRect(-0.31, -0.31, 0.05, 0.24); c.fillRect(-0.31, -0.31, 0.2, 0.05); c.restore(); },
+    bounce: () => { c.save(); c.strokeStyle = "rgba(43,42,51,.7)"; c.lineWidth = 0.025; for (const [dx, r] of [[-0.3, 0.08], [0.3, 0.08], [-0.36, 0.14], [0.36, 0.14]]) { c.beginPath(); c.arc(dx, 0.3, r, Math.PI * (dx < 0 ? 0.6 : -0.6), Math.PI * (dx < 0 ? 1.4 : 0.4) - (dx < 0 ? 0 : 0)); c.stroke(); } c.restore(); },
+    notes: () => { c.fillStyle = L; for (const [x, y, s2] of [[0.3, -0.26, 1], [-0.32, -0.32, 0.8]]) { c.beginPath(); ell(x, y, 0.05 * s2, 0.035 * s2, -0.4); c.fill(); c.fillRect(x + 0.04 * s2, y - 0.17 * s2, 0.015, 0.17 * s2); c.fillRect(x + 0.04 * s2, y - 0.17 * s2, 0.07 * s2, 0.02); } },
+    drops: () => { for (const [x, y] of [[-0.3, -0.25], [0.3, -0.1], [0.24, 0.3]]) F("#7fd3ff", () => { c.moveTo(x, y - 0.08); c.quadraticCurveTo(x + 0.06, y, x, y + 0.04); c.quadraticCurveTo(x - 0.06, y, x, y - 0.08); }); },
+    moon: () => { c.save(); c.fillStyle = "#ffe98a"; c.beginPath(); c.arc(-0.27, -0.27, 0.11, 0, 7); c.fill(); c.globalCompositeOperation = "destination-out"; c.beginPath(); c.arc(-0.22, -0.31, 0.09, 0, 7); c.fill(); c.restore(); },
+    zap: () => { c.save(); c.shadowColor = "#fff36b"; c.shadowBlur = 8; F("#ffd23f", () => poly([[0.22, -0.46], [0.08, -0.18], [0.2, -0.18], [0.04, 0.12], [0.1, -0.1], [-0.02, -0.1], [0.1, -0.46]])); c.restore(); },
+    eyes: () => { eye(-0.09, -0.06, 0.065); eye(0.09, -0.06, 0.065); },
+    smile: () => { c.lineWidth = 0.03; c.beginPath(); c.arc(0, 0.02, 0.1, 0.2, Math.PI - 0.2); c.stroke(); eye(-0.08, -0.08, 0.04); eye(0.08, -0.08, 0.04); },
+    bubbles: () => { c.save(); c.strokeStyle = "#fff"; c.lineWidth = 0.02; for (const [x, y, r] of [[0.3, -0.3, 0.05], [0.36, -0.12, 0.035], [-0.32, -0.2, 0.04], [-0.27, -0.38, 0.03]]) { c.beginPath(); c.arc(x, y, r, 0, 7); c.stroke(); } c.restore(); },
+    rust: () => { c.fillStyle = "#c0612b"; for (const [x, y] of [[-0.08, -0.1], [0.06, 0.05], [-0.02, 0.18], [0.1, -0.2]]) { c.beginPath(); c.arc(x, y, 0.035, 0, 7); c.fill(); } },
+    zzz: () => { c.save(); c.lineWidth = 0.025; for (const [x, y, s2] of [[0.22, -0.3, 0.08], [0.33, -0.42, 0.06]]) { c.beginPath(); poly([[x, y], [x + s2, y], [x, y + s2], [x + s2, y + s2]]); c.stroke(); } c.restore(); },
+    stink,
+  };
+  const PRE = ["glow", "plate", "rainbow"];
+  for (const [k, v] of Object.entries(NEW_EL)) A[k] = () => {
+    const fx = (v[4] || "").split(" ").filter(Boolean);
+    fx.filter(f => PRE.includes(f)).forEach(f => { FX[f](); st(); });
+    for (const [b, x, y, sc] of v[3]) M(b, x, y, sc);
+    fx.filter(f => !PRE.includes(f) && FX[f]).forEach(f => { FX[f](); st(); });
+  };
   return { has: k => !!A[k], draw(ctx, k, x, y, s) { c = ctx; ctx.save(); ctx.translate(x, y); ctx.scale(s, s); st(); try { A[k](); } finally { ctx.restore(); } } };
 })();
 const ITEM_IMG = {};
@@ -860,7 +1003,9 @@ const ACTS = {
   organ: "Свири. Понякога той танцува.", singbolt: "Пее. Понякога той танцува.",
   tidier: "Сам прибира по някой боклук в сандъка.", sockfinder: "От време на време намира изгубени неща.", teapot: "Вечер му прави чай и го ободрява.",
 };
-const MUSIC = ["radio", "speaker", "disco", "organ", "singbolt"];
+const MUSIC = ["radio", "speaker", "disco", "organ", "singbolt", "dancingshell"];
+LIGHTS.push("starjar", "zaplamp", "moonstone");
+Object.assign(ACTS, { starjar: "Свети около него нощем.", zaplamp: "Свети около него нощем.", moonstone: "Свети около него нощем.", dancingshell: "Танцува и пее. Понякога и той танцува." });
 const placed = k => S && (S.placed || []).includes(k) && cnt(k) > 0;           // сложено на дъното
 const active = k => placed(k) && (k === "trampoline" || (S.active || []).includes(k));   // и пуснато
 const placedAny = list => list.find(active);
@@ -1103,12 +1248,13 @@ function ideaNo() {
 let working = 0, mixing = null, table = null;
 const WORK_MS = 13500;          // 2.5 с за масата, 3 с влачене, очила, после майстори
 let FINAL = null;                               // крайни предмети: не стават за нищо по-нататък
-const isFinal = k => { if (!FINAL) { const used = new Set([...REC.flatMap(r => [r[0], r[1]]), ...REC3.flatMap(r => r[0])]); FINAL = new Set(Object.keys(EL).filter(x => !used.has(x))); } return FINAL.has(k); };
-const recLine = c => { const r = ingOf(c); return r ? r.map(k => elI(k) + " " + esc(elN(k))).join(" + ") : ""; };
+const isFinal = k => { if (!FINAL) { const used = new Set([...REC.flatMap(r => [r[0], r[1]]), ...REC3.flatMap(r => r[0]), ...HIDDEN.flatMap(r => [r[0], r[1]]), ...Object.values(METHOD_OF).flatMap(r => r.i)]); FINAL = new Set(Object.keys(EL).filter(x => !used.has(x))); } return FINAL.has(k); };
+const recLine = c => { const h = howOf(c); return h ? (h.m !== "mix" ? HOW[h.m].i + " " : "") + h.i.map(k => elI(k) + " " + esc(elN(k))).join(" + ") : ""; };
 function remake(c) {                         // прави пак нещо по рецептата
-  const r = ingOf(c); if (!r || !canMixNow()) return;
+  const h = howOf(c); if (!h || !canMixNow()) return;
+  const r = h.i;
   if (!haveAll(r)) return say("", `Нямам всичко за ${elN(c).toLowerCase()}. Трябват ми ${r.map(k => elN(k).toLowerCase()).join(" и ")}.`, 5000);
-  closeSheet(); mix(r[0], r[1], "me", r.slice(2));
+  closeSheet(); mix(r[0], r[1] || null, "me", r.slice(2), h.m);
 }
 function haveAll(list) { const c = {}; for (const k of list) c[k] = (c[k] || 0) + 1; return Object.entries(c).every(([k, n]) => cnt(k) >= n); }
 const WORK_GO = ["Чакай! Отивам за масата.", "Момент, трябва ми работната маса!", "Масата! Къде ми е масата?", "Секунда, докарвам работилницата.", "Без маса не става. Идвам!",
@@ -1121,29 +1267,50 @@ const WORK_ME = ["Ти смесвай, аз държа! Не ме разсейв
 const WORK_SELF = ["Не ме разсейвай! Работя!", "Тихо, мисля с всичките осем пипала.", "Сега идва трудната част…", "Почти… почти…", "Пипало тук, болт там…",
   "Ако проработи, ще съм гений.", "Работя! Ще ти покажа после.", "Не гледай! Ще стане изненада.", "Бъркам, разбърквам, преразбърквам.", "Още мъничко търпение!"];
 let workN = Math.floor(Math.random() * 10);
-function mix(a, b, who, more = []) {
+const HOW_SAY = {
+  heat: ["Паля горелката! Под вода е трудно, но аз съм изобретател.", "Топлим, топлим… Не пипай, пари!", "Горещият извор е точно тук. Сега чакаме.", "Мирише на нещо… Добро или лошо, ще видим."],
+  cool: ["Студеното течение! Държа го вътре.", "Брррр. Изстудявам. И пипалата ми изстиват.", "Ледът идва от дълбокото. Търпение.", "Духам студено. Ффффф."],
+  apart: ["Отвертката! Къде ми е отвертката?", "Внимателно… всеки болт си има място.", "Разглобявам. После може и да го сглобя. Може.", "Едно винтче, второ винтче…"],
+};
+function mix(a, b, who, more = [], how = "mix") {
   if (role !== "keeper" || working || reading) return say("", "Чакай, зает съм!");
-  if (!haveAll([a, b, ...more])) return say("", "Нямам достатъчно от тези неща.");
+  const items = [a, b, ...more].filter(Boolean);
+  if (how === "apart" && items.length !== 1) return say("", "Разглобявам само по едно нещо наведнъж.");
+  if (how === "mix" && items.length < 2) return say("", "За смесване ми трябват поне две неща.");
+  if (!haveAll(items)) return say("", "Нямам достатъчно от тези неща.");
   if (S.asleep) return say("", "Шшш… спи.");
   if (S.energy < 12) return say("", "Нямам сили. Първо да поспя.");
   if (S.stage === "baby") return say("", "Ба-бу! Още съм малък за това.");
   if (noGlasses()) return say("", pick(["Без очилата не виждам кое е болт и кое е бонбон. Сложи ми ги от шкафа, моля.", "Не мога да майсторя без очилата! Всичко е размазано. Те са в шкафа."]), 6000);
-  const tk = [a, b, ...more].sort().join("+");
-  if ((S.nope || []).includes(tk)) return say("", `Вече пробвахме ${[a, b, ...more].map(k => elN(k).toLowerCase()).join(" и ")}. Не става. Нещо друго?`, 5000);
-  working = performance.now(); mixing = { a, b, who, more }; closeSheet(); closeRing(); table = { x: null, a: 0 };
+  const tk = (how !== "mix" ? how + ":" : "") + items.slice().sort().join("+");
+  const special = how === "mix" && items.length === 2 && (HIDDEN.some(h => recKey(h[0], h[1]) === tk) || wildOf(a, b));
+  if ((S.nope || []).includes(tk) && !special) return say("", `Вече пробвахме ${how !== "mix" ? HOW[how].n.toLowerCase() + " на " : ""}${items.map(k => elN(k).toLowerCase()).join(" и ")}. Не става. Нещо друго?`, 5000);
+  working = performance.now(); mixing = { a, b, who, more, how }; closeSheet(); closeRing(); table = { x: null, a: 0 };
   const n = S.workN = ((S.workN != null ? S.workN : workN) + 1) % 1000;   // редуват се (помни се и след презареждане)
   say("", WORK_GO[n % WORK_GO.length], 2500);
   setTimeout(() => say("", WORK_GOG[n % WORK_GOG.length], 2000), 5600);
-  setTimeout(() => say("", who === "me" ? WORK_ME[n % WORK_ME.length] : WORK_SELF[n % WORK_SELF.length], 5500), 7200);
+  setTimeout(() => say("", how !== "mix" ? pick(HOW_SAY[how]) : who === "me" ? WORK_ME[n % WORK_ME.length] : WORK_SELF[n % WORK_SELF.length], 5500), 7200);
   setTimeout(mixDone, WORK_MS);
 }
 function mixDone() {
   working = 0;
-  const { a, b, who, more } = mixing; mixing = null; if (table) table.until = performance.now() + 2500;
-  const all = [a, b, ...(more || [])], key = all.slice().sort().join("+");
-  const c = RECIPE[key], now = Date.now(), name = all.map(elN).join(" + ");
+  const { a, b, who, more, how } = mixing; mixing = null; if (table) table.until = performance.now() + 2500;
+  const all = [a, b, ...(more || [])].filter(Boolean), key = all.slice().sort().join("+");
+  let c = RECIPE[key], wild = null, hid = null;
+  const now = Date.now(), name = all.map(elN).join(" + ");
   S.energy = clamp(S.energy - 6); S.lastCare = now; dirty = true;
+  if (how && how !== "mix") return methodDone(how, all, key, who);
   if (S.task && recKey(S.task.a, S.task.b) === recKey(a, b)) S.task = null;
+  if (!c && all.length === 2) {
+    hid = HIDDEN.find(h => recKey(h[0], h[1]) === key);
+    if (hid && !COND[hid[3]]()) {                 // скрита рецепта, но не е моментът: не се записва като провал
+      log(`📓 ${name}: нещо липсва…`);
+      say("", pick(["Странно… Тези двете сякаш искат да станат нещо. Но не сега.", "Усещам, че тук има нещо. Може би трябва друго време… или друго настроение.", "Почти! Липсва нещо, което не е в сандъка."]), 7000);
+      return save();
+    }
+    if (hid) c = hid[2];
+    else if ((wild = wildOf(a, b))) c = wild[0];
+  }
   if (!c) {                                       // не работи: записва го
     S.nope = [...new Set([...(S.nope || []), key])];
     log(`📓 ${name}: не работи. Записано.`);
@@ -1166,12 +1333,54 @@ function mixDone() {
     if (first && Object.values(FOODS).some(f => f[5] === c)) setTimeout(() => say("", `${elN(c)} отива при храната. Рецептата я записах, можем да го правим пак!`, 7000), 7500);
     if (first && ACTS[c]) setTimeout(() => say("", `Сложих ${elN(c).toLowerCase()} в шкафа. Извади го оттам и ще заработи!`, 7000), 7500);
     if (first && EL[c][2] >= 3) pdiary(`Днес открих ${elN(c)}. ${who === "me" ? "Ти го направи с мен. " : ""}Най-хубавият ден в лабораторията.`);
-    if (first && Math.random() < 0.4) { setTimeout(() => say("", "Хм… може и по-добре. Полирам го още малко."), 7500); }
+    if (first && Math.random() < 0.4 && !wild && !hid) { setTimeout(() => say("", "Хм… може и по-добре. Полирам го още малко."), 7500); }
+    if (wild) {
+      if (first) S.wildRec = { ...(S.wildRec || {}), [c]: [a, b] };
+      const sa = TAG_SAY[wild[1]], sb = TAG_SAY[wild[2]];
+      say("", first ? `Хм… ${elN(a).toLowerCase()} ${sa}, а ${elN(b).toLowerCase()} ${sb}… Ами ако… Стана ${elN(c).toLowerCase()}! Не съм го чел в нито една книга.` : `${elN(c)}! Знаех си, че пак ще стане.`, 8000);
+    }
+    if (hid && first) say("", `Ооо! ${elN(c)}! Мисля, че стана само защото ${COND_SAY[hid[3]]}. Записвам го с големи букви.`, 8000);
   } else {
     S.hurt = 1; S.hurtAt = Date.now(); S.health = clamp(S.health - rnd(6, 14) * (has("healthy") ? 0.5 : 1)); S.mood = clamp(S.mood - 6); fx.hurt = performance.now();
     log(`🤕 ${name}: почти стана, но се развали. ${who === "him" ? "Удари се." : ""}`);
     say("", pick(["Почти! Но се развали в ръцете ми. Ох, пипалото ми.", "Бзззт! Беше на косъм. Ще опитам пак някой път.", "Знам, че е вярно! Просто не ми провървя."]), 7000);
   }
+  save(); render();
+}
+function methodDone(how, all, key, who) {            // загряване, охлаждане, разглобяване
+  const nk = how + ":" + key, k = all[0], nope = () => { S.nope = [...new Set([...(S.nope || []), nk])]; log(`📓 ${HOW[how].i} ${all.map(elN).join(" + ")}: нищо. Записано.`); };
+  if (how === "apart") {
+    const parts = APART[k] || (EL[k][3] === "made" && !METHOD_OF[k] ? ingOf(k) : null);
+    if (!parts) {
+      nope();
+      say("", ["food", "spoiled"].includes(EL[k][3]) || EDIBLE[k] ? "Храна не се разглобява. Пробвах. Почти стана на трохи." : pick(["Това е цяло парче. Няма какво да се разглоби.", "Няма нито един болт. Не се разглобява."]), 6000);
+      return save(), render();
+    }
+    takeMat(k); const got = parts.slice(); let lost = null;
+    if (got.length > 1 && Math.random() < 0.3) lost = got.splice(rnd(0, got.length - 1), 1)[0];
+    got.forEach(x => addMat(x)); S.mood = clamp(S.mood + 3);
+    log(`🔧 Разглоби ${elN(k).toLowerCase()}: ${got.map(elN).join(", ")}${lost ? ` (${elN(lost).toLowerCase()} се счупи)` : ""}.`);
+    say("", `Разглобих ${elN(k).toLowerCase()}! Получих ${got.map(x => elN(x).toLowerCase()).join(" и ")}.${lost ? ` Само ${elN(lost).toLowerCase()} се счупи. Ох.` : " Всичко е цяло!"}`, 7000);
+    return save(), render();
+  }
+  const r = (how === "heat" ? HEAT : COOL)[key];
+  if (!r) {
+    nope();
+    say("", how === "heat" ? pick(["Затоплих го. Нищо не стана. Само стана топло.", "Стопли се и пак си е същото. Записвам."]) : pick(["Изстудих го. Сега е студено. Това е всичко.", "Замръзна и после пак се размрази. Нищо."]), 6000);
+    return save(), render();
+  }
+  all.forEach(x => takeMat(x));
+  if (r === "!boom") {
+    S.mood = clamp(S.mood - 5); fx.hurt = performance.now(); log("💥 Загря развалено яйце. Гръмна.");
+    say("", "ПУФ! Яйцето гръмна. Миризмата ще стои седмица. Не го правим пак.", 7000);
+    return save(), render();
+  }
+  addMat(r); const first = !S.found.includes(r);
+  if (first) { S.found.push(r); fx.party = performance.now(); }
+  S.mood = clamp(S.mood + (first ? 12 : 4));
+  if (who === "me") td("mix");
+  log(first ? `🎉 ${HOW[how].i} Откри ${elFull(r)}! (${all.map(elN).join(" + ")})` : `${HOW[how].i} Направи пак ${elFull(r)}.`);
+  say("", first ? `${how === "heat" ? "Затоплих" : "Изстудих"} ${all.map(x => elN(x).toLowerCase()).join(" и ")} и стана ${elN(r).toLowerCase()}! Записвам го в шкафа.` : `Още ${elN(r).toLowerCase()}. Готово!`, 7000);
   save(); render();
 }
 // ---------- Книги ----------
@@ -1260,7 +1469,8 @@ function myThoughts() {
 }
 const EDIBLE = { seapizza: 45, candycoral: 25, tea: 15, soup: 45, pancake: 40, omelet: 40, pudding: 30, cheese: 22, banana: 18, fish: 28, bread: 22, egg: 20, milk: 15, bluecheese: 25, yogurt: 20, blackbanana: 12,
   sandwich: 40, shake: 35, fishburger: 45, cake: 40, fondue: 50 };
-const YUCK = ["stinkyfish", "rottenegg", "moldbread"];
+const YUCK = ["stinkyfish", "rottenegg", "moldbread", "stinkstew"];
+for (const [k, v] of Object.entries(NEW_EL)) if (v[5]) EDIBLE[k] = v[5];
 function toast(x) {                            // кратко съобщение над панелите (за да се вижда защо нещо не става)
   let el = $("toast"); if (!el) { el = document.createElement("div"); el.id = "toast"; document.body.appendChild(el); }
   el.textContent = x; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 3200);
@@ -2264,7 +2474,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 42;
+const PAGE_V = 43;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -2378,7 +2588,7 @@ function fillSheet(kind) {
       const fut = (S.future || []).filter(f => !S.found.includes(RECIPE[recKey(f.a, f.b)]));
       h += `<div class="sub grp">💡 Бъдещи идеи</div>` + (fut.length ? `<ul class="journal">${fut.map(f => `<li>${[f.a, f.b, ...(f.more || [])].map(k => elI(k) + " " + esc(elN(k))).join(" + ")} = ?${f.src && f.src !== "моя идея" ? ` <small>(от „${esc(f.src)}“)</small>` : ""}</li>`).join("")}</ul>` : `<div class="sub">Празно.</div>`);
       const nope = S.nope || [];
-      h += `<div class="sub grp">✗ Не работи</div>` + (nope.length ? `<ul class="journal">${nope.slice(-40).reverse().map(x => `<li>${x.split("+").map(k => elI(k) + " " + esc(elN(k))).join(" + ")}: нищо</li>`).join("")}</ul>` : `<div class="sub">Още нищо не се е провалило. Подозрително.</div>`);
+      h += `<div class="sub grp">✗ Не работи</div>` + (nope.length ? `<ul class="journal">${nope.slice(-40).reverse().map(x => { const [m, r] = x.includes(":") ? x.split(":") : ["", x]; return `<li>${m && HOW[m] ? HOW[m].i + " " : ""}${r.split("+").map(k => elI(k) + " " + esc(elN(k))).join(" + ")}: нищо</li>`; }).join("")}</ul>` : `<div class="sub">Още нищо не се е провалило. Подозрително.</div>`);
     } else if (libTab === "shelf") {
       const own = SHOP.filter(b => (S.lib || []).includes(b.id)), shop = SHOP.filter(b => !(S.lib || []).includes(b.id));
       const COLS = ["#b5473a", "#3a6ea5", "#4f8a4b", "#8a5a9e", "#c9902e", "#2f7f86", "#a8553f", "#5a5fa8", "#7a8a3a", "#a83a66", "#3f5f3a"];
@@ -2456,8 +2666,8 @@ function fillSheet(kind) {
     const made = [...new Set([...S.found, ...Object.keys(S.mat).filter(k => cnt(k) > 0)])].filter(k => EL[k] && EL[k][3] === "made" && !EDIBLE[k]);
     const act = made.filter(k => ACTS[k] && (cnt(k) || placed(k))), rest = made.filter(k => !act.includes(k));
     const card = k => `<div class="gd${placed(k) ? " on" : ""}${cnt(k) || placed(k) ? "" : " zero"}"><span>${elI(k)}</span><b>${esc(elN(k))}${cnt(k) > 1 ? ` ×${cnt(k)}` : ""}${isFinal(k) ? ` <span class="finl">★ краен</span>` : ""}</b><small>${ACTS[k] ? esc(ACTS[k]) : BOOK_DESC[k] ? esc(BOOK_DESC[k]) : "Стои в шкафа за красота."}</small>
-      ${ingOf(k) ? `<small class="rc">${recLine(k)}</small>` : ""}${!cnt(k) && !placed(k) ? `<small class="st">Няма го в момента</small>` : ""}
-      ${ingOf(k) && canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(ingOf(k)) ? "" : "disabled"}>Направи${cnt(k) || placed(k) ? " още" : " пак"}</button>` : ""}
+      ${howOf(k) ? `<small class="rc">${recLine(k)}</small>` : ""}${!cnt(k) && !placed(k) ? `<small class="st">Няма го в момента</small>` : ""}
+      ${howOf(k) && canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(howOf(k).i) ? "" : "disabled"}>Направи${cnt(k) || placed(k) ? " още" : " пак"}</button>` : ""}
       ${placed(k) ? `<small class="st">${k === "trampoline" || active(k) ? "✓ на дъното, работи" : "на дъното, изключено (докосни го там)"}</small>` : ""}
       ${ACTS[k] && role === "keeper" ? `<button class="tg" data-k="${k}">${placed(k) ? "Прибери" : "Сложи"}</button>` : ""}</div>`;
     const hats = S.hats || [], accs = myAccs();
@@ -2480,7 +2690,7 @@ function fillSheet(kind) {
     const foods = S.found.filter(c => EDIBLE[c]);
     sh.innerHTML = head("📖 Рецепти") + (foods.length ? `<div class="cab">${foods.map(k => `<div class="gd${cnt(k) ? "" : " zero"}"><span>${elI(k)}</span><b>${esc(elN(k))}${cnt(k) ? ` ×${cnt(k)}` : ""}</b>
       <small class="rc">${recLine(k)}</small>${cnt(k) ? "" : `<small class="st">Свърши</small>`}
-      ${canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(ingOf(k) || ["x"]) ? "" : "disabled"}>Сготви</button>` : ""}${cnt(k) && role === "keeper" ? `<button class="eat2" data-k="${k}">Дай</button>` : ""}</div>`).join("")}</div>`
+      ${canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(howOf(k) ? howOf(k).i : ["x"]) ? "" : "disabled"}>Сготви</button>` : ""}${cnt(k) && role === "keeper" ? `<button class="eat2" data-k="${k}">Дай</button>` : ""}</div>`).join("")}</div>`
       : `<div class="sub">Още няма рецепти. Смесвайте храни!</div>`);
     sh.querySelectorAll(".rm").forEach(b => b.onclick = () => remake(b.dataset.k));
     sh.querySelectorAll(".eat2").forEach(b => b.onclick = () => { closeSheet(); feed(b.dataset.k); });
@@ -2718,10 +2928,22 @@ function renderMix() {
   if (!on) return;
   mixSel = mixSel.filter((k, i) => cnt(k) > mixSel.slice(0, i).filter(x => x === k).length);
   bar.innerHTML = [0, 1, 2, 3, 4].map(i => `<span class="slot${mixSel[i] ? " full" : ""}" data-i="${i}">${mixSel[i] ? elI(mixSel[i]) : ""}</span>`).join("") +
-    `<button id="mixBtn" ${mixSel.length < 2 || working ? "disabled" : ""}>⚗️</button>`;
+    `<button id="mixBtn" ${!mixSel.length || working ? "disabled" : ""}>⚗️</button>`;
   bar.querySelectorAll(".slot").forEach(b => b.onclick = () => { if (mixSel[+b.dataset.i]) { mixSel.splice(+b.dataset.i, 1); renderMix(); if (sheetKind === "bag") fillSheet("bag"); } });
-  $("mixBtn").onclick = () => { const [a, b, ...more] = mixSel; mixSel = []; renderMix(); mix(a, b, "me", more); };
+  $("mixBtn").onclick = ev => { ev.stopPropagation(); howMenu(); };
 }
+function howMenu() {                         // какво да прави с нещата в полетата
+  closeHowMenu();
+  const n = mixSel.length, opts = n === 1 ? ["heat", "cool", "apart"] : n === 2 ? ["mix", "heat", "cool"] : ["mix"];
+  const go = how => { closeHowMenu(); const [a, b, ...more] = mixSel; mixSel = []; renderMix(); mix(a, b || null, "me", more, how); };
+  if (opts.length === 1) return go(opts[0]);
+  const m = document.createElement("div"); m.id = "howmenu";
+  m.innerHTML = opts.map(h => `<button data-h="${h}">${HOW[h].i} ${HOW[h].n}</button>`).join("");
+  document.body.appendChild(m);
+  m.querySelectorAll("button").forEach(b => b.onclick = ev => { ev.stopPropagation(); go(b.dataset.h); });
+}
+function closeHowMenu() { $("howmenu")?.remove(); }
+document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#howmenu") && !ev.target.closest("#mixBtn")) closeHowMenu(); });
 function addToMix(k) {
   if (mixSel.length >= 5) return say("", "Пет неща стигат! Повече не се събират.");
   if (mixSel.filter(x => x === k).length >= cnt(k)) return say("", "Нямам повече от това.");
@@ -4727,7 +4949,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 10 * 60; i++) minute(t0 + i * MIN, true, {}); return { food: Math.round(100 - S.hunger), clean: Math.max(0, 100 - S.trash.length * 15), energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, pickPart: id => pickPart(id), ghost: () => ghost, gmove: m => { ghost.mv = { m, at: performance.now() }; }, items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, toMix: k => addToMix(k), mx: (a, b, how = "mix") => { working = 0; mixing = { a, b, who: "me", more: [], how }; mixDone(); return S.journal[0] && S.journal[0].x; }, wildOf, tagsOf, cond: COND, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 10 * 60; i++) minute(t0 + i * MIN, true, {}); return { food: Math.round(100 - S.hunger), clean: Math.max(0, 100 - S.trash.length * 15), energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, pickPart: id => pickPart(id), ghost: () => ghost, gmove: m => { ghost.mv = { m, at: performance.now() }; }, items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
