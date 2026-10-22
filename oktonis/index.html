@@ -61,6 +61,7 @@
   #mixbar .slot.over { background: rgba(255,209,102,.6); }
   #mixbar button { height: 52px; border-radius: 14px; padding: 0; font-size: 24px; background: var(--peach); border: 3px solid var(--ink); }
   #mixbar button:disabled { opacity: .5; }
+  #toast.got { width: min(340px, 88vw); display: flex; align-items: center; gap: 10px; text-align: left; } #toast .gpi img.ei { width: 52px; height: 52px; } #toast .gpi { font-size: 40px; line-height: 1; }
   #howmenu { position: fixed; right: 12px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 66px); z-index: 30; display: flex; flex-direction: column; gap: 6px; animation: uiin .2s ease; }
   #howmenu button { font: 700 16px system-ui, sans-serif; padding: 10px 16px; border-radius: 14px; border: 3px solid var(--ink); background: var(--peach); color: var(--ink); text-align: left; box-shadow: 0 3px 0 rgba(0,0,0,.25); cursor: pointer; }
   body.hasbar #sheet { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 62px); border-bottom: 3px solid var(--ink); border-radius: 24px; }
@@ -1304,7 +1305,7 @@ function mixDone() {
   if (!c && all.length === 2) {
     hid = HIDDEN.find(h => recKey(h[0], h[1]) === key);
     if (hid && !COND[hid[3]]()) {                 // скрита рецепта, но не е моментът: не се записва като провал
-      log(`📓 ${name}: нещо липсва…`);
+      log(`📓 ${name}: нещо липсва…`); gotPop(null, "✨ Нещо липсва… Може би друг път.");
       say("", pick(["Странно… Тези двете сякаш искат да станат нещо. Но не сега.", "Усещам, че тук има нещо. Може би трябва друго време… или друго настроение.", "Почти! Липсва нещо, което не е в сандъка."]), 7000);
       return save();
     }
@@ -1313,7 +1314,7 @@ function mixDone() {
   }
   if (!c) {                                       // не работи: записва го
     S.nope = [...new Set([...(S.nope || []), key])];
-    log(`📓 ${name}: не работи. Записано.`);
+    log(`📓 ${name}: не работи. Записано.`); gotPop(null, `${name}: нищо не стана.`);
     const what = all.map(k => elN(k).toLowerCase()).join(" и ");
     say("", pick([`${what[0].toUpperCase() + what.slice(1)}: нищо. Абсолютно нищо. Записвам го.`, `Пуф! ${what[0].toUpperCase() + what.slice(1)} не стават заедно. Поне знаем.`, `Пробвах ${what}. Не работи. Записах го, няма да го пробвам пак.`]), 6000);
     if (Math.random() < 0.15) { S.hurt = 1; S.hurtAt = Date.now(); S.health = clamp(S.health - 5); fx.hurt = performance.now(); }
@@ -1324,6 +1325,7 @@ function mixDone() {
   takeMat(a); takeMat(b);
   if (Math.random() < p) {
     addMat(c); const first = !S.found.includes(c);
+    gotPop(c, `${first ? "🎉 Ново! " : ""}${elN(c)}. Отиде в сандъка${EDIBLE[c] ? " и в „Рецепти“" : " и в шкафа"}.`);
     if (first) S.found.push(c);
     S.future = (S.future || []).filter(f => RECIPE[recKey(f.a, f.b)] !== c);
     S.mood = clamp(S.mood + (first ? 18 : 5)); if (first) fx.party = performance.now();
@@ -1343,6 +1345,7 @@ function mixDone() {
   } else {
     S.hurt = 1; S.hurtAt = Date.now(); S.health = clamp(S.health - rnd(6, 14) * (has("healthy") ? 0.5 : 1)); S.mood = clamp(S.mood - 6); fx.hurt = performance.now();
     log(`🤕 ${name}: почти стана, но се развали. ${who === "him" ? "Удари се." : ""}`);
+    gotPop(null, `🤕 ${name}: почти стана, но се развали.`);
     say("", pick(["Почти! Но се развали в ръцете ми. Ох, пипалото ми.", "Бзззт! Беше на косъм. Ще опитам пак някой път.", "Знам, че е вярно! Просто не ми провървя."]), 7000);
   }
   save(); render();
@@ -1352,7 +1355,7 @@ function methodDone(how, all, key, who) {            // загряване, ох
   if (how === "apart") {
     const parts = APART[k] || (EL[k][3] === "made" && !METHOD_OF[k] ? ingOf(k) : null);
     if (!parts) {
-      nope();
+      nope(); gotPop(k, `🔧 ${elN(k)}: не се разглобява.`);
       say("", ["food", "spoiled"].includes(EL[k][3]) || EDIBLE[k] ? "Храна не се разглобява. Пробвах. Почти стана на трохи." : pick(["Това е цяло парче. Няма какво да се разглоби.", "Няма нито един болт. Не се разглобява."]), 6000);
       return save(), render();
     }
@@ -1360,18 +1363,20 @@ function methodDone(how, all, key, who) {            // загряване, ох
     if (got.length > 1 && Math.random() < 0.3) lost = got.splice(rnd(0, got.length - 1), 1)[0];
     got.forEach(x => addMat(x)); S.mood = clamp(S.mood + 3);
     log(`🔧 Разглоби ${elN(k).toLowerCase()}: ${got.map(elN).join(", ")}${lost ? ` (${elN(lost).toLowerCase()} се счупи)` : ""}.`);
+    gotPop(got[0], `🔧 ${elN(k)} → ${got.map(elN).join(" + ")}${lost ? ` (${elN(lost).toLowerCase()} се счупи)` : ""}. Всичко е в сандъка.`);
     say("", `Разглобих ${elN(k).toLowerCase()}! Получих ${got.map(x => elN(x).toLowerCase()).join(" и ")}.${lost ? ` Само ${elN(lost).toLowerCase()} се счупи. Ох.` : " Всичко е цяло!"}`, 7000);
     return save(), render();
   }
   const r = (how === "heat" ? HEAT : COOL)[key];
   if (!r) {
-    nope();
+    nope(); gotPop(k, `${HOW[how].i} ${all.map(elN).join(" + ")}: нищо не стана.`);
     say("", how === "heat" ? pick(["Затоплих го. Нищо не стана. Само стана топло.", "Стопли се и пак си е същото. Записвам."]) : pick(["Изстудих го. Сега е студено. Това е всичко.", "Замръзна и после пак се размрази. Нищо."]), 6000);
     return save(), render();
   }
   all.forEach(x => takeMat(x));
   if (r === "!boom") {
     S.mood = clamp(S.mood - 5); fx.hurt = performance.now(); log("💥 Загря развалено яйце. Гръмна.");
+    gotPop(null, "💥 ПУФ! Развалено яйце гръмна.");
     say("", "ПУФ! Яйцето гръмна. Миризмата ще стои седмица. Не го правим пак.", 7000);
     return save(), render();
   }
@@ -1380,7 +1385,8 @@ function methodDone(how, all, key, who) {            // загряване, ох
   S.mood = clamp(S.mood + (first ? 12 : 4));
   if (who === "me") td("mix");
   log(first ? `🎉 ${HOW[how].i} Откри ${elFull(r)}! (${all.map(elN).join(" + ")})` : `${HOW[how].i} Направи пак ${elFull(r)}.`);
-  say("", first ? `${how === "heat" ? "Затоплих" : "Изстудих"} ${all.map(x => elN(x).toLowerCase()).join(" и ")} и стана ${elN(r).toLowerCase()}! Записвам го в шкафа.` : `Още ${elN(r).toLowerCase()}. Готово!`, 7000);
+  gotPop(r, `${HOW[how].i} ${first ? "Ново! " : ""}${elN(r)}. Отиде в сандъка${EDIBLE[r] ? " и в „Рецепти“" : " и в шкафа"}.`);
+  say("", first ? `${how === "heat" ? "Затоплих" : "Изстудих"} ${all.map(x => elN(x).toLowerCase()).join(" и ")} и стана ${elN(r).toLowerCase()}! Записвам го ${EDIBLE[r] ? "в рецептите" : "в шкафа"}.` : `Още ${elN(r).toLowerCase()}. Готово!`, 7000);
   save(); render();
 }
 // ---------- Книги ----------
@@ -1473,7 +1479,12 @@ const YUCK = ["stinkyfish", "rottenegg", "moldbread", "stinkstew"];
 for (const [k, v] of Object.entries(NEW_EL)) if (v[5]) EDIBLE[k] = v[5];
 function toast(x) {                            // кратко съобщение над панелите (за да се вижда защо нещо не става)
   let el = $("toast"); if (!el) { el = document.createElement("div"); el.id = "toast"; document.body.appendChild(el); }
-  el.textContent = x; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 3200);
+  el.textContent = x; el.classList.remove("got"); el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 3200);
+}
+function gotPop(k, x) {                         // голяма картинка: какво стана (и къде отиде)
+  let el = $("toast"); if (!el) { el = document.createElement("div"); el.id = "toast"; document.body.appendChild(el); }
+  el.innerHTML = (k ? `<span class="gpi">${elI(k)}</span>` : "") + `<span>${esc(x)}</span>`; el.classList.add("on", "got");
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on", "got"), 5500);
 }
 function feed(k) {
   if (role !== "keeper" || !S.hatched || !cnt(k)) return;
