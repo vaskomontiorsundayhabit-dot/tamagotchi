@@ -12,3 +12,4 @@ K.update({"Компост":"compost","Ръжда":"rust","Хартиена ка�
 K.update({"Кокосово масло":"cocooil","Стъклена топчица":"marble","Студен чай":"icedtea","Рециклирана хартия":"recpaper"})
 K.update({"Свръхмагнит":"supermagnet"})
 K.update({"Риба от консерва":"cannedfish"})
+K.update({"Магнетит":"lodestone","Аквариум":"aquarium","Суши":"sushi","Рибена чорба":"soup","Моряшки сандвич":"sailorsandwich","Медени сухари":"honeyhardtack","Кокосов шейк":"cocoshake","Кокосова каша":"cocoporridge","Кокосов пудинг":"cocopudding","Морска салата":"seasalad","Вмирисана риба":"stinkyfish"})
