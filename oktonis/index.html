@@ -277,6 +277,8 @@
   #toast { position: fixed; left: 50%; top: calc(max(10px, env(safe-area-inset-top)) + 70px); transform: translate(-50%, -20px); z-index: 60; background: rgba(43,42,51,.92); color: #fff; padding: 10px 16px;
     border-radius: 14px; font-weight: 700; font-size: 15px; max-width: 86vw; text-align: center; opacity: 0; pointer-events: none; transition: all .25s; }
   #toast.on { opacity: 1; transform: translate(-50%, 0); }
+  .cell { position: relative; } .cell .fin { position: absolute; left: 4px; top: 2px; font-style: normal; font-size: 13px; color: #ffd23f; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+  .finl { display: inline-block; font-size: 11px; font-weight: 800; color: #3a2410; background: #ffd23f; border-radius: 8px; padding: 0 6px; vertical-align: 2px; }
   .snap.go { left: calc(100% - 34px); top: 340px; transform: translate(-50%, -50%) scale(.12); opacity: .2; }
   @keyframes snapin { from { transform: translate(-50%, -50%) scale(.3) rotate(10deg); opacity: 0; } }
   #chatBtn.ping i { display: block; } #chatBtn.ping { animation: wig .6s infinite; }
@@ -1074,6 +1076,8 @@ function ideaNo() {
 // ---------- Смесване ----------
 let working = 0, mixing = null, table = null;
 const WORK_MS = 13500;          // 2.5 с за масата, 3 с влачене, очила, после майстори
+let FINAL = null;                               // крайни предмети: не стават за нищо по-нататък
+const isFinal = k => { if (!FINAL) { const used = new Set([...REC.flatMap(r => [r[0], r[1]]), ...REC3.flatMap(r => r[0])]); FINAL = new Set(Object.keys(EL).filter(x => !used.has(x))); } return FINAL.has(k); };
 const recLine = c => { const r = ingOf(c); return r ? r.map(k => elI(k) + " " + esc(elN(k))).join(" + ") : ""; };
 function remake(c) {                         // прави пак нещо по рецептата
   const r = ingOf(c); if (!r || !canMixNow()) return;
@@ -2234,7 +2238,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 40;
+const PAGE_V = 41;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -2389,10 +2393,10 @@ function fillSheet(kind) {
     let h = head("🧰 Сандък", `<b class="cash">${money(S.pearls)}</b> `);
     h += `<div class="inv">${Array.from({ length: total }, (_, i) => { const st2 = stacks[i]; if (!st2) return `<span class="cell"></span>`;
       const [k, n] = st2, f = fresh(k), dot = f == null ? "" : `<i class="fr ${f < 60 ? "r" : f < 180 ? "y" : "g"}"></i>`;
-      return `<span class="cell full${invPick === k ? " sel" : ""}${S.task && (S.task.a === k || S.task.b === k) ? " want" : ""}" data-k="${k}" data-n="${n}">${dot}${elI(k)}${n > 1 ? `<b>${n}</b>` : ""}</span>`; }).join("")}</div>`;
+      return `<span class="cell full${invPick === k ? " sel" : ""}${S.task && (S.task.a === k || S.task.b === k) ? " want" : ""}" data-k="${k}" data-n="${n}">${dot}${isFinal(k) ? `<i class="fin" title="Краен предмет">★</i>` : ""}${elI(k)}${n > 1 ? `<b>${n}</b>` : ""}</span>`; }).join("")}</div>`;
     if (invPick && cnt(invPick)) {
       const k = invPick, f = fresh(k), yuck = YUCK.includes(k);
-      h += `<div class="pick"><span class="ii">${elI(k)}</span><span class="in">${esc(elN(k))}<small>${cnt(k)} бр.${yuck ? "" : " · " + money(EL[k][4])}${f == null ? "" : f < 60 ? " · разваля се!" : " · свежо ~" + Math.round(f / 60) + " ч"}</small></span>
+      h += `<div class="pick"><span class="ii">${elI(k)}</span><span class="in">${esc(elN(k))}${isFinal(k) ? ` <span class="finl">★ краен</span>` : ""}<small>${cnt(k)} бр.${yuck ? "" : " · " + money(EL[k][4])}${f == null ? "" : f < 60 ? " · разваля се!" : " · свежо ~" + Math.round(f / 60) + " ч"}</small></span>
         <span class="btns">${role === "keeper" && (EDIBLE[k] || YUCK.includes(k)) ? `<button class="eat" data-k="${k}">Дай</button>` : ""}${canMixNow() ? `<button class="add" data-k="${k}">⊕</button>` : ""}</span></div>`;
     }
     if (role === "keeper") h += `<div class="zones"><span id="binZone">🗑️ Кофа</span><span id="sellZone">◉ Продай</span></div>`;
@@ -2422,7 +2426,7 @@ function fillSheet(kind) {
   } else if (kind === "cab") {
     const made = [...new Set([...S.found, ...Object.keys(S.mat).filter(k => cnt(k) > 0)])].filter(k => EL[k] && EL[k][3] === "made" && !EDIBLE[k]);
     const act = made.filter(k => ACTS[k] && (cnt(k) || placed(k))), rest = made.filter(k => !act.includes(k));
-    const card = k => `<div class="gd${placed(k) ? " on" : ""}${cnt(k) || placed(k) ? "" : " zero"}"><span>${elI(k)}</span><b>${esc(elN(k))}${cnt(k) > 1 ? ` ×${cnt(k)}` : ""}</b><small>${ACTS[k] ? esc(ACTS[k]) : BOOK_DESC[k] ? esc(BOOK_DESC[k]) : "Стои в шкафа за красота."}</small>
+    const card = k => `<div class="gd${placed(k) ? " on" : ""}${cnt(k) || placed(k) ? "" : " zero"}"><span>${elI(k)}</span><b>${esc(elN(k))}${cnt(k) > 1 ? ` ×${cnt(k)}` : ""}${isFinal(k) ? ` <span class="finl">★ краен</span>` : ""}</b><small>${ACTS[k] ? esc(ACTS[k]) : BOOK_DESC[k] ? esc(BOOK_DESC[k]) : "Стои в шкафа за красота."}</small>
       ${ingOf(k) ? `<small class="rc">${recLine(k)}</small>` : ""}${!cnt(k) && !placed(k) ? `<small class="st">Няма го в момента</small>` : ""}
       ${ingOf(k) && canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(ingOf(k)) ? "" : "disabled"}>Направи${cnt(k) || placed(k) ? " още" : " пак"}</button>` : ""}
       ${placed(k) ? `<small class="st">${k === "trampoline" || active(k) ? "✓ на дъното, работи" : "на дъното, изключено (докосни го там)"}</small>` : ""}
