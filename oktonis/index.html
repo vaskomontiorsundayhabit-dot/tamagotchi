@@ -720,6 +720,7 @@ const TIER = [["Основно", "#a9b4bf"], ["Лесно", "#5cc46a"], ["Сре
 const tierOf = k => TIER[Math.max(0, Math.min(4, (EL[k] && EL[k][2]) || 0))];
 function originOf(k) {                                    // откъде е нещото (като в таблицата)
   if (GEN_CAT[k] != null) return CAT_FROM[GEN_CAT[k]];
+  if (typeof GHOST_ONLY !== "undefined" && GHOST_ONLY[k]) return "Подарък от рибата-дух. Само тя го има.";
   const hs = knownHows(k);                                // само начините, които вече е правил
   if (hs.length) return "Направено: " + hs.map(h => (h.m === "mix" ? "" : HOW[h.m].n + " ") + h.i.map(elN).join(" + ")).join("; ");
   const fromT = Object.keys(EL).find(j => EL[j][5] && EL[j][5][1] === k && S.seen && S.seen.includes(j));
@@ -789,6 +790,11 @@ const IART = (() => {
     u_gear: () => { M("gear", 0, 0, 1); },
     u_tophat: () => { F("#2f3238", () => ell(0, 0.2, 0.38, 0.08)); F("#2f3238", () => rr(-0.22, -0.32, 0.44, 0.52, 0.04)); F("#e8463a", () => rr(-0.22, 0.04, 0.44, 0.08, 0)); },
     u_bin: () => { F("#9aa3ad", () => { c.moveTo(-0.26, -0.18); c.lineTo(0.26, -0.18); c.lineTo(0.2, 0.36); c.lineTo(-0.2, 0.36); c.closePath(); }); F("#c7ccd3", () => rr(-0.32, -0.28, 0.64, 0.1, 0.03)); F("#c7ccd3", () => rr(-0.08, -0.36, 0.16, 0.08, 0.02)); c.lineWidth = 0.025; for (const x of [-0.1, 0, 0.1]) { c.beginPath(); c.moveTo(x, -0.1); c.lineTo(x * 0.9, 0.28); c.stroke(); } st(); },
+    ghostpearl: () => { F("rgba(220,245,255,.95)", () => c.arc(0, 0.04, 0.28, 0, 7)); c.fillStyle = "rgba(160,230,255,.6)"; c.beginPath(); c.arc(0.06, 0.1, 0.16, 0, 7); c.fill(); c.fillStyle = "#fff"; c.beginPath(); c.arc(-0.1, -0.06, 0.07, 0, 7); c.fill(); FX.spark && FX.spark(0.28, -0.26, 0.08); },
+    moonshell: () => { F("#c8d8f0", () => { c.moveTo(0, 0.32); c.lineTo(-0.34, -0.06); c.quadraticCurveTo(-0.28, -0.34, 0, -0.34); c.quadraticCurveTo(0.28, -0.34, 0.34, -0.06); c.closePath(); }); c.lineWidth = 0.02; for (const a of [-0.24, -0.12, 0, 0.12, 0.24]) { c.beginPath(); c.moveTo(0, 0.3); c.lineTo(a, -0.3); c.stroke(); } st(); F("#fff6c0", () => { c.arc(0.22, -0.3, 0.1, 0.5, 4.2); c.arc(0.27, -0.33, 0.08, 3.6, 0.9, true); }); },
+    ghostlamp: () => { F("#3d4a6a", () => rr(-0.08, -0.4, 0.16, 0.08, 0.02)); F("rgba(170,240,255,.9)", () => { c.moveTo(-0.2, -0.3); c.lineTo(0.2, -0.3); c.lineTo(0.24, 0.24); c.lineTo(-0.24, 0.24); c.closePath(); }); c.fillStyle = "#e8fdff"; c.beginPath(); c.ellipse(0, 0, 0.08, 0.14, 0, 0, 7); c.fill(); F("#3d4a6a", () => rr(-0.28, 0.24, 0.56, 0.1, 0.03)); },
+    shadowfeather: () => { c.save(); c.rotate(0.5); F("#4a4f6a", () => { c.moveTo(0, -0.42); c.quadraticCurveTo(0.2, -0.1, 0.04, 0.34); c.lineTo(-0.04, 0.34); c.quadraticCurveTo(-0.2, -0.1, 0, -0.42); }); c.strokeStyle = "rgba(185,246,255,.9)"; c.lineWidth = 0.02; c.beginPath(); c.moveTo(0, -0.38); c.lineTo(0, 0.42); c.stroke(); c.restore(); st(); },
+    otherkey: () => { c.strokeStyle = "#9ff0ff"; c.lineWidth = 0.07; c.beginPath(); c.arc(-0.2, -0.16, 0.13, 0, 7); c.stroke(); c.beginPath(); c.moveTo(-0.1, -0.06); c.lineTo(0.3, 0.32); c.moveTo(0.18, 0.2); c.lineTo(0.26, 0.12); c.moveTo(0.26, 0.28); c.lineTo(0.34, 0.2); c.stroke(); st(); c.lineWidth = 0.02; c.beginPath(); c.arc(-0.2, -0.16, 0.17, 0, 7); c.stroke(); st(); },
     // шапки и аксесоари (вместо емоджи)
     h_beanie: () => { F("#e8463a", () => { c.moveTo(-0.34, 0.2); c.quadraticCurveTo(-0.32, -0.3, 0, -0.3); c.quadraticCurveTo(0.32, -0.3, 0.34, 0.2); c.closePath(); }); F("#f6efe6", () => rr(-0.38, 0.12, 0.76, 0.14, 0.05)); F("#f6efe6", () => c.arc(0, -0.34, 0.1, 0, 7)); c.lineWidth = 0.02; for (const x of [-0.18, 0, 0.18]) { c.beginPath(); c.moveTo(x, -0.24); c.lineTo(x, 0.1); c.stroke(); } st(); },
     h_straw: () => { F("#e8c35a", () => ell(0, 0.14, 0.44, 0.12)); F("#f0d478", () => { c.moveTo(-0.22, 0.12); c.quadraticCurveTo(-0.22, -0.24, 0, -0.24); c.quadraticCurveTo(0.22, -0.24, 0.22, 0.12); c.closePath(); }); F("#e86a8a", () => rr(-0.22, 0.0, 0.44, 0.08, 0.02)); },
@@ -2196,6 +2202,14 @@ const Q = [
   { id: "sea", q: "Бил ли си някога на море?", yes: "Видя ли октоподи там?", no: "Някой ден ще отидеш. И ще ми махнеш с ръка.", set: { yes: { seaside: true } }, next: { yes: "sawOcto" } },
   { id: "sawOcto", q: "Видя ли октоподи там?", yes: "Наистина?! Поздрави ли ги от мен? Сигурно са ми роднини.", no: "Крият се добре. Ние сме майстори на криенето.", next: { yes: "ateOcto" } },
   { id: "ateOcto", q: "Ти… да не си ял октопод?", yes: "…Няма да говоря с теб пет минути.", no: "Уф. Успокоих се. Знаех си, че си добър.", mood: { yes: -12, no: 6 }, set: { yes: { ateOcto: true } } },
+  { id: "v_order", q: "Подреждаш ли си нещата по цвят?", yes: "Знаех си! Ние, Девите, се разпознаваме отдалеч.", no: "Нищо. Мога да ти покажа как. Отнема само… три часа." },
+  { id: "v_list", q: "Правиш ли си списъци със задачи?", yes: "Списъците са любовта ми. Имам списък със списъците си.", no: "Как помниш всичко?! Аз имам списък даже за мехурчетата." },
+  { id: "v_wash", q: "Миеш ли си ръцете преди ядене?", yes: "Браво! Аз си мия и осемте пипала. Поотделно.", no: "Ох. Ох. Отивам да си почина от тази новина." },
+  { id: "v_late", q: "Закъсняваш ли понякога?", yes: "Хм. Ще го запиша. Без да те съдя. Почти.", no: "Точен човек! Точността е най-хубавата дума." },
+  { id: "v_help", q: "Обичаш ли да помагаш на другите?", yes: "Като мен! Помагам дори когато не ме молят. Особено тогава.", no: "Добре. Аз ще помагам за двамата." },
+  { id: "v_desk", q: "Подредено ли е бюрото ти сега?", yes: "Гордея се с теб. Сериозно.", no: "Ще те чакам. Иди и го подреди. Аз ще броя до сто." },
+  { id: "v_veg", q: "Яде ли зеленчуци днес?", yes: "Отлично. Витамините са подредени в тялото ти.", no: "Броколи. Утре. Обещай ми." },
+  { id: "v_plan", q: "Обичаш ли всичко да е планирано?", yes: "И аз! Даже изненадите си ги планирам. Изненадвам се в 16:00.", no: "Спонтанен човек… Интересно. Ще те изучавам." },
   { id: "pet", q: "Имаш ли домашен любимец?", yes: "Как се казва? Не, не ми казвай. Октопод ли е?", no: "Е, мен имаш! Аз съм по-добър от котка. Не драскам.", set: { yes: { pet: true }, no: { pet: false } }, next: { yes: "petOcto" } },
   { id: "petOcto", q: "Октопод ли е?", yes: "Знаех си! Ние сме най-добрите любимци.", no: "Хм. Добре. Но аз съм по-подреден, нали?", mood: { yes: 5 } },
   { id: "inventor", st: ["kid", "teen", "adult", "aging", "old"], q: "Искаш ли да станеш изобретател като мен?", yes: "Тогава първо правило: всичко се записва!", no: "Добре, ще си моят асистент. Асистентите също са важни.", set: { yes: { inventor: true } } },
@@ -2672,6 +2686,7 @@ function chatter() {
   if (fc.blue === true) mem.push("Днес водата е особено синя. Специално за теб.");
   if (fc.parent === "mama" || fc.parent === "tate") mem.push(fc.parent === "mama" ? "Мамо, гледай какво мога!" : "Тате, гледай какво мога!");
   if (mem.length && Math.random() < 0.25) { lastChat = performance.now(); return say("", pick(mem)); }
+  if (S.stage !== "baby" && Math.random() < 0.18) { lastChat = performance.now(); return say("", pick(VIRGO)); }       // типично за Дева
   if (S.stage === "baby" && Math.random() < 0.6) { lastChat = performance.now(); return say("", ""); }
   if (Math.random() > 0.2) return;
   lastChat = performance.now();
@@ -3108,7 +3123,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 47;
+const PAGE_V = 48;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -4270,7 +4285,7 @@ function drawFloor(t, s, behind) {
     if (!seen[it.id]) {
       seen[it.id] = now;
       const old = now - loadAt < 4000 || Date.now() - it.t > 5 * MIN;        // събрано, докато те нямаше
-      if (it.kind === "trash") floats[it.id] = { y: rnd(0.24, 0.74), ph: rnd(0, 6), sp: rnd(0.6, 1.4) };   // боклуците плуват из водата
+      if (it.kind === "trash" || it.ghost) floats[it.id] = { y: rnd(0.24, 0.74), ph: rnd(0, 6), sp: rnd(0.6, 1.4) };   // боклуците и подаръците от духа плуват из водата
       if (old) seen[it.id] = now - 1e5;
       else if (it.kind !== "parcel" && it.kind !== "letter") setTimeout(() => notice(it), 1800);
     }
@@ -4289,6 +4304,7 @@ function drawFloor(t, s, behind) {
     g.font = `${sz}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
     if (STYLE === "sketch") g.globalAlpha = 0.92;
     if (fl) { g.shadowColor = "rgba(0,0,0,.55)"; g.shadowBlur = 8; g.shadowOffsetY = 3; }
+    if (it.ghost) { g.shadowColor = "rgba(185,246,255,.95)"; g.shadowBlur = 24 + Math.sin(t * 3) * 8; g.shadowOffsetY = 0; }      // призрачно сияние
     if (it.k && IART.has(it.k)) IART.draw(g, it.k, 0, -sz * 0.05, sz * 1.05); else { g.fillStyle = "#000"; g.fillText(it.e, 0, 0); } g.globalAlpha = 1;
     g.restore();
     if (it.kind === "part" || it.kind === "letter") {                       // блести, за да се забележи
@@ -4505,7 +4521,7 @@ function seaChance(id) {                    // колко вероятно е д
 }
 const pct = v => v >= 10 ? Math.round(v) + "%" : v >= 1 ? v.toFixed(1).replace(".", ",") + "%" : v.toFixed(2).replace(".", ",") + "%";
 function seaPick() {
-  if (role === "keeper" && S && kr().st < 3 && !(S.asleep) && Math.random() < (kr().st === 0 ? 0.7 : 0.35)) return "krill";   // рачетата Крил идват скоро, за да почне историята
+  if (role === "keeper" && S && kr().st < 3 && !(S.asleep) && Math.random() < (kr().st === 0 ? 0.5 : 0.2)) return "krill";   // рачетата Крил идват скоро, за да почне историята
   const dp = night(Date.now()) || (S && S.asleep) ? "night" : dayPart(), list = [];
   for (const [id, c] of Object.entries(SEA)) if (dp === "night" ? c[7] === "night" : c[7] !== "night")
     if (c[5] !== "guest") list.push([id, TIER_W[c[6]] * (S.album && S.album[id] ? 0.6 : 1)]);
@@ -5065,12 +5081,12 @@ const ghost = { bub: [], mv: null, on: false, msgs: [], last: "", x: 0, y: 0, at
 const ghostTopic = () => S && S.wid ? "okt-ghost-" + String(S.wid).replace(/[^\w-]/g, "") : null;
 function ghostSend(o) {
   const tp = ghostTopic(); if (!tp) return;
-  if (role === "viewer" && !liveOn() && o.t !== "off") return;          // духът е само докато toshik е в играта
+  if (role === "viewer" && !liveOn() && o.t !== "off" && o.t !== "drop") return;          // духът е само докато toshik е в играта (подаръците могат и без него)
   fetch(`https://ntfy.sh/${tp}`, { method: "POST", body: JSON.stringify({ ...o, by: role, at: Date.now() }) }).catch(() => {});
   ghostApply({ ...o, by: role, at: Date.now(), local: true });     // при мен веднага
 }
 function ghostApply(m) {
-  if (!m.local && m.at && Date.now() - m.at > 60000) return;             // старо съобщение (toshik го е нямало): не се показва и не остава
+  if (!m.local && m.at && Date.now() - m.at > (m.t === "drop" ? 12 * 3600000 : 60000)) return;   // старо съобщение не се показва; само подаръкът чака до 12 ч
   if (role === "keeper" && !m.local && ["msg", "move", "drop", "rock", "sound"].includes(m.t)) ghost.talked = (ghost.talked || 0) + 1;
   if (m.t === "on" && !ghost.on && S && S.asleep) {              // идва само докато спи
     if (role === "keeper") ghost.msgs = [];                      // при toshik всеки път е нов разговор
@@ -5089,12 +5105,13 @@ function ghostApply(m) {
     if (role === "keeper") { const n = S.parts.filter(x => x.ghost).length; S.parts = S.parts.filter(x => !x.ghost); if (n) { dirty = true; save(); } }
     ghost.last = { x: pick(["Размислих… взимам си го обратно… хи-хи…", "Не, това е мое… бууу…"]), at: performance.now() }; return;
   }
-  if (m.t === "drop" && ghost.on && EL[m.k]) {                   // духът пуска предмет на дъното
-    if (role === "keeper" && S.parts.length < 8) { S.parts.push({ id: uid(), k: m.k, x: clamp(ghost.x / W + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true }); dirty = true; save(); }
+  if (m.t === "drop" && EL[m.k]) {                               // духът пуска подарък: плува във водата, докато toshik го намери
+    if (role === "keeper" && m._id && (S.ghostGot || []).includes(m._id)) return;
+    if (role === "keeper" && S.parts.length < 10) { S.parts.push({ id: uid(), k: m.k, x: clamp((ghost.on ? ghost.x / W : rnd(0.2, 0.8)) + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true }); if (m._id) S.ghostGot = [...(S.ghostGot || []), m._id].slice(-40); dirty = true; save(); }
     if (role === "viewer" && S.parts.length < 8) {             // при vasko се вижда веднага (после идва истинското от toshik)
       S.parts.push({ id: "gv" + Date.now(), k: m.k, x: clamp(ghost.x / W + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true });
     }
-    ghost.last = { x: pick(["Подарък… от отвъдното…", "Вземи го… ако смееш…", "Това е за теб… бууу…"]), at: performance.now() };
+    if (ghost.on) ghost.last = { x: pick(["Подарък… от отвъдното…", "Вземи го… ако смееш…", "Това е за теб… бууу…"]), at: performance.now() };
     return;
   }
   if (m.t === "sound" && ghost.on) {                            // страшен звук
@@ -5107,7 +5124,7 @@ function ghostApply(m) {
     ghost.msgs.push({ who: m.t === "msg" ? "g" : "t", x: String(m.x || "").slice(0, 200), at: m.at || Date.now() });
     ghost.msgs = ghost.msgs.slice(-200);
     if (role === "viewer") try { localStorage.setItem("okt_ghost_" + ghostTopic(), JSON.stringify(ghost.msgs)); } catch {}   // при vasko се помни
-    if (m.t === "msg") ghost.last = { x: String(m.x || "").slice(0, 200), at: performance.now() };
+    if (m.t === "msg") ghost.last = { x: String(m.x || "").slice(0, 200), at: performance.now() + Math.min(9000, String(m.x || "").length * 80) };   // по-дългото стои по-дълго
     if (m.t === "msg" && !ghost.on) { ghost.msgs.pop(); return; }   // пише се само докато духът е тук
     if (sheetKind === "ghost") fillSheet("ghost");
     renderGhostBtn(m.t === "msg" && role === "keeper" || m.t === "reply" && role === "viewer");
@@ -5117,7 +5134,7 @@ function ghostApply(m) {
 async function ghostPoll() {
   const tp = ghostTopic(); if (!tp || !inGame) return;
   if (!ghost.boot && role === "viewer") try { ghost.msgs = JSON.parse(localStorage.getItem("okt_ghost_" + tp)) || []; } catch {}
-  const since = ghost.boot ? ghost.lastId || "30s" : "15m";
+  const since = ghost.boot ? ghost.lastId || "30s" : role === "keeper" ? "12h" : "15m";      // при влизане toshik взима и подаръците, пуснати докато го е нямало
   try {
     const txt = await (await fetch(`https://ntfy.sh/${tp}/json?poll=1&since=${since}`, { cache: "no-store" })).text();
     for (const line of txt.split("\n")) { if (!line.trim()) continue;
@@ -5126,14 +5143,14 @@ async function ghostPoll() {
       ghost.seen.add(ev.id); ghost.lastId = ev.id;
       let m; try { m = JSON.parse(ev.message); } catch { continue; }
       if (!ghost.boot && m.t === "on" && Date.now() - (m.at || 0) > 10 * MIN) continue;   // старо пускане не се повтаря
-      ghostApply(m); }
+      m._id = ev.id; ghostApply(m); }
     ghost.boot = 1;
   } catch {}
 }
 setInterval(() => { if (!document.hidden) ghostPoll(); }, 8000);
 function renderGhostBtn(ping) {
   const b = $("side") && $("side").querySelector('[data-k="ghost"]'); if (!b) return;
-  b.classList.toggle("hidden", role === "viewer" ? !liveOn() && !ghost.on : !ghost.on);     // vasko: само докато toshik е в играта; toshik: само докато духът е тук
+  b.classList.toggle("hidden", role !== "viewer" && !ghost.on);     // vasko: винаги; toshik: само докато духът е тук
   if (role !== "viewer" && !ghost.on && sheetKind === "ghost") closeSheet();
   if (ping) b.classList.add("ping");
   renderGhostChat();
@@ -5230,6 +5247,15 @@ function drawRockFx(t) {                           // духът: камъкът
   }
   g.restore();
 }
+// типични за Дева (подреден, придирчив, грижовен, притеснителен)
+const VIRGO = ["Подредих водораслите по височина. После по цвят. После пак по височина.", "Направих си списък за днес. Точка едно: да направя списък. Готово!",
+  "Някой е оставил мехурче накриво. Не мога да спя спокойно.", "Мисля, че камъкът е два милиметра по-наляво от вчера. Някой го е местил?",
+  "Чистотата е половината здраве. Другата половина е още чистота.", "Анализирах деня. Можеше да е по-добър с девет процента.",
+  "Не съм придирчив. Просто всичко трябва да е перфектно.", "Ако нещо си струва да се направи, си струва да се направи три пъти, докато стане идеално.",
+  "Притеснявам се, че се притеснявам твърде много. Сега се притеснявам и за това.", "Сортирах перлингите по блясък. Ти как ги държиш? Не ми казвай.",
+  "Помогнах на една скарида да си подреди черупката. Тя не искаше. Но вече ми е благодарна. Мисля.", "Днес ще бъда спонтанен. В три часа. За десет минути.",
+  "Обичам, когато всичко е на мястото си. Включително ти: тук, при мен.", "Пипалата ми са номерирани. Номер пет днес е мързелив.",
+  "Изчислих, че ако всеки ден чистим по малко, след година дъното ще блести.", "Ти си сложил нещо накриво в сандъка. Не, не казвам кое. Намери го сам."];
 // ревнува от домашния любимец
 const PET_JEALOUS = ["Поздрави любимеца си от мен. Ама не много. Малко.", "Твоят любимец може ли да изобретява? Не мисля.", "Обзалагам се, че любимецът ти няма осем пипала.",
   "Кой ти е по-любим: аз или онзи там вкъщи? Не отговаряй. Знам отговора. Мисля.", "Пак миришеш на любимеца си. Хмпф.", "И той ли получава пица? Само питам.",
@@ -5294,8 +5320,13 @@ function closeGhostPop() { $("gpop")?.classList.add("hidden"); }
 
 const GHOST_LINES = ["Бууууу… аз съм рибата-дух…", "Чувам те как дишаш… хи-хи-хи…", "Под камъка има нещо… и то те гледа…", "Не поглеждай зад себе си…", "Тази нощ водата е студена… като мен…",
   "Някога и аз бях октопод… преди сто години…", "Шшшт… ако кажеш името ми, ще се върна…", "Броя пипалата ти… едно… две… липсва едно!", "Сандъкът ти скърца нощем… знаеш ли защо?", "Ще дойда пак… когато луната е пълна…"];
-const GHOST_DROPS = ["star", "shell", "coral", "feather", "pebble", "bulb", "bat", "magnet", "gear", "spring", "bolt", "coin", "key", "seaglass"];
-GHOST_DROPS.length = 0; GHOST_DROPS.push("shell", "coral", "feather", "pebble", "bulb", "bat", "gear", "spring", "bolt", "coin", "pearl", "key", "seaglass", "candle", "hardtack");
+const GHOST_ONLY = { ghostpearl: ["⚪", "Призрачна перла", 4, "part", 80, "Свети слабо и е студена като лунна светлина."], moonshell: ["🐚", "Лунна раковина", 4, "part", 60, "Ако я долепиш до ухото си, чуваш шепот вместо море."],
+  ghostlamp: ["🏮", "Фенерът на духа", 4, "made", 90, "Свети нощем със синкава светлина. Никой не знае с какво гори."], shadowfeather: ["🪶", "Перо от сянка", 4, "part", 50, "Пада бавно и никога не докосва дъното."],
+  otherkey: ["🗝️", "Ключ от отвъдното", 4, "part", 70, "Никой не знае какво отключва. Може би нищо. Може би всичко."] };
+for (const [k, v] of Object.entries(GHOST_ONLY)) { EL[k] = v.slice(0, 5); GEN.DESC[k] = v[5]; }
+ACTS.ghostlamp = "Свети около него нощем със синкава светлина."; LIGHTS.push("ghostlamp");
+const GHOST_DROPS = [...Object.keys(GHOST_ONLY), "star", "shell", "coral", "feather", "pebble", "bulb", "bat", "magnet", "gear", "spring", "bolt", "coin", "key", "seaglass"];
+GHOST_DROPS.length = 0; GHOST_DROPS.push(...Object.keys(GHOST_ONLY), "shell", "coral", "feather", "pebble", "bulb", "bat", "gear", "spring", "bolt", "coin", "pearl", "key", "seaglass", "candle", "hardtack");
 const GHOST_SOUNDS = [["wail", "👻 Вой"], ["wind", "🌬️ Вятър"], ["heart", "💓 Сърце"], ["creak", "🚪 Скърцане"], ["bell", "🔔 Камбана"], ["laugh", "😈 Смях"]];
 let actx = null;
 addEventListener("pointerdown", () => { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); } catch {} });
@@ -5316,9 +5347,10 @@ function ghostSound(k) {                        // страшни звуци (с
 }
 function ghostHtml(head) {
   const log = ghost.msgs.map(m => `<div class="gm ${m.who}"><b>${m.who === "g" ? "👻" : "🐙"}</b> ${esc(m.x)}</div>`).join("") || `<div class="sub">${role === "viewer" ? "Пусни рибата-дух и пиши. Toshik ще вижда съобщенията ти над нея." : "Рибата-дух още мълчи…"}</div>`;
-  const awake = !S.asleep && !ghost.on;
-  return head("👻 Рибата-дух") + (role === "viewer" ? `<div class="row2"><button class="ans ${ghost.on ? "" : "yes"}" id="ghOn" ${awake ? "disabled" : ""}>${ghost.on ? "Скрий рибата-дух" : "Покажи рибата-дух"}</button></div>` +
-    (awake ? `<div class="sub">Рибата-дух идва само докато Октонис спи. Сега е буден.</div>` : "") : "") +
+  const awake = !S.asleep && !ghost.on, away = role === "viewer" && !liveOn() && !ghost.on;
+  return head("👻 Рибата-дух") + (role === "viewer" ? `<div class="row2"><button class="ans ${ghost.on ? "" : "yes"}" id="ghOn" ${awake || away ? "disabled" : ""}>${ghost.on ? "Скрий рибата-дух" : "Покажи рибата-дух"}</button></div>` +
+    (away ? `<div class="sub">Тошик не е в играта. Рибата-дух идва само докато е там.</div>` : awake ? `<div class="sub">Рибата-дух идва само докато Октонис спи. Сега е буден.</div>` : "") +
+    (!ghost.on ? `<div class="sub">🎁 Пусни подарък: ще плува във водата, докато Тошик го намери.</div><div class="gq drop">${GHOST_DROPS.map(k => `<button data-gd="${k}" title="${esc(elN(k))}">${elI(k)}</button>`).join("")}</div>` : "") : "") +
     `<div class="glog">${log}</div>` + (role === "viewer" && ghost.on ? `<div class="sub">👆 Докосни рибата-дух на екрана за реплики, движения и предмети.</div>` : "") +
     (role === "viewer" && !ghost.on ? `<div class="sub">Пиши, след като покажеш рибата-дух.</div>` : `<form id="ghForm" class="gform"><input id="ghIn" maxlength="200" autocomplete="off" placeholder="${role === "viewer" ? "Напиши като рибата-дух…" : "Отговори на рибата-дух…"}"><button>Прати</button></form>`);
 }
