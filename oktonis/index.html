@@ -164,7 +164,9 @@
   .inv { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; background: rgba(0,0,0,.25); padding: 6px; border-radius: 12px; }
   .cell { aspect-ratio: 1; border-radius: 8px; background: rgba(255,255,255,.07); box-shadow: inset 0 2px 0 rgba(0,0,0,.35); display: grid; place-items: center;
     font-size: 28px; position: relative; touch-action: none; }
-  .cell.full { background: rgba(255,255,255,.14); cursor: grab; } .cell.sel { outline: 3px solid var(--gold); } .cell.want { background: rgba(255,209,102,.35); }
+  .cell.full { background: rgba(255,255,255,.14); cursor: grab; border: 3px solid var(--tc, transparent); }
+  .pick .ii { border: 3px solid var(--tc, transparent); border-radius: 10px; display: grid; place-items: center; width: 44px; height: 44px; }
+  .pick .in .finl { align-self: flex-start; } .pick small.tier { font-weight: 800; } .pick small.ds { color: #fff3e0; font-size: 13px; } .pick small.og { color: #ffe2a8; font-style: italic; } .cell.sel { outline: 3px solid var(--gold); } .cell.want { background: rgba(255,209,102,.35); }
   .cell b { position: absolute; right: 3px; bottom: 0; font-size: 13px; font-weight: 800; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
   .cell .fr { position: absolute; left: 4px; top: 4px; width: 8px; height: 8px; border-radius: 50%; } .fr.g { background: #6fd3a0; } .fr.y { background: #ffd166; } .fr.r { background: #ff6b6b; }
   .pick { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; padding: 8px 2px 0; }
@@ -194,6 +196,11 @@
   .spine u { position: absolute; bottom: 4px; text-decoration: none; font-size: 10px; font-weight: 800; background: #ffe7a8; color: #2a1730; border-radius: 4px; padding: 0 3px; white-space: nowrap; z-index: 1; }
   .shelf.shop .row { height: 160px; } .shelf.shop .spine { flex-direction: column; align-items: center; } .shelf.shop .spine em { flex: 1; min-height: 0; padding: 6px 0 3px; } .shelf.shop .spine u { position: static; margin: 0 0 4px; } .spine { flex-basis: 38px; } .shelf .empty { color: #e8d2b0; font-size: 13px; align-self: center; } .shelf .deco { font-size: 34px; margin-left: auto; }
   #tut { position: fixed; inset: 0; z-index: 30; }
+  #bigupd { position: fixed; inset: 0; z-index: 80; background: rgba(5,15,35,.6); display: grid; place-items: center; padding: 16px; }
+  #bigupd .bu { width: min(380px, 100%); background: #fffaf2; color: #2a1730; border: 3px solid var(--ink); border-radius: 20px; padding: 18px 18px 14px; box-shadow: 0 10px 40px rgba(0,0,0,.5); text-align: center; }
+  #bigupd b { font-size: 24px; display: block; margin-bottom: 8px; } #bigupd p { margin: 7px 0; font-size: 16px; font-weight: 600; }
+  #bigupd p.warn { margin-top: 12px; color: #b3261e; font-weight: 800; }
+  #bigupd button { margin-top: 10px; font-size: 18px; font-weight: 800; padding: 10px 28px; border-radius: 14px; border: 3px solid var(--ink); background: #8fe0b4; color: #2a1730; }
   #tut .spot { position: fixed; border-radius: 18px; box-shadow: 0 0 0 9999px rgba(5,15,35,.62); border: 3px solid var(--gold); transition: all .3s; pointer-events: none; }
   #tut .tcard { position: fixed; left: 16px; right: 16px; max-width: 420px; margin: 0 auto; background: #fffaf2; color: #2a1730; border: 3px solid var(--ink);
     border-radius: 18px; padding: 14px 16px; box-shadow: 0 6px 0 rgba(0,0,0,.3); font-size: 16px; }
@@ -286,6 +293,10 @@
   #gmenu { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 70; width: min(380px, 92vw); max-height: 80vh; overflow-y: auto; background: rgba(16,30,52,.96); color: #fff;
     border: 2px solid rgba(185,246,255,.5); border-radius: 18px; padding: 12px 12px 6px; box-shadow: 0 10px 40px rgba(0,0,0,.6), 0 0 30px rgba(185,246,255,.25); }
   #gmenu .x { position: absolute; right: 10px; top: 6px; background: none; border: 0; color: #fff; font-size: 20px; } #gmenu .sub { color: #b9f6ff; margin: 4px 0; font-weight: 700; }
+  .gbub { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; margin: 6px 0 10px; }
+  .gbub button { position: relative; max-width: 88%; text-align: left; background: #fffaf2; color: #2a1730; border: 3px solid var(--ink); border-radius: 16px 16px 16px 4px; padding: 8px 12px; font-size: 15px; line-height: 1.3; font-weight: 600; box-shadow: 0 3px 0 rgba(0,0,0,.25), 0 0 14px rgba(185,246,255,.25); }
+  .gbub button:nth-child(even) { align-self: flex-end; border-radius: 16px 16px 4px 16px; }
+  .gbub button:active { transform: scale(.97); background: #dff9ff; }
   .gq.drop button { padding: 4px; width: 44px; height: 44px; display: grid; place-items: center; } .gq.drop img.ei { width: 32px; height: 32px; } .gq button.sent { outline: 3px solid #b9f6ff; }
   .gq.snd button { background: rgba(255,120,120,.18); border-color: rgba(255,150,150,.5); }
   .gform { display: flex; gap: 6px; } .gform input { flex: 1; padding: 10px 12px; border-radius: 12px; border: 2px solid rgba(0,0,0,.2); font-size: 16px; } .gform button { padding: 10px 14px; border-radius: 12px; font-weight: 700; }
@@ -694,6 +705,21 @@ for (const k of Object.keys(BOOK_INV)) delete BOOK_INV[k];
 HIDDEN.length = 0; HIDDEN.push(["seaglass", "bottle", "starjar", "night"], ["pebble", "pearl", "moonstone", "light"], ["shell", "spring", "dancingshell", "music"], ["feather", "cup", "laughcup", "happy"],
   ["bottle", "weed", "dew", "morning"], ["pearl", "magnet", "moonmagnet", "moon"], ["letter", "shell", "memoir", "old"], ["bulb", "recpaper", "ideabulb", "smart"], ["shell", "magnet", "krillradio", "krill"]);
 const LIVING = new Set(GEN.LIVING);
+const GEN_CAT = {"sand": 0, "pebble": 0, "silt": 0, "weed": 0, "seagrass": 0, "kelp": 0, "coral": 0, "sponge": 0, "seaglass": 0, "pumice": 0, "quartz": 0, "salt": 0, "lodestone": 0, "lavarock": 0, "mussel": 1, "oyster": 1, "snail": 1, "star": 1, "urchin": 1, "seacucumber": 1, "shrimp": 1, "crab": 1, "jelly": 1, "fish": 1, "squidling": 1, "octokid": 1, "shell": 2, "pearl": 2, "sharktooth": 2, "scale": 2, "bone": 2, "whalebone": 2, "crabshell": 2, "ink": 2, "urchinspine": 2, "mermaidpurse": 2, "feather": 2, "anchor": 3, "chain": 3, "rope": 3, "plank": 3, "barrel": 3, "nail": 3, "bolt": 3, "gear": 3, "spring": 3, "coin": 3, "key": 3, "padlock": 3, "lantern": 3, "candle": 3, "bottle": 3, "jar": 3, "plate": 3, "spoon": 3, "tablefork": 3, "pot": 3, "bell": 3, "oldcompass": 3, "brokenscope": 3, "mapscrap": 3, "letter": 3, "soggybook": 3, "sailcloth": 3, "button": 3, "boot": 3, "captainhat": 3, "cannonball": 3, "hook": 3, "wheel": 3, "pocketwatch": 3, "scissors": 3, "doll": 3, "coconut": 4, "hardtack": 4, "honey": 4, "lemon": 4, "can": 4, "plastic": 5, "pbottle": 5, "cap": 5, "wrapper": 5, "straw": 5, "cup": 5, "soda": 5, "flipflop": 5, "balloon": 5, "mask": 5, "fishline": 5, "ghostnet": 5, "tire": 5, "bat": 5, "bulb": 5, "wire": 5, "sock": 5};
+const CAT_FROM = ["Намира се на дъното", "Малко живо създание от дъното", "Останало от морските животни", "От разбит кораб", "От провизиите на потънал кораб", "Боклук, паднал отгоре"];
+const TIER = [["Основно", "#a9b4bf"], ["Лесно", "#5cc46a"], ["Средно", "#4d9be8"], ["Трудно", "#b066f0"], ["Легендарно", "#f0b429"]];
+const tierOf = k => TIER[Math.max(0, Math.min(4, (EL[k] && EL[k][2]) || 0))];
+function originOf(k) {                                    // откъде е нещото (като в таблицата)
+  if (GEN_CAT[k] != null) return CAT_FROM[GEN_CAT[k]];
+  const h = howOf(k);
+  if (h) return (h.m === "mix" ? "Смесва се: " : HOW[h.m].n + ": ") + h.i.map(elN).join(" + ");
+  const fromT = Object.keys(EL).find(j => EL[j][5] && EL[j][5][1] === k);
+  if (fromT) return "Получава се с времето от " + elN(fromT).toLowerCase();
+  const fromA = Object.entries(APART).find(([j, r]) => Array.isArray(r) && r.some(x => (Array.isArray(x) ? x[0] : x) === k));
+  if (fromA) return "Остава при разглобяване на " + elN(fromA[0].split("+")[0]).toLowerCase();
+  return "";
+}
+const descOf = k => (GEN.DESC && GEN.DESC[k]) || BOOK_DESC[k] || ACTS[k] || "";
 const SECRET = ["wreck", "robokt", "fondue", "penicillin"];          // не се казват предварително
 const recKey = (a, b) => [a, b].sort().join("+");
 const RECIPE = Object.fromEntries(REC.map(([a, b, c]) => [recKey(a, b), c]));
@@ -2982,12 +3008,13 @@ function afterLoad() {
   show("gameView"); buildStatic(); render();
   loadAt = performance.now();
   morningLetter(); schedNotify(true);
+  setTimeout(bigUpdate, 1400);
   setTimeout(tutAsk, TUT_TEST ? 1200 : 2500);
   if (role === "keeper" && S.hatched && S.trash.length >= 3) { sadUntil = performance.now() + 60000; setTimeout(() => say("", pick(["Толкова боклуци се събраха… Тъжно ми е.", "Виж каква бъркотия… Плуват навсякъде."]), 7000), 1500); }
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 43;
+const PAGE_V = 44;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -3145,10 +3172,10 @@ function fillSheet(kind) {
     let h = head("🧰 Сандък", `<b class="cash">${money(S.pearls)}</b> `);
     h += `<div class="inv">${Array.from({ length: total }, (_, i) => { const st2 = stacks[i]; if (!st2) return `<span class="cell"></span>`;
       const [k, n] = st2, f = fresh(k), dot = f == null ? "" : `<i class="fr ${f < 60 ? "r" : f < 180 ? "y" : "g"}"></i>`;
-      return `<span class="cell full${invPick === k ? " sel" : ""}${S.task && (S.task.a === k || S.task.b === k) ? " want" : ""}" data-k="${k}" data-n="${n}">${dot}${isFinal(k) ? `<i class="fin" title="Краен предмет">★</i>` : ""}${elI(k)}${n > 1 ? `<b>${n}</b>` : ""}</span>`; }).join("")}</div>`;
+      return `<span style="--tc:${tierOf(k)[1]}" class="cell full${invPick === k ? " sel" : ""}${S.task && (S.task.a === k || S.task.b === k) ? " want" : ""}" data-k="${k}" data-n="${n}">${dot}${isFinal(k) ? `<i class="fin" title="Краен предмет">★</i>` : ""}${elI(k)}${n > 1 ? `<b>${n}</b>` : ""}</span>`; }).join("")}</div>`;
     if (invPick && cnt(invPick)) {
       const k = invPick, f = fresh(k), yuck = YUCK.includes(k);
-      h += `<div class="pick"><span class="ii">${elI(k)}</span><span class="in">${esc(elN(k))}${isFinal(k) ? ` <span class="finl">★ краен</span>` : ""}<small>${cnt(k)} бр.${yuck ? "" : " · " + money(EL[k][4])}${f == null ? "" : f < 60 ? " · разваля се!" : " · свежо ~" + Math.round(f / 60) + " ч"}</small></span>
+      h += `<div class="pick"><span class="ii" style="--tc:${tierOf(k)[1]}">${elI(k)}</span><span class="in">${esc(elN(k))}${isFinal(k) ? ` <span class="finl">★ краен</span>` : ""}<small>${cnt(k)} бр.${yuck ? "" : " · " + money(EL[k][4])}${f == null ? "" : f < 60 ? " · разваля се!" : " · свежо ~" + Math.round(f / 60) + " ч"}</small><small class="tier" style="color:${tierOf(k)[1]}">● ${tierOf(k)[0]}</small>${descOf(k) ? `<small class="ds">${esc(descOf(k))}</small>` : ""}${originOf(k) ? `<small class="og">${esc(originOf(k))}</small>` : ""}</span>
         <span class="btns">${role === "keeper" && (EDIBLE[k] || YUCK.includes(k)) ? `<button class="eat" data-k="${k}">Дай</button>` : ""}${canMixNow() ? `<button class="add" data-k="${k}">⊕</button>` : ""}</span></div>`;
     }
     if (role === "keeper") h += `<div class="zones"><span id="binZone">🗑️ Кофа</span><span id="sellZone">◉ Продай</span></div>`;
@@ -3167,7 +3194,11 @@ function fillSheet(kind) {
       c.onpointerup = ev => {
         const d = invDrag; invDrag = null; $("ghost")?.remove(); dropHover(-1, -1); dragEndAt = performance.now();
         if (!d) return;
-        if (!d.moved) { invPick = invPick === d.k ? null : d.k; return fillSheet("bag"); }
+        if (!d.moved) {
+          const p2 = performance.now(), dbl = lastCellTap && lastCellTap.k === d.k && p2 - lastCellTap.at < 400;
+          lastCellTap = { k: d.k, at: p2 };
+          if (dbl && canMixNow() && S.desk && !deskMove) { lastCellTap = null; invPick = d.k; addToMix(d.k); return fillSheet("bag"); }   // два пъти = в полетата
+          invPick = d.k; return fillSheet("bag"); }
         const el = document.elementFromPoint(ev.clientX, ev.clientY);
         if (el && el.closest("#mixbar")) addToMix(d.k);
         else if (el && el.closest("#binZone")) throwStack(d.k, d.n);
@@ -3481,7 +3512,7 @@ function renderMix() {
   mixSel = mixSel.filter((k, i) => cnt(k) > mixSel.slice(0, i).filter(x => x === k).length);
   bar.innerHTML = [0, 1, 2, 3, 4].map(i => `<span class="slot${mixSel[i] ? " full" : ""}" data-i="${i}">${mixSel[i] ? elI(mixSel[i]) : ""}</span>`).join("") +
     `<button id="mixBtn" ${!mixSel.length || working ? "disabled" : ""}>⚗️</button>`;
-  bar.querySelectorAll(".slot").forEach(b => b.onclick = () => { if (mixSel[+b.dataset.i]) { mixSel.splice(+b.dataset.i, 1); renderMix(); if (sheetKind === "bag") fillSheet("bag"); } });
+  bar.querySelectorAll(".slot").forEach(b => b.onclick = () => { if (mixSel[+b.dataset.i]) { mixSel.splice(+b.dataset.i, 1); renderMix(); if (sheetKind === "bag") fillSheet("bag"); } else if (sheetKind !== "bag") { chestOpen = performance.now(); openSheet("bag"); } });
   $("mixBtn").onclick = ev => { ev.stopPropagation(); howMenu(); };
 }
 function howMenu() {                         // какво да прави с нещата в полетата
@@ -3496,6 +3527,7 @@ function howMenu() {                         // какво да прави с н
 }
 function closeHowMenu() { $("howmenu")?.remove(); }
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#howmenu") && !ev.target.closest("#mixBtn")) closeHowMenu(); });
+let lastCellTap = null;
 function addToMix(k) {
   if (mixSel.length >= 5) return say("", "Пет неща стигат! Повече не се събират.");
   if (mixSel.filter(x => x === k).length >= cnt(k)) return say("", "Нямам повече от това.");
@@ -3507,7 +3539,7 @@ let chestOpen = -1e9;
 function chestGeom(s) { const w = Math.max(70, 150 * s), h = w * 0.72; return { x: Math.max(w * 0.6 + 6, W * 0.09), y: H * 0.88 + 8, w, h }; }
 function flyToChest(e, x, y) { flyers.push({ e, x, y, t0: performance.now() }); }
 function drawChest(t, s) {
-  const c = chestGeom(s), p = performance.now(), open = p - chestOpen < 700, sk = STYLE === "sketch";
+  const c = chestGeom(s), p = performance.now(), gc = ghost.on && ghost.mv && ghost.mv.m === "chest" && p - ghost.mv.at > 2500 && p - ghost.mv.at < GHOST_MV.chest, open = p - chestOpen < 700 || (gc && (p - ghost.mv.at - 2500) % 1500 < 1000), sk = STYLE === "sketch";
   const x = c.x - c.w / 2, y = c.y - c.h;
   g.save(); g.lineWidth = sk ? 2.4 : 4; g.strokeStyle = sk ? SK_INK : "#2b2a33"; g.lineJoin = "round";
   g.fillStyle = sk ? "#efe6d2" : "#9a5d2e"; g.beginPath(); g.rect(x, y + c.h * 0.35, c.w, c.h * 0.65); g.fill(); g.stroke();
@@ -3598,7 +3630,17 @@ const TUT = [
   { el: "#profBtn", t: "Тук е профилът ти: цял екран, известия и изход. Готово! Грижи се добре за него." },
 ];
 let tutI = -1;
+function bigUpdate() {                          // само за тази версия: какво е новото
+  if (role !== "keeper" || !S || PAGE_V !== 44 || S.upd44 || $("bigupd")) return;
+  const m = document.createElement("div"); m.id = "bigupd";
+  m.innerHTML = `<div class="bu"><b>🎉 Голям ъпдейт!</b>
+    <p>🐚 Нови предмети от дъното</p><p>⚙️ Нови изобретения</p><p>🔧 Разглобяване, 🔥 затопляне и ❄️ охлаждане</p><p>🛠️ Работна маса, менюто на камъка и още</p>
+    <p class="warn">❗ Някои предмети може да ги няма или да са променени.</p><button id="buOk">Супер!</button></div>`;
+  document.body.appendChild(m);
+  $("buOk").onclick = () => { S.upd44 = 1; dirty = true; save(); m.remove(); };
+}
 function tutAsk() {
+  if ($("bigupd")) return setTimeout(tutAsk, 3000);
   if (role !== "keeper" || !S || !S.hatched || tutI >= 0) return;
   try { if (localStorage.getItem("okt_tut") === (S.wid || "1")) return; } catch {}
   const o = $("tut"); o.classList.remove("hidden");
@@ -4965,6 +5007,7 @@ function drawGhost(t, s) {
     else if (e < 3.2) { a = 0; ghost.x = oct.x + oct.r * 0.1; ghost.y = oct.cy - oct.r * 0.05; tx = ghost.x; ty = ghost.y; }
     else { tx = ghost.x = oct.x + oct.r * 0.1 + Math.sin(e * 60) * 6; ty = ghost.y = oct.cy - oct.r * 0.05 + Math.cos(e * 50) * 6; sc = 2.8; a = 1; if (!mv.boo) { mv.boo = 1; flashAt = p; if (role === "keeper" && S.hatched) setTimeout(() => { sleepTalking = true; say("", pick(["Ааа!!! …хрр… к-какво беше това… хрр…", "Мамо!!! …хрр…"]), 4500); sleepTalking = false; }, 300); ghost.last = { x: "БУУУУУ!!!", at: p }; } }
   }
+  if (mv && mv.m === "chest") { const c = chestGeom(s); tx = c.x + c.w * 0.5; ty = c.y - c.h - 50 + Math.sin(e * 2) * 10; k = 0.05; }
   if (mv && mv.m === "bubbles" && Math.random() < 0.35) ghost.bub.push({ x: ghost.x + rnd(-20, 20), y: ghost.y - 10, r: rnd(4, 12), vy: rnd(0.6, 1.6), ph: Math.random() * 6, at: p });
   ghost.sc = (ghost.sc || 1) + (sc - (ghost.sc || 1)) * 0.15;
   ghost.x += (Math.max(-320, Math.min(W + 320, tx)) - ghost.x) * k; ghost.y += (ty - ghost.y) * k * 1.3;
@@ -4981,8 +5024,8 @@ function drawGhost(t, s) {
   if (ghost.last && p - ghost.last.at < 9000 && !(mv && mv.m === "jump" && e < 3.2)) talkBubble(Math.max(60, Math.min(W - 60, ghost.x)), ghost.y - z * 0.45, ghost.last.x);
   ghost.hit = { x: ghost.x, y: ghost.y, r: Math.max(60, z * 0.6) };
 }
-const GHOST_MV = { circle: 12000, close: 8000, jump: 6000, rock: 14000, bubbles: 9000 };
-const GHOST_MOVES = [["circle", "🌀 Обикаля около него"], ["close", "👀 Приближава се"], ["jump", "😱 Изчезва и изскача"], ["rock", "🪨 Крие се зад камъка"], ["bubbles", "🫧 Сияйни мехурчета"]];
+const GHOST_MV = { circle: 12000, close: 8000, jump: 6000, rock: 14000, bubbles: 9000, chest: 9000 };
+const GHOST_MOVES = [["circle", "🌀 Обикаля около него"], ["close", "👀 Приближава се"], ["jump", "😱 Изчезва и изскача"], ["rock", "🪨 Крие се зад камъка"], ["bubbles", "🫧 Сияйни мехурчета"], ["chest", "🧰 Отваря сандъка"]];
 // ---------- Менюто на камъка ----------
 function rockMenu() {
   closeRockMenu(); if (!rockBox) return;
@@ -5038,7 +5081,7 @@ function drawRockFx(t) {                           // духът: камъкът
 function ghostMenu(x, y) {                       // при vasko: докосваш духа и излиза меню
   closeGhostMenu();
   const m = document.createElement("div"); m.id = "gmenu";
-  m.innerHTML = `<button class="x" id="gmX">✕</button><div class="sub">💬 Реплики</div><div class="gq">${GHOST_LINES.map((l, i) => `<button data-gl="${i}">${esc(l)}</button>`).join("")}</div>
+  m.innerHTML = `<button class="x" id="gmX">✕</button><div class="sub">💬 Какво да каже</div><div class="gbub">${GHOST_LINES.map((l, i) => `<button data-gl="${i}">${esc(l)}</button>`).join("")}</div>
     <div class="sub">🌀 Движения</div><div class="gq">${GHOST_MOVES.map(([k, n]) => `<button data-gm="${k}">${n}</button>`).join("")}</div>
     <div class="sub">🎁 Пусни предмет</div><div class="gq drop">${GHOST_DROPS.map(k => `<button data-gd="${k}" title="${esc(elN(k))}">${elI(k)}</button>`).join("")}<button data-gt="1" title="Вземи обратно">↩️</button></div>`;
   document.body.appendChild(m);
@@ -5245,6 +5288,7 @@ function loop() {
     ty = ground - 201 * s;
     if (e < 2600) { tx = W + 280 * s; k = 0.06; if (table.x == null) table.x = W + 600 * s; }       // отива зад ръба
     else if (e < 5600) { tx = W * 0.4; lin = 4; table.x += (oct.px + 230 * s - table.x) * 0.3; }   // дърпа масата равномерно
+    else if (S.desk) { tx = table.x - 150 * s; k = 0.05; }                                         // масата си стои: той отива при нея
     else { tx = oct.px; k = 0.035; table.x += (oct.px + 150 * s - table.x) * 0.06; }              // масата е до него, пипалата му са върху нея
   }
   else if (deskMove) {                                           // носи масата или я отнася
