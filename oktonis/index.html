@@ -730,6 +730,7 @@ const descOf = k => (GEN.DESC && GEN.DESC[k]) || BOOK_DESC[k] || ACTS[k] || "";
 const SECRET = ["wreck", "robokt", "fondue", "penicillin"];          // не се казват предварително
 const recKey = (a, b) => [a, b].sort().join("+");
 const RECIPE = Object.fromEntries(REC.map(([a, b, c]) => [recKey(a, b), c]));
+REC3.push([["glassshard", "glassshard", "glassshard", "glassshard"], "aquarium"]);      // аквариум и от четири стъкла
 for (const [list, c] of REC3) RECIPE[list.slice().sort().join("+")] = c;
 const elE = k => (EL[k] || ["❓"])[0], elN = k => (EL[k] || ["", "нещо"])[1];
 const elFull = k => elE(k) + " " + elN(k);
@@ -788,6 +789,23 @@ const IART = (() => {
     u_gear: () => { M("gear", 0, 0, 1); },
     u_tophat: () => { F("#2f3238", () => ell(0, 0.2, 0.38, 0.08)); F("#2f3238", () => rr(-0.22, -0.32, 0.44, 0.52, 0.04)); F("#e8463a", () => rr(-0.22, 0.04, 0.44, 0.08, 0)); },
     u_bin: () => { F("#9aa3ad", () => { c.moveTo(-0.26, -0.18); c.lineTo(0.26, -0.18); c.lineTo(0.2, 0.36); c.lineTo(-0.2, 0.36); c.closePath(); }); F("#c7ccd3", () => rr(-0.32, -0.28, 0.64, 0.1, 0.03)); F("#c7ccd3", () => rr(-0.08, -0.36, 0.16, 0.08, 0.02)); c.lineWidth = 0.025; for (const x of [-0.1, 0, 0.1]) { c.beginPath(); c.moveTo(x, -0.1); c.lineTo(x * 0.9, 0.28); c.stroke(); } st(); },
+    // шапки и аксесоари (вместо емоджи)
+    h_beanie: () => { F("#e8463a", () => { c.moveTo(-0.34, 0.2); c.quadraticCurveTo(-0.32, -0.3, 0, -0.3); c.quadraticCurveTo(0.32, -0.3, 0.34, 0.2); c.closePath(); }); F("#f6efe6", () => rr(-0.38, 0.12, 0.76, 0.14, 0.05)); F("#f6efe6", () => c.arc(0, -0.34, 0.1, 0, 7)); c.lineWidth = 0.02; for (const x of [-0.18, 0, 0.18]) { c.beginPath(); c.moveTo(x, -0.24); c.lineTo(x, 0.1); c.stroke(); } st(); },
+    h_straw: () => { F("#e8c35a", () => ell(0, 0.14, 0.44, 0.12)); F("#f0d478", () => { c.moveTo(-0.22, 0.12); c.quadraticCurveTo(-0.22, -0.24, 0, -0.24); c.quadraticCurveTo(0.22, -0.24, 0.22, 0.12); c.closePath(); }); F("#e86a8a", () => rr(-0.22, 0.0, 0.44, 0.08, 0.02)); },
+    h_pirate: () => { F("#2f3238", () => { c.moveTo(-0.44, 0.14); c.quadraticCurveTo(-0.2, -0.36, 0, -0.3); c.quadraticCurveTo(0.2, -0.36, 0.44, 0.14); c.quadraticCurveTo(0, 0.02, -0.44, 0.14); }); c.fillStyle = "#fff"; c.beginPath(); c.arc(0, -0.1, 0.07, 0, 7); c.fill(); c.lineWidth = 0.03; c.strokeStyle = "#fff"; c.beginPath(); c.moveTo(-0.1, 0.0); c.lineTo(0.1, 0.06); c.moveTo(0.1, 0.0); c.lineTo(-0.1, 0.06); c.stroke(); st(); },
+    h_captain: () => { F("#f6efe6", () => { c.moveTo(-0.34, 0.0); c.quadraticCurveTo(-0.3, -0.3, 0, -0.3); c.quadraticCurveTo(0.3, -0.3, 0.34, 0.0); c.closePath(); }); F("#22324f", () => rr(-0.3, -0.02, 0.6, 0.14, 0.03)); F("#22324f", () => { c.moveTo(-0.3, 0.12); c.quadraticCurveTo(0, 0.34, 0.36, 0.12); c.closePath(); }); F("#ffd23f", () => c.arc(0, -0.15, 0.06, 0, 7)); },
+    h_party: () => { F("#3a83f7", () => poly([[-0.24, 0.32], [0, -0.36], [0.24, 0.32]])); c.fillStyle = "#ffd23f"; for (const [x, y] of [[-0.06, 0.1], [0.08, 0.2], [0.02, -0.08]]) { c.beginPath(); c.arc(x, y, 0.04, 0, 7); c.fill(); } F("#e8463a", () => c.arc(0, -0.38, 0.07, 0, 7)); F("#ffd23f", () => rr(-0.28, 0.28, 0.56, 0.08, 0.03)); },
+    h_crown: () => { F("#f0d478", () => poly([[-0.34, 0.24], [-0.34, -0.16], [-0.17, 0.02], [0, -0.26], [0.17, 0.02], [0.34, -0.16], [0.34, 0.24]])); for (const [x, y, col] of [[-0.17, 0.12, "#f4b0c0"], [0, 0.08, "#9ad4f0"], [0.17, 0.12, "#f4b0c0"]]) F(col, () => ell(x, y, 0.06, 0.05)); },
+    a_glasses: () => { for (const x of [-0.2, 0.2]) F("#c6ece6", () => c.arc(x, 0, 0.16, 0, 7)); c.lineWidth = 0.05; c.beginPath(); c.moveTo(-0.05, 0); c.lineTo(0.05, 0); c.stroke(); st(); },
+    a_adventure: () => { F("#b07c4a", () => ell(0, 0.14, 0.44, 0.12)); F("#c4925a", () => { c.moveTo(-0.24, 0.12); c.quadraticCurveTo(-0.24, -0.28, 0, -0.22); c.quadraticCurveTo(0.24, -0.28, 0.24, 0.12); c.closePath(); }); F("#6b4426", () => rr(-0.24, 0.0, 0.48, 0.07, 0.02)); },
+    a_leaf: () => { F("#58b862", () => { c.moveTo(-0.3, 0.3); c.quadraticCurveTo(-0.3, -0.3, 0.32, -0.32); c.quadraticCurveTo(0.3, 0.3, -0.3, 0.3); }); c.lineWidth = 0.03; c.beginPath(); c.moveTo(-0.3, 0.3); c.quadraticCurveTo(0, 0, 0.26, -0.26); c.stroke(); st(); },
+    u_shark: () => { F("#7c8ea3", () => { c.moveTo(0.4, 0.04); c.quadraticCurveTo(0.1, -0.22, -0.28, -0.02); c.lineTo(-0.42, -0.2); c.lineTo(-0.36, 0.06); c.lineTo(-0.42, 0.24); c.lineTo(-0.28, 0.08); c.quadraticCurveTo(0.1, 0.24, 0.4, 0.04); }); F("#7c8ea3", () => poly([[-0.04, -0.12], [0.04, -0.34], [0.12, -0.12]])); c.fillStyle = "#2b2a33"; c.beginPath(); c.arc(0.24, -0.02, 0.03, 0, 7); c.fill(); },
+    u_dolphin: () => { F("#6aa8d8", () => { c.moveTo(0.42, 0.0); c.quadraticCurveTo(0.2, -0.24, -0.24, -0.06); c.lineTo(-0.4, -0.22); c.lineTo(-0.34, 0.02); c.lineTo(-0.42, 0.2); c.lineTo(-0.24, 0.06); c.quadraticCurveTo(0.2, 0.2, 0.42, 0.0); }); F("#6aa8d8", () => poly([[-0.02, -0.14], [0.06, -0.32], [0.12, -0.12]])); c.fillStyle = "#2b2a33"; c.beginPath(); c.arc(0.26, -0.04, 0.03, 0, 7); c.fill(); },
+    u_turtle: () => { for (const [x, y] of [[-0.24, -0.16], [0.2, -0.16], [-0.24, 0.18], [0.2, 0.18]]) F("#8fc46a", () => ell(x, y, 0.1, 0.07)); F("#8fc46a", () => ell(0.36, 0, 0.1, 0.08)); F("#5f8f3a", () => ell(-0.02, 0, 0.3, 0.22)); c.lineWidth = 0.02; c.beginPath(); c.moveTo(-0.14, -0.2); c.lineTo(-0.14, 0.2); c.moveTo(0.1, -0.2); c.lineTo(0.1, 0.2); c.stroke(); st(); },
+    u_eyes: () => { for (const x of [-0.17, 0.17]) { F("#fff", () => ell(x, 0, 0.14, 0.2)); c.fillStyle = "#2b2a33"; c.beginPath(); c.arc(x + 0.04, 0.04, 0.07, 0, 7); c.fill(); } },
+    u_scream: () => { F("#ffd23f", () => c.arc(0, 0, 0.36, 0, 7)); F("#fff", () => ell(-0.13, -0.08, 0.08, 0.1)); F("#fff", () => ell(0.13, -0.08, 0.08, 0.1)); F("#4a2030", () => ell(0, 0.17, 0.08, 0.12)); for (const d of [-1, 1]) F("#f08a3a", () => ell(d * 0.36, 0.12, 0.08, 0.14)); },
+    u_bubbles: () => { for (const [x, y, r] of [[-0.12, 0.08, 0.2], [0.18, -0.16, 0.12], [0.22, 0.2, 0.08]]) { F("rgba(160,220,255,.7)", () => c.arc(x, y, r, 0, 7)); c.fillStyle = "#fff"; c.beginPath(); c.arc(x - r * 0.35, y - r * 0.35, r * 0.25, 0, 7); c.fill(); } },
+    u_stop: () => { F("#f6c08a", () => { rr(-0.22, -0.06, 0.44, 0.4, 0.12); }); for (const [x, h] of [[-0.18, 0.34], [-0.06, 0.4], [0.06, 0.38], [0.18, 0.3]]) F("#f6c08a", () => rr(x - 0.05, -h + 0.02, 0.1, h, 0.05)); F("#f6c08a", () => { c.save(); c.translate(-0.26, 0.08); c.rotate(-0.6); rr(-0.05, -0.18, 0.1, 0.22, 0.05); c.restore(); }); },
     u_party: () => { F("#ffb02e", () => poly([[-0.34, 0.36], [-0.12, -0.2], [0.14, 0.08]])); for (const [x, y, col] of [[0.0, -0.3, "#e8463a"], [0.24, -0.2, "#3a83f7"], [0.3, 0.04, "#58b862"], [0.12, -0.42, "#b07ad8"]]) { c.fillStyle = col; c.save(); c.translate(x, y); c.rotate(x * 3); c.fillRect(-0.04, -0.02, 0.08, 0.04); c.restore(); } },
     u_boom: () => { F("#ffb02e", () => { for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, r = i % 2 ? 0.2 : 0.4; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); }); F("#ffe14d", () => c.arc(0, 0, 0.13, 0, 7)); },
     u_swirl: () => { c.lineWidth = 0.08; c.strokeStyle = L; const p = () => { c.beginPath(); for (let a = 0; a < 11; a += 0.2) { const r = 0.02 + a * 0.032; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.stroke(); }; p(); c.strokeStyle = "#7fd3ff"; c.lineWidth = 0.045; p(); st(); },
@@ -1366,7 +1384,7 @@ function paintEl(ctx, k, x, y, sz) {             // на платното: ри�
 }
 const CUR = "перлинги";
 const money = n => `◉ ${n} ${n === 1 ? "перлинг" : CUR}`;
-const FLOOR = { junk: GEN.JUNK, other: GEN.OTHER };          // по-честите се повтарят повече пъти
+const FLOOR = { junk: GEN.JUNK, other: GEN.OTHER.filter(k => k !== "octokid") };          // малкото октоподче не се взима          // по-честите се повтарят повече пъти
 // книги за купуване: всяка подсказва няколко рецепти
 const BOOK_PLAN = {};                            // книга → изобретение с чертеж (в новата система)
 const SHOP = [
@@ -2034,6 +2052,21 @@ function myThoughts() {
   if ((k.forgive || 0) >= 2) out.push("Скараме ли се, винаги се сдобряваме. Това е важно.");
   if ((k.cleanday || 0) >= 3) out.push("Чисти без да го моля. Истински приятел на реда.");
   if (Object.keys(S.album || {}).length >= 10) out.push("Имаме над десет снимки заедно. Всяка е спомен.");
+  if (Object.keys(S.album || {}).length >= 40) out.push("Снимал е над четиресет вида! Скоро ще познава морето по-добре от мен.");
+  if (f.pet === true) out.push(["Има домашен любимец. Ревнувам. Много. Но се правя, че не.", "Любимецът му е опасен съперник. Аз имам осем пипала, той сигурно има четири крака. Водя."][new Date().getDate() % 2]);
+  if ((k.jealous || 0) >= 3) out.push("Прекалено често мисля за любимеца му. Може би трябва да се запозная с него. Или не.");
+  if ((k.ghost || 0) >= 1) out.push((k.ghost || 0) >= 3 ? "Вече съм сигурен: нощем идва някой. Прозрачен. И той си говори с него. Тайна ли е? Ще разбера." : "Подозрение: нощем тук има някой. Не мога да го докажа. Още.");
+  if ((k.play || 0) >= 100) out.push("Играли сме стотици пъти. Ако имаше медал за най-добър приятел, щеше да е негов.");
+  if ((k.clean || 0) >= 30) out.push("Изчистил е над трийсет боклука. Статистически е най-чистият човек, когото познавам. Е, единственият.");
+  if ((k.dirty || 0) > (k.clean || 0) * 1.5 && (k.dirty || 0) > 20) out.push("Понякога остава мръсно дълго. Не казвам нищо. Просто гледам боклука. Тъжно.");
+  if ((k.alone || 0) > (k.lived || 1) * 0.08) out.push("Доста време съм сам. Тогава броя мехурчетата. Рекорд: 1412.");
+  if ((k.sold || 0) >= 3) out.push("Продава неща за перлинги. Пестелив е. Или търговец. Още не съм решил.");
+  if (f.pineapple === true) out.push("Анализ: яде пица с ананас. Заключение: смел човек. Или объркан. Наблюдавам.");
+  if (f.seaside === true) out.push("Бил е на море. Значи е бил съвсем близо до мен! Почти съседи сме.");
+  if (f.music === true) out.push("Обича музика. Тананикам, когато е тук. Мисля, че забелязва.");
+  if (f.morning === true && (k.morning || 0) >= 2) out.push("Сутрешен човек е и идва рано. Сверявам часовника си по него.");
+  if (f.inventor && S.found.length >= 3) out.push("Ученикът ми напредва. Скоро ще може да смесва и без мен. Но няма да му казвам.");
+  if (S.hurt || (k.scold || 0) >= 2) out.push("Когато ме боли или ми се кара, ставам тих. После минава. Винаги минава.");
   if (!out.length) out.push("Още го опознавам. Записвам всичко.");
   return out;
 }
@@ -2634,7 +2667,7 @@ function chatter() {
   if (fc.morning === true && hr < 11) mem.push("Добро утро, сутрешни човече! Като теб и аз.");
   if (fc.morning === false && hr >= 21) mem.push("Ти си нощна птица, знам. Аз отивам да спя скоро.");
   if (fc.music) mem.push("Тананикам си. Бълбук-бълбук. Нали обичаш музика?");
-  if (fc.pet === true) mem.push("Поздрави любимеца си от мен!");
+  if (fc.pet === true) { mem.push(...PET_JEALOUS); if (Math.random() < 0.4) note("jealous", PET_PD); }
   if (fc.ateOcto) mem.push("Още помня, че си ял октопод. Прощавам ти. Почти.");
   if (fc.blue === true) mem.push("Днес водата е особено синя. Специално за теб.");
   if (fc.parent === "mama" || fc.parent === "tate") mem.push(fc.parent === "mama" ? "Мамо, гледай какво мога!" : "Тате, гледай какво мога!");
@@ -3048,12 +3081,14 @@ function afterLoad() {
   if (S.idea && (!EL[S.idea.a] || !EL[S.idea.b])) S.idea = null;
   if (S.books == null) Object.assign(S, { books: 0, smarts: 0, glasses: STAGES.indexOf(S.stage || "baby") >= 4, parcel: null });
   S.facts = S.facts || {}; S.asked = S.asked || {}; S.chat = S.chat || []; if (S.q === undefined) S.q = null;
+  if (S.mat && S.mat.octokid) delete S.mat.octokid; if (S.parts) S.parts = S.parts.filter(x => x.k !== "octokid");      // октоподчето се връща в морето
   if (!S.stage) Object.assign(S, { gen: 1, name: "Октонис", stage: S.hatched ? "baby" : "egg", stageT: S.hatched ? S.t : S.born, grow: 0, track: newTrack(), family: [], inherit: null });
   if (role === "viewer") viewBase = JSON.stringify(S);
   const before = S.journal.length ? S.journal[0].t : 0;
   const steps = catchUp(Date.now());
   if (role === "keeper" && steps > 60 && S.hatched && stageIdx() >= 2 && !S.asleep) {          // докато те нямаше: крие се зад камъка
     scared = true; hideUntil = performance.now() + 10 * 60000;
+    if (steps > 600 && (S.facts || {}).pet === true && Math.random() < 0.5) setTimeout(() => say("", pick(["Пак ли беше с любимеца си? Цяла вечност те нямаше.", "Къде беше? Не, чакай, знам. При онзи пухкавия.", "Върна се! Значи любимецът ти вече е заспал, а?"]), 6000), 9000);
     if (steps > 600) note("away", ["Нямаше го дълго. Мислех, че ме е забравил. Но се върна.", "Днес се върна след много време. Престорих се, че не ми е липсвал. Лъжа.", "Дълго го нямаше. Брах мехурчетата. Стигнах до хиляда и после се обърках."]);
   }
   if (role === "keeper" && steps > 60 && S.hatched) {
@@ -3073,7 +3108,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 46;
+const PAGE_V = 47;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -3548,16 +3583,20 @@ const UI_EMO = { "🍕": "u_food", "⚡": "u_energy", "😊": "u_mood", "❤": "
   "😴": "u_sleep", "☀": "u_sun", "🩹": "u_plaster", "🍼": "u_babybottle", "🎈": "u_balloon", "👶": "u_paci", "↩": "u_back", "📖": "u_recipes", "🛠": "u_desk", "⚗": "u_flask",
   "🔥": "u_fire", "❄": "u_snow", "🔧": "u_wrench", "💬": "u_chat", "😂": "u_laugh", "👋": "u_wave", "❓": "u_q", "😠": "u_angry", "⚙": "u_gear", "🎩": "u_tophat", "🗑": "u_bin",
   "🎉": "u_party", "💥": "u_boom", "🌀": "u_swirl", "🎁": "u_gift", "🔒": "u_lock", "🧭": "u_compass", "🔔": "u_bell", "🍾": "bottle", "📔": "u_diary", "📓": "u_diary",
-  "🐟": "fish", "🐚": "shell", "📦": "woodbox", "⏳": "hourglass", "🦀": "crab" };
+  "🐟": "fish", "🐚": "shell", "📦": "woodbox", "⏳": "hourglass", "🦀": "crab",
+  "🏴‍☠️": "h_pirate", "🧶": "h_beanie", "👒": "h_straw", "⚓": "h_captain", "🥳": "h_party", "👑": "h_crown", "👓": "a_glasses", "🤠": "a_adventure", "🌱": "a_leaf",
+  "🦈": "u_shark", "🐬": "u_dolphin", "🐢": "u_turtle", "🐙": "octokid", "🪼": "jelly", "⭐": "star", "👀": "u_eyes", "😱": "u_scream", "🫧": "u_bubbles", "✋": "u_stop", "🫳": "u_stop",
+  "🫙": "jar", "🪨": "pebble" };
+const EMO_ANY = /(?:\p{Extended_Pictographic}|\p{Regional_Indicator})(?:\uFE0F|\u200D\p{Extended_Pictographic})*\uFE0F?/gu;   // останалите емоджи в менютата се махат
 const UI_RE = new RegExp("(" + Object.keys(UI_EMO).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")\uFE0F?", "g");
 function uiIcons(root) {
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => {
     const pe = n.parentElement; if (!pe || pe.closest("#bubble, script, style, textarea, input, .noicon")) return NodeFilter.FILTER_REJECT;
-    UI_RE.lastIndex = 0; return UI_RE.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; } });
+    UI_RE.lastIndex = 0; EMO_ANY.lastIndex = 0; return UI_RE.test(n.nodeValue) || EMO_ANY.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; } });
   const list = []; while (w.nextNode()) list.push(w.currentNode);
   for (const n of list) {
     const span = document.createElement("span");
-    span.innerHTML = esc(n.nodeValue).replace(UI_RE, (m, e) => { const src = itemImg(UI_EMO[e]); return src ? `<img class="uie" src="${src}" alt="" draggable="false">` : m; });
+    span.innerHTML = esc(n.nodeValue).replace(UI_RE, (m, e) => { const src = itemImg(UI_EMO[e]); return src ? `<img class="uie" src="${src}" alt="" draggable="false">` : m; }).replace(EMO_ANY, m => m === "♥" ? m : "").replace(/^\s+(?=\S)/, " ");
     n.replaceWith(...span.childNodes);
   }
 }
@@ -4437,9 +4476,26 @@ const SEA = {
   g_shrimp: ["@g:shrimp", "Скаридата", "guest", "", 1, "guest", "c", "any", "Подозира всички, че искат да я изядат."],
   ghostfish: ["@ghostfish", "Рибата-дух", "leg", "", 1.3, "guest", "l", "night", "Появява се само в най-тъмните нощи. Никой не знае откъде идва."],
   g_angler: ["@angler", "Рибата-фенер", "guest", "", 1.2, "guest", "r", "night", "Носи си лампа. Нощем минава съвсем бавно."],
+  boxfish: ["@f:boxfish", "Риба-кутия", "fish", "", 0.8, "slow", "r", "day", "Квадратна е като кутийка. Плува като малка лодка."],
+  picasso: ["@f:picasso", "Риба Пикасо", "fish", "", 0.9, "swim", "r", "day", "Изглежда като рисунка на художник."],
+  idol: ["@f:idol", "Мавританско идолче", "fish", "", 0.9, "slow", "r", "day", "Има дълга перка като знаме."],
+  napoleon: ["@f:napoleon", "Риба Наполеон", "fish", "", 1.8, "slow", "v", "day", "Голяма като човек и има гърбица на главата."],
+  porcupine: ["@f:porcupine", "Риба-таралеж", "fish", "", 1, "slow", "r", "night", "Надува се и стърчи с бодли."],
+  mahi: ["@f:mahi", "Махи-махи", "fish", "", 1.4, "fast", "r", "day", "Свети в зелено и златно, когато е щастлива."],
+  hatchet: ["@f:hatchet", "Риба-брадвичка", "fish", "", 0.6, "glow", "r", "night", "Тънка като монета. Свети по корема."],
+  viper: ["@f:viper", "Риба-усойница", "fish", "", 0.9, "glow", "v", "night", "Зъбите ѝ са толкова дълги, че не се побират в устата."],
+  blob: ["@f:blob", "Риба-капка", "fish", "", 0.9, "sit", "v", "any", "Най-тъжната риба на света. Или просто е уморена."],
+  oarfish: ["@f:oarfish", "Ремъчна риба", "fish", "", 2.2, "wave", "v", "night", "Най-дългата костна риба. Морякът я мисли за змей."],
+  ribbon: ["@f:ribbon", "Лентовидна мурена", "fish", "", 1.1, "wave", "r", "day", "Синя с жълто, като лента за подарък."],
+  wolfeel: ["@f:wolfeel", "Морски вълк", "fish", "", 1.4, "wave", "r", "night", "Изглежда страшен, а е голям добряк."],
+  sawfish: ["@f:sawfish", "Риба-трион", "shark", "", 2, "floor", "v", "any", "Носът ѝ е като трион. Търси храна в пясъка."],
+  tiger: ["@f:tiger", "Тигрова акула", "shark", "", 2.2, "slow", "r", "any", "Има ивици като тигър. Яде почти всичко."],
+  white: ["@f:white", "Голямата бяла акула", "shark", "", 2.8, "far", "v", "any", "Надушва капка кръв от километри."],
+  goblin: ["@f:goblin", "Акула-гоблин", "shark", "", 2, "slow", "l", "night", "Розова е и челюстта ѝ изскача напред."],
+  megamouth: ["@f:megamouth", "Акула голяма уста", "shark", "", 3, "far", "l", "night", "Виждали са я само стотина пъти. Ти си късметлия."],
   croc: ["@m:croc", "Морски крокодил", "rep", "", 2.4, "slow", "v", "any", "Най-големият крокодил. Добре, че само минава."],
 };
-let seaForce = null, vis = null, nextVis = performance.now() + rnd(3, 8) * 60000, flashAt = -1e9, albTab = "fish", albPick = null;
+let seaForce = null, vis = null, nextVis = performance.now() + rnd(2, 4) * 60000, flashAt = -1e9, albTab = "fish", albPick = null;
 const THUMB = {}, TIER_W = { c: 10, r: 3, v: 1, l: 0.6 }, TIER_N = { c: "Обикновен", r: "Рядък", v: "Много рядък", l: "⭐ Легендарен" };
 function seaChance(id) {                    // колко вероятно е да го видиш (в проценти)
   const c = SEA[id];
@@ -4449,6 +4505,7 @@ function seaChance(id) {                    // колко вероятно е д
 }
 const pct = v => v >= 10 ? Math.round(v) + "%" : v >= 1 ? v.toFixed(1).replace(".", ",") + "%" : v.toFixed(2).replace(".", ",") + "%";
 function seaPick() {
+  if (role === "keeper" && S && kr().st < 3 && !(S.asleep) && Math.random() < (kr().st === 0 ? 0.7 : 0.35)) return "krill";   // рачетата Крил идват скоро, за да почне историята
   const dp = night(Date.now()) || (S && S.asleep) ? "night" : dayPart(), list = [];
   for (const [id, c] of Object.entries(SEA)) if (dp === "night" ? c[7] === "night" : c[7] !== "night")
     if (c[5] !== "guest") list.push([id, TIER_W[c[6]] * (S.album && S.album[id] ? 0.6 : 1)]);
@@ -4532,6 +4589,23 @@ const FISHP = {   // l дължина, h височина, c цвят, b кор�
   nurse: { shark: 1, c: "#b08a5a", b: "#e2cba7", sp: "barbel" },
   orca: { shark: 2, c: "#16181d", b: "#ffffff", sp: "orca" },
   goldfish: { l: 0.9, h: 0.55, c: "#ffb300", b: "#ffe066", tail: "fork", tc: "#ffcf40", fin: "round" },
+  boxfish: { l: 0.8, h: 0.62, c: "#ffd23f", b: "#fff08a", pat: "spots", pc: "#1b1b1b", tail: "round", fin: "round", sp: "bigeye" },
+  picasso: { l: 0.95, h: 0.55, c: "#e8dcc4", b: "#fff6e4", pat: "vstripes", pc: "#2f6fd8", tail: "round", tc: "#1b1b1b", fin: "low", sp: "snout" },
+  idol: { l: 0.8, h: 0.85, c: "#fff4d6", b: "#ffffff", pat: "vstripes", pc: "#1b1b1b", tail: "fork", tc: "#ffd23f", fin: "sail", sp: "snout" },
+  napoleon: { l: 1.2, h: 0.62, c: "#2f9aa0", b: "#7fd3c8", pat: "swirl", pc: "#1f5f8a", tail: "round", fin: "low", sp: "grump" },
+  porcupine: { l: 0.85, h: 0.7, c: "#d9c48f", b: "#f2e7c4", pat: "warts", pc: "#5d4a2a", tail: "round", fin: "spiky", sp: "bigeye" },
+  mahi: { l: 1.3, h: 0.45, c: "#3fae4a", b: "#ffd23f", pat: "spots", pc: "#2b6be0", tail: "fork", tc: "#ffd23f", fin: "sail" },
+  hatchet: { l: 0.6, h: 0.7, c: "#b8c4d4", b: "#e8eef7", pat: "glow", pc: "#9ffcf0", tail: "fork", fin: "low", sp: "bigeye" },
+  viper: { l: 1.1, h: 0.32, c: "#1d2233", b: "#2f3b55", pat: "glow", pc: "#9ffcf0", tail: "fork", fin: "low", sp: "jaw" },
+  blob: { l: 0.85, h: 0.6, c: "#f0b8c0", b: "#f8d6dc", tail: "round", fin: "round", sp: "grump" },
+  oarfish: { eel: 1, c: "#dfe6ee", b: "#ffffff", pat: "bands", pc: "#b9c5d4", sp: "paddle" },
+  ribbon: { eel: 1, c: "#2b6be0", b: "#4f8ff0", pat: "bands", pc: "#ffd23f", sp: "gape" },
+  wolfeel: { eel: 1, c: "#8a8f99", b: "#b9bec6", pat: "spots", pc: "#4b5060", sp: "gape" },
+  sawfish: { l: 1.4, h: 0.26, c: "#a8916a", b: "#e2d5b8", tail: "moon", fin: "low", sp: "sword" },
+  tiger: { shark: 1, c: "#7d8a7a", b: "#e6e8de", pat: "bars", pc: "#4b5442" },
+  white: { shark: 1, c: "#6f7f92", b: "#f4f7fa" },
+  goblin: { shark: 1, c: "#e7a7b0", b: "#f6d6dc", sp: "barbel" },
+  megamouth: { shark: 1, c: "#3a3f4f", b: "#d8dce4", sp: "widemouth" },
 };
 function seaFish(ctx, k, z, t, dir) {
   const P = FISHP[k], L = "#2b2a33";
@@ -4634,6 +4708,7 @@ function sharkBody(ctx, P, z, t, L) {
   const gr = ctx.createLinearGradient(0, -h / 2, 0, h / 2); gr.addColorStop(0, P.c); gr.addColorStop(0.55, P.c); gr.addColorStop(0.62, P.b); gr.addColorStop(1, P.b);
   ctx.fillStyle = gr; body(); ctx.fill();
   ctx.save(); body(); ctx.clip();
+  if (P.pat === "bars") { ctx.fillStyle = P.pc; for (let i = 0; i < 8; i++) { ctx.beginPath(); ctx.ellipse(-l * 0.3 + i * l * 0.08, -h * 0.25, l * 0.015, h * 0.22, 0.25, 0, 7); ctx.fill(); } }
   if (P.pat === "spots") { ctx.fillStyle = P.pc; for (let i = 0; i < 26; i++) { ctx.beginPath(); ctx.arc(-l * 0.4 + (i % 9) * l * 0.1 + (i % 2) * l * 0.03, -h * 0.35 + Math.floor(i / 9) * h * 0.17, z * 0.022, 0, 7); ctx.fill(); } }
   if (P.sp === "orca") { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(l * 0.28, -h * 0.18, l * 0.08, h * 0.12, -0.2, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(-l * 0.12, h * 0.15, l * 0.16, h * 0.18, 0.1, 0, 7); ctx.fill(); }
   ctx.restore(); ctx.strokeStyle = L; body(); ctx.stroke();
@@ -4990,10 +5065,13 @@ const ghost = { bub: [], mv: null, on: false, msgs: [], last: "", x: 0, y: 0, at
 const ghostTopic = () => S && S.wid ? "okt-ghost-" + String(S.wid).replace(/[^\w-]/g, "") : null;
 function ghostSend(o) {
   const tp = ghostTopic(); if (!tp) return;
+  if (role === "viewer" && !liveOn() && o.t !== "off") return;          // духът е само докато toshik е в играта
   fetch(`https://ntfy.sh/${tp}`, { method: "POST", body: JSON.stringify({ ...o, by: role, at: Date.now() }) }).catch(() => {});
   ghostApply({ ...o, by: role, at: Date.now(), local: true });     // при мен веднага
 }
 function ghostApply(m) {
+  if (!m.local && m.at && Date.now() - m.at > 60000) return;             // старо съобщение (toshik го е нямало): не се показва и не остава
+  if (role === "keeper" && !m.local && ["msg", "move", "drop", "rock", "sound"].includes(m.t)) ghost.talked = (ghost.talked || 0) + 1;
   if (m.t === "on" && !ghost.on && S && S.asleep) {              // идва само докато спи
     if (role === "keeper") ghost.msgs = [];                      // при toshik всеки път е нов разговор
     ghost.on = true; ghost.at = performance.now(); ghost.x = W * 0.2; ghost.y = H * 0.35;
@@ -5015,7 +5093,6 @@ function ghostApply(m) {
     if (role === "keeper" && S.parts.length < 8) { S.parts.push({ id: uid(), k: m.k, x: clamp(ghost.x / W + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true }); dirty = true; save(); }
     if (role === "viewer" && S.parts.length < 8) {             // при vasko се вижда веднага (после идва истинското от toshik)
       S.parts.push({ id: "gv" + Date.now(), k: m.k, x: clamp(ghost.x / W + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true });
-      if (!liveOn()) toast("👻 Пуснато. Тошик не е в играта точно сега: ще го види само ако е отворил играта.");
     }
     ghost.last = { x: pick(["Подарък… от отвъдното…", "Вземи го… ако смееш…", "Това е за теб… бууу…"]), at: performance.now() };
     return;
@@ -5056,16 +5133,18 @@ async function ghostPoll() {
 setInterval(() => { if (!document.hidden) ghostPoll(); }, 8000);
 function renderGhostBtn(ping) {
   const b = $("side") && $("side").querySelector('[data-k="ghost"]'); if (!b) return;
-  b.classList.toggle("hidden", role !== "viewer" && !ghost.on);     // toshik има чат само докато духът е тук
+  b.classList.toggle("hidden", role === "viewer" ? !liveOn() && !ghost.on : !ghost.on);     // vasko: само докато toshik е в играта; toshik: само докато духът е тук
   if (role !== "viewer" && !ghost.on && sheetKind === "ghost") closeSheet();
   if (ping) b.classList.add("ping");
   renderGhostChat();
 }
 function drawGhost(t, s) {
+  if (role === "viewer" && ghost.on && !liveOn()) { ghost.on = false; ghost.mv = null; closeGhostMenu(); renderGhostBtn(); }   // toshik излезе: духът изчезва
   if (role === "viewer" && !!ghost.on !== !$("ghChat").classList.contains("hidden")) renderGhostChat();
+  if (role === "viewer" && (p0 => p0 - (drawGhost.ck || 0) > 2000 && (drawGhost.ck = p0))(performance.now())) renderGhostBtn();
   if (ghost.on && S && !S.asleep) {                              // събуди се: духът изчезва
     ghost.on = false;
-    if (role === "keeper") { ghostSend({ t: "off" }); if (S.hatched) setTimeout(() => say("", pick(["Сънувах риба-дух… Или не беше сън?", "Имаше ли тук една прозрачна риба? Не? Сигурно съм сънувал."]), 6000), 1500); }
+    if (role === "keeper") { ghostSend({ t: "off" }); ghostSuspect(); }
     renderGhostBtn(); if (sheetKind === "ghost") fillSheet("ghost");
   }
   if (!ghost.on) return;
@@ -5150,6 +5229,29 @@ function drawRockFx(t) {                           // духът: камъкът
     });
   }
   g.restore();
+}
+// ревнува от домашния любимец
+const PET_JEALOUS = ["Поздрави любимеца си от мен. Ама не много. Малко.", "Твоят любимец може ли да изобретява? Не мисля.", "Обзалагам се, че любимецът ти няма осем пипала.",
+  "Кой ти е по-любим: аз или онзи там вкъщи? Не отговаряй. Знам отговора. Мисля.", "Пак миришеш на любимеца си. Хмпф.", "И той ли получава пица? Само питам.",
+  "Ако любимецът ти дойде тук, ще му покажа кой е шефът на това дъно.", "Днес бях по-добър от любимеца ти. Признай.", "Галиш ли го и него така? Не искам да знам. Всъщност искам.",
+  "Сигурно любимецът ти не подрежда водораслите по цвят. Аз го правя за теб.", "Като се върнеш вкъщи, не му разказвай за мен. Нека ревнува и той."];
+const PET_PD = ["Пак мисля за любимеца му. Сигурно е пухкав. Аз съм хлъзгав. Това е проблем.", "Днес го попитах кого обича повече. Не ми отговори. Записвам го като равенство. Засега.",
+  "Реших да бъда толкова добър, че любимецът му да изглежда обикновен. План: бъди невероятен.", "Ревнувам. Казах го. Тук никой не чете, така че е безопасно.",
+  "Чудя се дали любимецът му знае за мен. Надявам се да знае. И да се притеснява."];
+// след истински нощен разговор с духа понякога (рядко) подозира нещо
+const GHOST_SUSPECT = ["Имам чувството, че тази нощ си говорил с някого…", "Чух гласове, докато спях. С кого говореше?", "Някой беше тук нощес. Усещам го с пипалата си.",
+  "Странно… Водата около възглавницата ми беше студена. Като от… призрак?", "Сънувах шепот. Или не беше сън? Ти чу ли нещо?", "Кой беше тук през нощта? Не ме лъжи, всичко е разместено.",
+  "Мирише ми на… отвъдното. Не питай откъде знам как мирише.", "Пак ли сте си приказвали с онази прозрачна риба? Знам, че я има.", "Някой ми е броил пипалата, докато спя. Сигурен съм.",
+  "Нощес нещо светеше до мен. Ти беше ли буден? С кого си шепнехте?"];
+const GHOST_PD = ["Нощес някой говореше до мен. Не беше Тошик. Или беше Тошик и някой друг? Записвам, за да не забравя.", "Подозирам, че нощем идва нещо прозрачно. И Тошик го познава. Защо никой не ми казва?",
+  "Събудих се със странно чувство. Като че ли някой ме е гледал. Ще сложа камъче пред възглавницата, да видя дали ще се мести.", "Чух шепот за пипала и луна. Не беше моят глас. Започвам разследване.",
+  "Хипотеза: в рифа има дух. Доказателства: студена вода, светлинки, шепот. Липсва ми само снимка."];
+function ghostSuspect() {
+  const n = ghost.talked || 0; ghost.talked = 0;
+  if (n < 2 || !S.hatched || Math.random() > 0.5 || Date.now() - (S.lastSuspect || 0) < 20 * 3600000) return;
+  S.lastSuspect = Date.now(); S.track.ghost = (S.track.ghost || 0) + 1; dirty = true;
+  setTimeout(() => { if (!S.asleep) say("", pick(GHOST_SUSPECT), 7000); }, rnd(60, 150) * 1000);
+  note("ghost", GHOST_PD);
 }
 function ghostMenu(x, y, page = "main") {           // при vasko: докосваш духа и около него излизат движения и предмети (като кръга с храната)
   closeGhostMenu(); closeGhostPop();
