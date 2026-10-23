@@ -253,6 +253,13 @@
   .stages span.past { color: #cfe9d9; } .stages span.cur { background: #b39ddb; color: #1d1830; font-weight: 700; }
   .fam { border-left: 3px solid #b39ddb; padding: 6px 10px; margin: 8px 0; background: rgba(255,255,255,.05); border-radius: 0 10px 10px 0; }
   .fam.now { border-color: #ffd166; } .fam small { color: var(--muted); }
+  #ghChat { position: fixed; left: 14px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 4px); width: 58px; height: 58px; border-radius: 50%; font-size: 28px; z-index: 5;
+    background: rgba(16,30,52,.92); border: 3px solid #b9f6ff; color: #fff; box-shadow: 0 0 18px rgba(185,246,255,.5); }
+  #gpop { position: fixed; left: 14px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 74px); display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 8px; z-index: 6; max-height: 70vh; overflow-y: auto; width: min(300px, 80vw); }
+  #gpop button { text-align: left; background: rgba(240,253,255,.96); color: #10233a; border: 3px solid #2b6c80; border-radius: 16px 16px 16px 4px; padding: 8px 12px; font-size: 15px; font-weight: 600; line-height: 1.3; box-shadow: 0 0 12px rgba(185,246,255,.6); }
+  #gpop button:active { transform: scale(.97); }
+  #gring .rb { background: rgba(225,248,255,.95); box-shadow: 0 0 14px rgba(185,246,255,.7); } #gring .rb.sent { outline: 3px solid #b9f6ff; }
+  #gring .rb img.ei { width: 34px; height: 34px; }
   #chatBtn { position: fixed; left: 14px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 4px); width: 58px; height: 58px; border-radius: 50%;
     background: rgba(255,250,242,.95); border: 3px solid var(--ink); box-shadow: 0 4px 0 rgba(0,0,0,.28); font-size: 27px; padding: 0; z-index: 4; cursor: pointer; }
   #chatBtn i { position: absolute; top: -3px; right: -3px; width: 18px; height: 18px; border-radius: 50%; background: #ff5a5f; border: 3px solid var(--ink); display: none; }
@@ -353,6 +360,7 @@
 <div id="ver" style="position:fixed;right:8px;bottom:max(6px,env(safe-area-inset-bottom));font-size:10px;color:rgba(255,255,255,.55);z-index:2;pointer-events:none"></div>
 <div id="hint" class="hidden">Докосни Октонис 🐙</div>
 <button id="chatBtn" class="hidden" title="Отговори">💬<i></i></button>
+<button id="ghChat" class="hidden" title="Какво да каже духът">👻</button><div id="gpop" class="hidden"></div>
 <div id="pop" class="hidden"></div>
 <div id="bubble" class="hidden"><div class="e" id="bubbleE"></div><div class="t" id="bubbleT"></div></div>
 <div id="ring"></div>
@@ -712,12 +720,10 @@ const TIER = [["Основно", "#a9b4bf"], ["Лесно", "#5cc46a"], ["Сре
 const tierOf = k => TIER[Math.max(0, Math.min(4, (EL[k] && EL[k][2]) || 0))];
 function originOf(k) {                                    // откъде е нещото (като в таблицата)
   if (GEN_CAT[k] != null) return CAT_FROM[GEN_CAT[k]];
-  const h = howOf(k);
-  if (h) return (h.m === "mix" ? "Смесва се: " : HOW[h.m].n + ": ") + h.i.map(elN).join(" + ");
-  const fromT = Object.keys(EL).find(j => EL[j][5] && EL[j][5][1] === k);
-  if (fromT) return "Получава се с времето от " + elN(fromT).toLowerCase();
-  const fromA = Object.entries(APART).find(([j, r]) => Array.isArray(r) && r.some(x => (Array.isArray(x) ? x[0] : x) === k));
-  if (fromA) return "Остава при разглобяване на " + elN(fromA[0].split("+")[0]).toLowerCase();
+  const hs = knownHows(k);                                // само начините, които вече е правил
+  if (hs.length) return "Направено: " + hs.map(h => (h.m === "mix" ? "" : HOW[h.m].n + " ") + h.i.map(elN).join(" + ")).join("; ");
+  const fromT = Object.keys(EL).find(j => EL[j][5] && EL[j][5][1] === k && S.seen && S.seen.includes(j));
+  if (fromT && EL[k][3] !== "made") return "Получава се с времето от " + elN(fromT).toLowerCase();
   return "";
 }
 const descOf = k => (GEN.DESC && GEN.DESC[k]) || BOOK_DESC[k] || ACTS[k] || "";
@@ -1784,8 +1790,16 @@ const WORK_MS = 13500;          // 2.5 с за масата, 3 с влачене
 let FINAL = null;                               // крайни предмети: не стават за нищо по-нататък
 const isFinal = k => { if (!FINAL) { const used = new Set([...REC.flatMap(r => [r[0], r[1]]), ...REC3.flatMap(r => r[0]), ...HIDDEN.flatMap(r => [r[0], r[1]]), ...Object.values(METHOD_OF).flatMap(r => r.i)]); FINAL = new Set(Object.keys(EL).filter(x => !used.has(x))); } return FINAL.has(k); };
 const recLine = c => { const h = howOf(c); return h ? (h.m !== "mix" ? HOW[h.m].i + " " : "") + h.i.map(k => elI(k) + " " + esc(elN(k))).join(" + ") : ""; };
+function noteMade(c, how, list) {             // помни как точно е направено нещо (само начините, които е правил)
+  if (!c || !EL[c]) return;
+  const w = how + ":" + list.slice().sort().join("+"); S.made = S.made || {};
+  if (!(S.made[c] || []).includes(w)) S.made[c] = [...(S.made[c] || []), w].slice(-4);
+}
+const knownHows = c => ((S && S.made && S.made[c]) || []).map(w => { const [m, r] = w.split(":"); return { m, i: r.split("+") }; });
+const howLine = h => (h.m !== "mix" ? HOW[h.m].i + " " : "") + h.i.map(k => elI(k) + " " + esc(elN(k))).join(" + ");
+const knownLine = c => knownHows(c).map(howLine).join("<br>");
 function remake(c) {                         // прави пак нещо по рецептата
-  const h = howOf(c); if (!h || !canMixNow()) return;
+  const h = knownHows(c)[0] || howOf(c); if (!h || !canMixNow()) return;
   const r = h.i;
   if (!haveAll(r)) return say("", `Нямам всичко за ${elN(c).toLowerCase()}. Трябват ми ${r.map(k => elN(k).toLowerCase()).join(" и ")}.`, 5000);
   closeSheet(); mix(r[0], r[1] || null, "me", r.slice(2), h.m);
@@ -1866,7 +1880,7 @@ function mixDone() {
     + (S.stage === "kid" ? 0.1 : S.stage === "teen" ? -0.1 : S.stage === "aging" || S.stage === "old" ? 0.1 : 0) + (S.found.includes(c) ? 0.25 : 0), 0.2, 0.95);
   all.forEach(x => takeMat(x)); if (KEEP[key]) addMat(KEEP[key]);
   if (Math.random() < p) {
-    addMat(c); const first = !S.found.includes(c);
+    addMat(c); const first = !S.found.includes(c); noteMade(c, "mix", all);
     gotPop(c, `${first ? "🎉 Ново! " : ""}${elN(c)}. Отиде в сандъка${EDIBLE[c] ? " и в „Рецепти“" : " и в шкафа"}.`);
     if (first) S.found.push(c);
     S.mood = clamp(S.mood + (first ? 18 : 5)); if (first) fx.party = performance.now();
@@ -1908,7 +1922,7 @@ function methodDone(how, all, key, who) {            // загряване, ох
       const gi = got.findIndex(x => /glass|jar|bottle|bulb|lens|chime/.test(x)), i = gi >= 0 ? gi : Math.floor(Math.random() * got.length);
       lost = got.splice(i, 1)[0]; if (lost === "jar" || lost === "bottle") got.push("glassshard");
     }
-    got.forEach(x => addMat(x)); S.mood = clamp(S.mood + 3);
+    got.forEach(x => addMat(x)); S.mood = clamp(S.mood + 3); for (const x of new Set(got)) noteMade(x, "apart", [k]);
     for (const x of got) if (!S.found.includes(x) && EL[x] && EL[x][3] === "made") S.found.push(x);
     log(`🔧 Разглоби ${elN(k).toLowerCase()}: ${got.map(elN).join(", ")}${lost ? ` (${elN(lost).toLowerCase()} се счупи)` : ""}.`);
     gotPop(got[0], `🔧 ${elN(k)} → ${got.map(elN).join(" + ")}${lost ? ` (${elN(lost).toLowerCase()} се счупи)` : ""}. Всичко е в сандъка.`);
@@ -1929,7 +1943,7 @@ function methodDone(how, all, key, who) {            // загряване, ох
     return save(), render();
   }
   const outs = r.flatMap(([id, n]) => Array(n).fill(id)), news = [...new Set(outs)].filter(x => !S.found.includes(x) && !all.includes(x));
-  outs.forEach(x => addMat(x)); for (const x of news) S.found.push(x);
+  outs.forEach(x => addMat(x)); for (const x of news) S.found.push(x); for (const x of new Set(outs)) if (!all.includes(x)) noteMade(x, how, all);
   if (news.length) fx.party = performance.now();
   S.mood = clamp(S.mood + (news.length ? 12 : 4));
   if (who === "me") td("mix");
@@ -3059,7 +3073,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 45;
+const PAGE_V = 46;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -3118,6 +3132,8 @@ let dragEndAt = -1e9;
 addEventListener("pointerup", () => setTimeout(() => { if (!invDrag && !(itemDrag && itemDrag.moved)) { $("ghost")?.remove(); document.querySelectorAll("#mixbar .slot.over").forEach(q => q.classList.remove("over")); } }, 50));
 $("scrim").onclick = () => { if (performance.now() - dragEndAt > 600) closeSheet(); };
 $("chatBtn").onclick = ev => { ev.stopPropagation(); if (S) togglePop(); };
+$("ghChat").onclick = ev => { ev.stopPropagation(); if (S && ghost.on) toggleGhostPop(); };
+document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#gpop") && !ev.target.closest("#ghChat")) closeGhostPop(); if (!ev.target.closest("#gring")) closeGhostMenu(); }, true);
 document.addEventListener("pointerdown", ev => { if (!ev.target.closest("#pop") && !ev.target.closest("#chatBtn")) closePop(); });
 function lastAsked() { return Math.max(0, ...Object.values(S.asked || {})); }
 let cabPick = null, cabTab = "inv", libPick = null, journalPage = 0, libTab = "shelf", mixSel = [], invPick = null, invDrag = null;
@@ -3259,8 +3275,8 @@ function fillSheet(kind) {
     const made = [...new Set([...S.found, ...Object.keys(S.mat).filter(k => cnt(k) > 0)])].filter(k => EL[k] && EL[k][3] === "made" && !EDIBLE[k]);
     const act = made.filter(k => ACTS[k] && (cnt(k) || placed(k))), rest = made.filter(k => !act.includes(k));
     const card = k => `<div class="gd${placed(k) ? " on" : ""}${cnt(k) || placed(k) ? "" : " zero"}"><span>${elI(k)}</span><b>${esc(elN(k))}${cnt(k) > 1 ? ` ×${cnt(k)}` : ""}${isFinal(k) ? ` <span class="finl">★ краен</span>` : ""}</b><small>${ACTS[k] ? esc(ACTS[k]) : BOOK_DESC[k] ? esc(BOOK_DESC[k]) : "Стои в шкафа за красота."}</small>
-      ${howOf(k) ? `<small class="rc">${recLine(k)}</small>` : ""}${!cnt(k) && !placed(k) ? `<small class="st">Няма го в момента</small>` : ""}
-      ${howOf(k) && canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(howOf(k).i) ? "" : "disabled"}>Направи${cnt(k) || placed(k) ? " още" : " пак"}</button>` : ""}
+      ${knownLine(k) ? `<small class="rc">${knownLine(k)}</small>` : ""}${!cnt(k) && !placed(k) ? `<small class="st">Няма го в момента</small>` : ""}
+      ${knownHows(k)[0] && canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(knownHows(k)[0].i) ? "" : "disabled"}>Направи${cnt(k) || placed(k) ? " още" : " пак"}</button>` : ""}
       ${placed(k) ? `<small class="st">${k === "trampoline" || active(k) ? "✓ на дъното, работи" : "на дъното, изключено (докосни го там)"}</small>` : ""}
       ${ACTS[k] && role === "keeper" ? `<button class="tg" data-k="${k}">${placed(k) ? "Прибери" : "Сложи"}</button>` : ""}</div>`;
     const hats = S.hats || [], accs = myAccs();
@@ -3282,7 +3298,7 @@ function fillSheet(kind) {
   } else if (kind === "cook") {
     const foods = S.found.filter(c => EDIBLE[c]);
     sh.innerHTML = head("📖 Рецепти") + (foods.length ? `<div class="cab">${foods.map(k => `<div class="gd${cnt(k) ? "" : " zero"}"><span>${elI(k)}</span><b>${esc(elN(k))}${cnt(k) ? ` ×${cnt(k)}` : ""}</b>
-      <small class="rc">${recLine(k)}</small>${cnt(k) ? "" : `<small class="st">Свърши</small>`}
+      ${knownLine(k) ? `<small class="rc">${knownLine(k)}</small>` : ""}${cnt(k) ? "" : `<small class="st">Свърши</small>`}
       ${canMixNow() ? `<button class="rm" data-k="${k}" ${haveAll(howOf(k) ? howOf(k).i : ["x"]) ? "" : "disabled"}>Сготви</button>` : ""}${cnt(k) && role === "keeper" ? `<button class="eat2" data-k="${k}">Дай</button>` : ""}</div>`).join("")}</div>`
       : `<div class="sub">Още няма рецепти. Смесвайте храни!</div>`);
     sh.querySelectorAll(".rm").forEach(b => b.onclick = () => remake(b.dataset.k));
@@ -3413,7 +3429,7 @@ function ringItems() {
   if (isBaby() && ringPage === "main") return [["bottle", "🍼", "Шише"], ["e🤗", "🤗", "Погали"], ["bplay", "🎈", "Игри"], ...(S.cry ? [["paci", "👶", "Биберон"]] : []), S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Нани"]];
   if (ringPage === "food") { const made = Object.keys(S.mat).filter(k => cnt(k) > 0 && EDIBLE[k] && EL[k] && !LIVING.has(k));
     return [["back", "↩️", "Назад"],
-      ...made.map(k => ["f:" + k, elI(k), `${elN(k)} ×${cnt(k)}`]), ...(S.found.some(c => EDIBLE[c]) ? [["cook", "📖", "Рецепти"]] : [])]; }
+      ...made.map(k => ["f:" + k, elI(k), `${elN(k)} ×${cnt(k)}`]), ...(made.length ? [] : [["nofood", "🫙", "Няма храна"]]), ...(S.found.some(c => EDIBLE[c]) ? [["cook", "📖", "Рецепти"]] : [])]; }
   return [["food", "🍕", "Нахрани"], ...(S.stage !== "baby" ? [["desk", "🛠️", S.desk ? "Махни масата" : "Маса"]] : []), ["e🤗", "🤗", "Погали"], ["play", "🙈", "Играй"], ["read", "📕", "Чети"], ...(S.hurt && !S.plaster ? [["plaster", "🩹", `Пластир ◉${PLASTER_P}`]] : []), S.asleep ? ["wake", "☀️", "Събуди"] : ["sleep", "😴", "Сън"]];
 }
 function openRing() {
@@ -3480,6 +3496,7 @@ function ringAction(id) {
   if (id === "bottle") { closeRing(); return startBottle(); }
   if (id.startsWith("f:")) { closeRing(); return feed(id.slice(2)); }
   if (id === "cook") return openSheet("cook");
+  if (id === "nofood") { closeRing(); return say("", pick(["В сандъка няма нищо за ядене. Може да намерим нещо на дъното?", "Сандъкът е празен откъм храна. Сухари, мед, риба… нещо да падне!"]), 5000); }
   if (id === "plaster") { closeRing(); return putPlaster(); }
   if (id === "desk") { closeRing(); return toggleDesk(); }
   if (id.startsWith("g_")) { closeRing(); return babyPlay(id.slice(2)); }
@@ -4983,6 +5000,7 @@ function ghostApply(m) {
     if (role === "keeper" && S.hatched) setTimeout(() => { sleepTalking = true; say("", pick(["Хрр… риба… светеща риба… хрр…", "Мм… кой е там… прозрачен… хрр…"]), 5000); sleepTalking = false; }, 900);
   }
   if (m.t === "off" && ghost.on) { ghost.on = false; renderGhostBtn(); }
+  if (m.t === "move" && ghost.on && m.m === "stop") { ghost.mv = null; return; }
   if (m.t === "move" && ghost.on && GHOST_MV[m.m]) { ghost.mv = { m: m.m, at: performance.now() }; return; }
   if (m.t === "rock" && ghost.on && ROCK_FX[m.m]) {               // камъкът сияе / под него светят очи
     ghost.rock = { m: m.m, at: performance.now() };
@@ -4995,6 +5013,10 @@ function ghostApply(m) {
   }
   if (m.t === "drop" && ghost.on && EL[m.k]) {                   // духът пуска предмет на дъното
     if (role === "keeper" && S.parts.length < 8) { S.parts.push({ id: uid(), k: m.k, x: clamp(ghost.x / W + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true }); dirty = true; save(); }
+    if (role === "viewer" && S.parts.length < 8) {             // при vasko се вижда веднага (после идва истинското от toshik)
+      S.parts.push({ id: "gv" + Date.now(), k: m.k, x: clamp(ghost.x / W + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true });
+      if (!liveOn()) toast("👻 Пуснато. Тошик не е в играта точно сега: ще го види само ако е отворил играта.");
+    }
     ghost.last = { x: pick(["Подарък… от отвъдното…", "Вземи го… ако смееш…", "Това е за теб… бууу…"]), at: performance.now() };
     return;
   }
@@ -5037,8 +5059,10 @@ function renderGhostBtn(ping) {
   b.classList.toggle("hidden", role !== "viewer" && !ghost.on);     // toshik има чат само докато духът е тук
   if (role !== "viewer" && !ghost.on && sheetKind === "ghost") closeSheet();
   if (ping) b.classList.add("ping");
+  renderGhostChat();
 }
 function drawGhost(t, s) {
+  if (role === "viewer" && !!ghost.on !== !$("ghChat").classList.contains("hidden")) renderGhostChat();
   if (ghost.on && S && !S.asleep) {                              // събуди се: духът изчезва
     ghost.on = false;
     if (role === "keeper") { ghostSend({ t: "off" }); if (S.hatched) setTimeout(() => say("", pick(["Сънувах риба-дух… Или не беше сън?", "Имаше ли тук една прозрачна риба? Не? Сигурно съм сънувал."]), 6000), 1500); }
@@ -5127,20 +5151,45 @@ function drawRockFx(t) {                           // духът: камъкът
   }
   g.restore();
 }
-function ghostMenu(x, y) {                       // при vasko: докосваш духа и излиза меню
-  closeGhostMenu();
-  const m = document.createElement("div"); m.id = "gmenu";
-  m.innerHTML = `<button class="x" id="gmX">✕</button><div class="sub">💬 Какво да каже</div><div class="gbub">${GHOST_LINES.map((l, i) => `<button data-gl="${i}">${esc(l)}</button>`).join("")}</div>
-    <div class="sub">🌀 Движения</div><div class="gq">${GHOST_MOVES.map(([k, n]) => `<button data-gm="${k}">${n}</button>`).join("")}</div>
-    <div class="sub">🎁 Пусни предмет</div><div class="gq drop">${GHOST_DROPS.map(k => `<button data-gd="${k}" title="${esc(elN(k))}">${elI(k)}</button>`).join("")}<button data-gt="1" title="Вземи обратно">↩️</button></div>`;
-  document.body.appendChild(m);
-  m.querySelector("#gmX").onclick = closeGhostMenu;
-  m.querySelectorAll("[data-gl]").forEach(b => b.onclick = () => { ghostSend({ t: "msg", x: GHOST_LINES[+b.dataset.gl] }); closeGhostMenu(); });
-  m.querySelectorAll("[data-gm]").forEach(b => b.onclick = () => { ghostSend({ t: "move", m: b.dataset.gm }); closeGhostMenu(); });
-  m.querySelectorAll("[data-gd]").forEach(b => b.onclick = () => { ghostSend({ t: "drop", k: b.dataset.gd }); b.classList.add("sent"); setTimeout(() => b.classList.remove("sent"), 700); });
-  m.querySelector("[data-gt]").onclick = () => { ghostSend({ t: "take" }); closeGhostMenu(); };
+function ghostMenu(x, y, page = "main") {           // при vasko: докосваш духа и около него излизат движения и предмети (като кръга с храната)
+  closeGhostMenu(); closeGhostPop();
+  const box = document.createElement("div"); box.id = "gring"; document.body.appendChild(box);
+  const items = page === "items" ? [["back", "↩️", "Назад"], ...GHOST_DROPS.map(k => ["d:" + k, elI(k), elN(k)]), ["take", "🫳", "Прибери"]]
+    : [...GHOST_MOVES.map(([k, n]) => ["m:" + k, n.split(" ")[0], GHOST_SHORT[k] || n.split(" ").slice(1).join(" ")]), ["m:stop", "✋", "Спри"], ["items", "🎁", "Предмети"]];
+  const R0 = Math.min(innerWidth, innerHeight) * (items.length > 9 ? 0.4 : 0.32);      // кръгът винаги се побира на екрана
+  const cx = Math.max(R0 + 36, Math.min(innerWidth - R0 - 36, ghost.hit ? ghost.hit.x : x)), cy = Math.max(R0 + 60, Math.min(innerHeight - R0 - 90, ghost.hit ? ghost.hit.y : y));
+  items.forEach(([id, ic, label], i) => {
+    const a = -Math.PI / 2 + i / items.length * Math.PI * 2;
+    const b = document.createElement("button"); b.className = "rb";
+    b.style.left = Math.max(36, Math.min(innerWidth - 36, cx + Math.cos(a) * R0)) + "px"; b.style.top = Math.max(50, Math.min(innerHeight - 60, cy + Math.sin(a) * R0)) + "px";
+    b.innerHTML = ic + (page === "items" && id.startsWith("d:") ? "" : `<small>${esc(label)}</small>`); b.title = label;
+    b.onclick = ev => { ev.stopPropagation();
+      if (id === "items") return ghostMenu(x, y, "items");
+      if (id === "back") return ghostMenu(x, y, "main");
+      if (id === "take") { ghostSend({ t: "take" }); return closeGhostMenu(); }
+      if (id.startsWith("m:")) { ghostSend({ t: "move", m: id.slice(2) }); return closeGhostMenu(); }
+      if (id.startsWith("d:")) { ghostSend({ t: "drop", k: id.slice(2) }); b.classList.add("sent"); setTimeout(() => b.classList.remove("sent"), 700); }
+    };
+    box.appendChild(b); setTimeout(() => b.classList.add("open"), 20 + i * 25);
+  });
 }
-function closeGhostMenu() { $("gmenu")?.remove(); }
+function closeGhostMenu() { $("gring")?.remove(); $("gmenu")?.remove(); }
+const GHOST_SHORT = { circle: "Обикаля", close: "Приближи", jump: "Изскочи", rock: "Зад камъка", bubbles: "Мехурчета", chest: "Сандъка" };
+// бутонът долу вляво при vasko: готовите реплики излизат нагоре като балончета
+function renderGhostChat() {
+  const b = $("ghChat"); if (!b) return;
+  b.classList.toggle("hidden", !(inGame && S && role === "viewer" && ghost.on));
+  if (b.classList.contains("hidden")) closeGhostPop();
+}
+function toggleGhostPop() {
+  const p = $("gpop"); if (!p.classList.contains("hidden")) return closeGhostPop();
+  closeGhostMenu();
+  p.innerHTML = GHOST_LINES.map((l, i) => `<button data-gl="${i}">${esc(l)}</button>`).join("");
+  p.classList.remove("hidden");
+  p.querySelectorAll("button").forEach(b => b.onclick = ev => { ev.stopPropagation(); ghostSend({ t: "msg", x: GHOST_LINES[+b.dataset.gl] }); closeGhostPop(); });
+}
+function closeGhostPop() { $("gpop")?.classList.add("hidden"); }
+
 const GHOST_LINES = ["Бууууу… аз съм рибата-дух…", "Чувам те как дишаш… хи-хи-хи…", "Под камъка има нещо… и то те гледа…", "Не поглеждай зад себе си…", "Тази нощ водата е студена… като мен…",
   "Някога и аз бях октопод… преди сто години…", "Шшшт… ако кажеш името ми, ще се върна…", "Броя пипалата ти… едно… две… липсва едно!", "Сандъкът ти скърца нощем… знаеш ли защо?", "Ще дойда пак… когато луната е пълна…"];
 const GHOST_DROPS = ["star", "shell", "coral", "feather", "pebble", "bulb", "bat", "magnet", "gear", "spring", "bolt", "coin", "key", "seaglass"];
