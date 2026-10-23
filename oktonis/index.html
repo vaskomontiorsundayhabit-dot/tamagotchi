@@ -280,6 +280,9 @@
   .gm { padding: 7px 11px; border-radius: 14px; max-width: 85%; font-size: 15px; background: rgba(185,246,255,.25); align-self: flex-start; }
   .gm.t { align-self: flex-end; background: rgba(255,179,107,.3); }
   .gq { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; } .gq button { padding: 7px 10px; border-radius: 12px; font-size: 13px; text-align: left; background: rgba(185,246,255,.18); color: inherit; border: 1px solid rgba(185,246,255,.4); }
+  #rmenu { position: fixed; transform: translate(-50%, -100%); z-index: 40; display: flex; gap: 8px; }
+  #rmenu button { background: rgba(255,255,255,.95); border: 3px solid var(--ink); border-radius: 18px; padding: 6px 12px; font-size: 22px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 0 rgba(0,0,0,.2); }
+  #rmenu small { color: var(--ink); opacity: 1; font-size: 12px; font-weight: 700; margin-top: 2px; white-space: nowrap; }
   #gmenu { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 70; width: min(380px, 92vw); max-height: 80vh; overflow-y: auto; background: rgba(16,30,52,.96); color: #fff;
     border: 2px solid rgba(185,246,255,.5); border-radius: 18px; padding: 12px 12px 6px; box-shadow: 0 10px 40px rgba(0,0,0,.6), 0 0 30px rgba(185,246,255,.25); }
   #gmenu .x { position: absolute; right: 10px; top: 6px; background: none; border: 0; color: #fff; font-size: 20px; } #gmenu .sub { color: #b9f6ff; margin: 4px 0; font-weight: 700; }
@@ -1581,11 +1584,11 @@ function drawPillow(s, ground, front) {
   g.restore(); g.restore();
 }
 // ---------- Подаръци от гостите ----------
-const GIFT = { crab: "shell", lobster: "bolt", turtle: "coral", fish: "star", mail: "paper", puffer: "feather", squid: "bottle", jelly: "star", snail: "pebble", shrimp: "weed" };
+const GIFT = { crab: "shell", lobster: "bolt", turtle: "coral", fish: "star", mail: "letter", puffer: "feather", squid: "bottle", jelly: "star", snail: "pebble", shrimp: "weed" };
 const GNAME = { crab: "Ракът", lobster: "Омарът", turtle: "Костенурката", fish: "Рибката", mail: "Рибата-пощальон", puffer: "Балон-рибата", squid: "Калмарът", jelly: "Медузата", snail: "Охлювът", shrimp: "Скаридата" };
 function guestGift(k) {
   if (!S || !S.hatched || role !== "keeper" || Math.random() > 0.4 || S.parts.length >= 6) return;
-  const it = GIFT[k]; if (!it) return;
+  const it = GIFT[k]; if (!it || !EL[it]) return;
   S.parts.push({ id: uid(), k: it, x: 0.72, t: S.t }); dirty = true;
   log(`🎁 ${GNAME[k]} остави подарък: ${elN(it).toLowerCase()}.`);
   setTimeout(() => say("", `${GNAME[k]} ми остави ${elN(it).toLowerCase()}! Колко мило.`, 5000), 1500);
@@ -1763,6 +1766,7 @@ function mix(a, b, who, more = [], how = "mix") {
   const tk = (how !== "mix" ? how + ":" : "") + items.slice().sort().join("+");
   const special = how === "mix" && items.length === 2 && (HIDDEN.some(h => recKey(h[0], h[1]) === tk) || wildOf(a, b));
   if ((S.nope || []).includes(tk) && !special) return say("", `Вече пробвахме ${how !== "mix" ? HOW[how].n.toLowerCase() + " на " : ""}${items.map(k => elN(k).toLowerCase()).join(" и ")}. Не става. Нещо друго?`, 5000);
+  if (deskMove) return toast("🛠️ Чакай да нагласи масата.");
   const desk = S.desk && table && table.x != null;          // масата вече е тук: почва веднага
   working = performance.now() - (desk ? 5600 : 0); mixing = { a, b, who, more, how }; closeSheet(); closeRing(); if (!desk) table = { x: null, a: 0 };
   const n = S.workN = ((S.workN != null ? S.workN : workN) + 1) % 1000;   // редуват се (помни се и след презареждане)
@@ -3182,8 +3186,8 @@ function fillSheet(kind) {
     const hats = S.hats || [], accs = myAccs();
     const tabs = `<div class="tabs">${[["inv", "⚙️ Изобретения"], ["wear", "🎩 Дрехи"]].map(([k, n]) => `<button data-c="${k}" class="${cabTab === k ? "on" : ""}">${n}</button>`).join("")}</div>`;
     sh.innerHTML = head("🗄️ Шкаф") + tabs + (cabTab === "wear" ? (hats.length || accs.length ? `<div class="cab">${hats.map(h => `<div class="gd${S.hat === h ? " on" : ""}"><span>${HATS[h][0]}</span><b>${esc(HATS[h][1])}</b>${role === "keeper" ? `<button class="tg hat" data-h="${h}">${S.hat === h ? "Свали" : "Сложи"}</button>` : ""}</div>`).join("")}${accs.map(a => `<div class="gd${accOff(a) ? "" : " on"}"><span>${ACC[a][0]}</span><b>${esc(ACC[a][1])}</b><small>${esc(ACC[a][2])}</small>${role === "keeper" ? `<button class="tg acc" data-a="${a}">${accOff(a) ? "Сложи" : "Свали"}</button>` : ""}</div>`).join("")}</div>`
-      : `<div class="sub">Още няма дрехи. Понякога рибата-пощальон носи подаръци…</div>`) : made.length ? (() => {       // рафтове с изобретенията; докосваш едно и долу излиза картата му
-        const all = [...act, ...rest], per = 5, rows = [];
+      : `<div class="sub">Още няма дрехи. Понякога рибата-пощальон носи подаръци…</div>`) : act.length ? (() => {       // рафтове с изобретенията; докосваш едно и долу излиза картата му
+        const all = act, per = 5, rows = [];
         for (let i = 0; i < all.length; i += per) rows.push(all.slice(i, i + per));
         if (!cabPick || !all.includes(cabPick)) cabPick = null;
         return (cabPick ? `<div class="cab one">${card(cabPick)}</div>` : `<div class="sub">Докосни изобретение от рафта.</div>`) +
@@ -3375,12 +3379,21 @@ function playHide() {                      // криеница
   say("", pick(["Крия се! Брой до десет!", "Криеница! Намери ме!", "Не гледай! Крия се!"]));
   setTimeout(() => { hideUntil = performance.now() + 25000; }, 1200);
 }
+let deskMove = null;                           // { on, t0 }: отива за масата или я отнася
 function toggleDesk() {                       // работната маса: стои до него, докато не я махнеш
-  if (working) return toast("🛠️ Сега работи. После.");
-  S.desk = !S.desk; dirty = true;
-  if (S.desk) { table = { x: Math.min(W * 0.62, W - 170 * Math.max(0.5, W / 900)), a: 0 }; say("", pick(["Масата е тук! Сега майсторя без да тичам.", "Донесох работната маса. Готов съм!"])); }
-  else { if (table) table.until = performance.now(); say("", pick(["Прибрах масата. Има повече място.", "Масата е прибрана."])); }
-  save();
+  if (working || deskMove) return toast("🛠️ Сега работи. После.");
+  if (S.asleep) return say("", "Шшш… спи.");
+  S.desk = !S.desk; dirty = true; hideUntil = 0;
+  deskMove = { on: S.desk, t0: performance.now() };
+  if (S.desk) { table = { x: null, a: 0 }; say("", pick(["Отивам за масата!", "Чакай, ще донеса масата."]), 2500); }
+  else { if (!table || table.x == null) { table = null; deskMove = null; } say("", pick(["Отнасям масата.", "Прибирам масата."]), 2500); }
+  renderMix(); save();
+}
+function deskDone() {
+  const on = deskMove && deskMove.on; deskMove = null;
+  if (on) say("", pick(["Масата е тук! Сега майсторя без да тичам.", "Донесох работната маса. Готов съм!"]));
+  else { table = null; say("", pick(["Прибрах масата. Има повече място.", "Масата е прибрана."])); }
+  renderMix();
 }
 function ringAction(id) {
   if (id === "talk" || id === "food" || id === "bplay") { ringPage = id; return paintRing(); }
@@ -3462,7 +3475,7 @@ $("hud").onclick = () => S && openSheet("stats");
 // ---------- Полетата за смесване: винаги долу ----------
 function canMixNow() { return role === "keeper" && S && S.hatched && S.stage !== "baby"; }
 function renderMix() {
-  const bar = $("mixbar"), on = inGame && canMixNow();
+  const bar = $("mixbar"), on = inGame && canMixNow() && !!S.desk && !deskMove;
   bar.classList.toggle("hidden", !on); document.body.classList.toggle("hasbar", on);
   if (!on) return;
   mixSel = mixSel.filter((k, i) => cnt(k) > mixSel.slice(0, i).filter(x => x === k).length);
@@ -4136,7 +4149,7 @@ function drawFloor(t, s, behind) {
       g.strokeStyle = `rgba(255,200,40,${0.4 + tw * 0.6})`; g.lineWidth = 2;
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + now / 900; g.beginPath(); g.moveTo(x + Math.cos(a) * sz * 0.55, y + Math.sin(a) * sz * 0.55); g.lineTo(x + Math.cos(a) * sz * 0.75, y + Math.sin(a) * sz * 0.75); g.stroke(); }
     }
-    floorHits.push({ kind: it.kind, id: it.id, x, y, r: sz * 0.7 });
+    floorHits.push({ kind: it.kind, id: it.id, x, y, r: Math.max(32, sz * 0.8) });          // по-голямо поле за пръста
   }
   if (behind) return;
   for (let i = poofs.length - 1; i >= 0; i--) {     // облаче, когато нещо се вземе
@@ -4880,6 +4893,11 @@ function ghostApply(m) {
   }
   if (m.t === "off" && ghost.on) { ghost.on = false; renderGhostBtn(); }
   if (m.t === "move" && ghost.on && GHOST_MV[m.m]) { ghost.mv = { m: m.m, at: performance.now() }; return; }
+  if (m.t === "rock" && ghost.on && ROCK_FX[m.m]) {               // камъкът сияе / под него светят очи
+    ghost.rock = { m: m.m, at: performance.now() };
+    if (role === "keeper" && S && S.asleep && Math.random() < 0.5) setTimeout(() => { sleepTalking = true; say("", m.m === "eyes" ? "Хрр… очи… под камъка… хрр…" : "Мм… камъкът свети… хрр…", 5000); sleepTalking = false; }, 1500);
+    return;
+  }
   if (m.t === "take" && ghost.on) {                              // духът си взима обратно предмета
     if (role === "keeper") { const n = S.parts.filter(x => x.ghost).length; S.parts = S.parts.filter(x => !x.ghost); if (n) { dirty = true; save(); } }
     ghost.last = { x: pick(["Размислих… взимам си го обратно… хи-хи…", "Не, това е мое… бууу…"]), at: performance.now() }; return;
@@ -4965,6 +4983,58 @@ function drawGhost(t, s) {
 }
 const GHOST_MV = { circle: 12000, close: 8000, jump: 6000, rock: 14000, bubbles: 9000 };
 const GHOST_MOVES = [["circle", "🌀 Обикаля около него"], ["close", "👀 Приближава се"], ["jump", "😱 Изчезва и изскача"], ["rock", "🪨 Крие се зад камъка"], ["bubbles", "🫧 Сияйни мехурчета"]];
+// ---------- Менюто на камъка ----------
+function rockMenu() {
+  closeRockMenu(); if (!rockBox) return;
+  const opts = role === "keeper" ? [["hide", "🙈", "Скрий се"]] : ghost.on ? [["glow", "✨", "Светни камъка"], ["eyes", "👀", "Страшни очи"]] : [];
+  if (!opts.length) return;
+  const m = document.createElement("div"); m.id = "rmenu";
+  m.style.left = Math.max(70, Math.min(innerWidth - 70, rockBox.x)) + "px"; m.style.top = Math.max(60, rockBox.y - rockBox.ry - 8) + "px";
+  m.innerHTML = opts.map(([k, ic, n]) => `<button data-rk="${k}">${ic}<small>${n}</small></button>`).join("");
+  document.body.appendChild(m);
+  m.querySelectorAll("[data-rk]").forEach(b => b.onclick = ev => { ev.stopPropagation(); closeRockMenu(); rockDo(b.dataset.rk); });
+  rockMenuAt = performance.now();
+}
+let rockMenuAt = 0;
+function closeRockMenu() { $("rmenu")?.remove(); }
+function rockDo(k) {
+  if (k === "glow" || k === "eyes") return ghostSend({ t: "rock", m: k });
+  if (k === "hide") {
+    if (S.asleep) return say("", "Шшш… спи.");
+    if (working || reading || deskMove) return say("", pick(["Сега не мога, зает съм.", "После. Сега работя."]));
+    if (!S.hatched) return;
+    say("", pick(["Крия се! Не гледай!", "Камъкът! Отивам зад него.", "Шшт! Не съм тук."]));
+    setTimeout(() => { hideUntil = performance.now() + 15000; }, 600);
+  }
+}
+const ROCK_FX = { glow: 12000, eyes: 12000 };
+function drawRockFx(t) {                           // духът: камъкът сияе или под него светят очи
+  const r = ghost.rock, p = performance.now();
+  if (!r || !rockBox || p - r.at > ROCK_FX[r.m]) return;
+  const e = (p - r.at) / ROCK_FX[r.m], a = Math.min(1, e * 6, (1 - e) * 6);
+  const R = rockGeom();
+  g.save();
+  if (r.m === "glow") {
+    const pul = 0.6 + 0.4 * Math.sin(t * 4);
+    const gr = g.createRadialGradient(R.cx, R.base - R.rh * 0.45, R.rw * 0.1, R.cx, R.base - R.rh * 0.45, R.rw * 0.85);
+    gr.addColorStop(0, `rgba(170,255,255,${0.8 * a * pul})`); gr.addColorStop(1, "rgba(120,220,255,0)");
+    g.fillStyle = gr; g.beginPath(); g.ellipse(R.cx, R.base - R.rh * 0.45, R.rw * 0.85, R.rh * 0.95, 0, 0, 7); g.fill();
+    g.globalAlpha = a * pul; g.shadowColor = "#9ff"; g.shadowBlur = 30; g.strokeStyle = "rgba(200,255,255,.95)"; g.lineWidth = 7;
+    g.beginPath(); g.ellipse(R.cx, R.base - R.rh * 0.42, R.rw * 0.5, R.rh * 0.5, 0, Math.PI, 0); g.stroke();
+    for (let i = 0; i < 6; i++) { const an = t * 0.8 + i; g.fillStyle = "#e8ffff"; g.beginPath(); g.arc(R.cx + Math.cos(an) * R.rw * 0.55, R.base - R.rh * 0.5 + Math.sin(an * 1.3) * R.rh * 0.5, 3, 0, 7); g.fill(); }
+  } else {
+    const blink = Math.sin(t * 1.7) > 0.93 || Math.sin(t * 2.3 + 1) > 0.97;
+    const pairs = [[-0.25, 0.9, 1], [0.18, 0.85, 0.75], [0.36, 0.93, 0.55]];
+    pairs.forEach(([dx, dy, z], i) => {
+      if (i * 0.25 > e * 3) return;                   // появяват се една по една
+      const cx = R.cx + dx * R.rw, cy = R.base - 16 + (dy - 0.9) * 40, rr = 11 * z * Math.max(0.8, R.rw / 300);
+      g.globalAlpha = a; g.shadowColor = "#ffea3a"; g.shadowBlur = 18; g.fillStyle = "#fff36a";
+      for (const sx of [-1, 1]) { g.beginPath(); g.ellipse(cx + sx * rr * 1.6, cy, rr, blink ? rr * 0.12 : rr * 0.7, 0, 0, 7); g.fill(); }
+      if (!blink) { g.shadowBlur = 0; g.fillStyle = "#200"; for (const sx of [-1, 1]) { g.beginPath(); g.ellipse(cx + sx * rr * 1.6 + Math.sin(t) * rr * 0.3, cy, rr * 0.22, rr * 0.55, 0, 0, 7); g.fill(); } }
+    });
+  }
+  g.restore();
+}
 function ghostMenu(x, y) {                       // при vasko: докосваш духа и излиза меню
   closeGhostMenu();
   const m = document.createElement("div"); m.id = "gmenu";
@@ -4981,7 +5051,7 @@ function ghostMenu(x, y) {                       // при vasko: докосва
 function closeGhostMenu() { $("gmenu")?.remove(); }
 const GHOST_LINES = ["Бууууу… аз съм рибата-дух…", "Чувам те как дишаш… хи-хи-хи…", "Под камъка има нещо… и то те гледа…", "Не поглеждай зад себе си…", "Тази нощ водата е студена… като мен…",
   "Някога и аз бях октопод… преди сто години…", "Шшшт… ако кажеш името ми, ще се върна…", "Броя пипалата ти… едно… две… липсва едно!", "Сандъкът ти скърца нощем… знаеш ли защо?", "Ще дойда пак… когато луната е пълна…"];
-const GHOST_DROPS = ["star", "shell", "coral", "feather", "pebble", "bulb", "bat", "magnet", "gear", "spring", "bolt", "cheese", "banana", "fish"];
+const GHOST_DROPS = ["star", "shell", "coral", "feather", "pebble", "bulb", "bat", "magnet", "gear", "spring", "bolt", "coin", "key", "seaglass"];
 GHOST_DROPS.length = 0; GHOST_DROPS.push("shell", "coral", "feather", "pebble", "bulb", "bat", "gear", "spring", "bolt", "coin", "pearl", "key", "seaglass", "candle", "hardtack");
 const GHOST_SOUNDS = [["wail", "👻 Вой"], ["wind", "🌬️ Вятър"], ["heart", "💓 Сърце"], ["creak", "🚪 Скърцане"], ["bell", "🔔 Камбана"], ["laugh", "😈 Смях"]];
 let actx = null;
@@ -5177,6 +5247,20 @@ function loop() {
     else if (e < 5600) { tx = W * 0.4; lin = 4; table.x += (oct.px + 230 * s - table.x) * 0.3; }   // дърпа масата равномерно
     else { tx = oct.px; k = 0.035; table.x += (oct.px + 150 * s - table.x) * 0.06; }              // масата е до него, пипалата му са върху нея
   }
+  else if (deskMove) {                                           // носи масата или я отнася
+    const e = performance.now() - deskMove.t0;
+    ty = ground - 201 * s;
+    if (!table) table = { x: null, a: 0 };
+    if (deskMove.on) {
+      if (e < 2600) { tx = W + 280 * s; k = 0.06; if (table.x == null) table.x = W + 600 * s; }
+      else if (e < 5600) { tx = W * 0.4; lin = 4; table.x += (oct.px + 230 * s - table.x) * 0.3; }
+      else deskDone();
+    } else {
+      if (e < 1600) { tx = table.x - 230 * s; k = 0.08; }
+      else if (e < 4600 && oct.px < W + 200 * s) { tx = W + 320 * s; lin = 4; table.x += (oct.px + 230 * s - table.x) * 0.3; }
+      else deskDone();
+    }
+  }
   else if (grabQ.length && !(drag && drag.moved)) {                     // отива и взима нещото
     const q = grabQ[0], h = floorHits.find(f => f.id === q.id), pn = performance.now();
     if (!h) { grabQ.shift(); grabT = pn; }
@@ -5230,6 +5314,7 @@ function loop() {
   if (hidden()) drawRock(t);
   drawGuest(t, s);
   if (S) drawGhost(t, s);
+  if (S && ghost.on) drawRockFx(t);
   if (S) drawKrillStory(t, s);
   if (role === "keeper") seaTick(performance.now());
   drawVis(t, s);
@@ -5261,7 +5346,9 @@ const onOcto = (x, y) => Math.hypot(x - oct.x, y - oct.cy) < oct.r * 0.6;
 const onRock = (x, y) => rockBox && ((x - rockBox.x) / rockBox.rx) ** 2 + ((y - rockBox.y) / rockBox.ry) ** 2 < 1;
 let drag = null, noHover = false;
 cv.addEventListener("pointerdown", ev => {
+  closeRockMenu();
   if (inGame && S && role === "viewer" && ghost.on && ghost.hit && Math.hypot(ev.clientX - ghost.hit.x, ev.clientY - ghost.hit.y) < ghost.hit.r) return ghostMenu(ev.clientX, ev.clientY);
+  if (inGame && S && role === "viewer" && ghost.on && onRock(ev.clientX, ev.clientY)) return rockMenu();
   if (!inGame || !S || sheetKind || role !== "keeper") return;
   const x = ev.clientX, y = ev.clientY;
   if (babyInput("down", x, y)) { closeRing(); return; }
@@ -5291,11 +5378,7 @@ cv.addEventListener("pointerdown", ev => {
       if (kind !== "ok") guest.end = Math.min(guest.end, performance.now() + 2200); return; }
     guest.line = { x: pick(["Ей! Не пипай!", "Здрасти!", "Само минавам.", "Хи-хи!"]), at: performance.now() }; return; }
   if (angler && angler.hit && Math.hypot(x - angler.hit.x, y - angler.hit.y) < angler.hit.r && performance.now() - flashAt > 1500) { closeRing(); return snapId("g_angler"); }
-  if (onRock(x, y) && !onOcto(x, y)) {
-    if (S.asleep || working || reading) return say("", pick(["Този камък е малко крив.", "Броих: камъкът има 14 дупчици."]));
-    say("", pick(["Крия се! Не гледай!", "Камъкът! Отивам зад него.", "Шшт! Не съм тук."]));
-    return setTimeout(() => { hideUntil = performance.now() + 15000; }, 600);
-  }
+  if (onRock(x, y) && !onOcto(x, y)) { closeRing(); return rockMenu(); }
   if (!onOcto(x, y)) return;
   drag = { id: ev.pointerId, sx: x, sy: y, dx: oct.px - x, dy: oct.py - y, moved: false };
   try { cv.setPointerCapture(ev.pointerId); } catch {}
@@ -5375,7 +5458,7 @@ if (canHover) addEventListener("mousemove", ev => {
   else if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = 0; }
 });
 // ---------- Таймер ----------
-let lastMinTick = 0, hadQ = false, wasAsleep = null, nextIdeaAt = Date.now() + 4 * MIN, parcelSaid = false, nextQGap = 12 * MIN, lastMinuteCheck = 0, nextHide = performance.now() + 4 * 60000;
+let lastMinTick = 0, hadQ = false, wasAsleep = null, nextIdeaAt = Date.now() + 4 * MIN, parcelSaid = false, nextQGap = 12 * MIN, lastMinuteCheck = 0, nextHide = performance.now() + 12 * 60000;
 setInterval(() => {
   if (!S || !inGame) return;
   const now = Date.now(), p = performance.now();
@@ -5433,10 +5516,10 @@ setInterval(() => {
       if (stageIdx() >= 4 && Math.random() < 0.5) selfT = -1e9, selfWork(p); else proposeIdea();
     }
     selfWork(p);
-    if (S.hatched && !S.asleep && !working && !hidden() && p > nextHide && !ringOpen && !sheetKind) {   // понякога се крие (Дева е малко срамежлив)
+    if (S.hatched && !S.asleep && !working && !deskMove && !hidden() && p > nextHide && !ringOpen && !sheetKind) {   // понякога се крие (Дева е малко срамежлив)
       const baby = S.stage === "baby";
-      nextHide = p + (baby ? rnd(1.5, 3) : rnd(4, 8)) * 60000;
-      if (S.trash.length >= 4 || S.mood < 55 || Math.random() < (baby ? 0.75 : has("hermit") || S.stage === "teen" ? 0.5 : 0.25)) {
+      nextHide = p + (baby ? rnd(3, 6) : rnd(12, 25)) * 60000;      // по-рядко (по желание на потребителя)
+      if (Math.random() < (baby ? 0.5 : has("hermit") || S.stage === "teen" ? 0.3 : (S.trash.length >= 4 || S.mood < 55) ? 0.25 : 0.1)) {
         hideUntil = p + 18000;
         say("🙈", baby ? pick(["~Хи-хи! Бебо се крие!", "~Ку-ку! Къде е бебо?", "~Намери бебо! Хи-хи!"]) : S.trash.length >= 4 ? "Не мога да гледам тази бъркотия…" : pick(["Крия се! Намери ме.", "Малко ми трябва тишина…"]));
       }
@@ -5490,7 +5573,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, toMix: k => addToMix(k), mx: (a, b, how = "mix") => { working = 0; mixing = { a, b, who: "me", more: [], how }; mixDone(); return S.journal[0] && S.journal[0].x; }, wildOf, tagsOf, cond: COND, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 10 * 60; i++) minute(t0 + i * MIN, true, {}); return { food: Math.round(100 - S.hunger), clean: Math.max(0, 100 - S.trash.length * 15), energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, pickPart: id => pickPart(id), ghost: () => ghost, gmove: m => { ghost.mv = { m, at: performance.now() }; }, items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, fh: () => floorHits, rb: () => rockBox, toMix: k => addToMix(k), mx: (a, b, how = "mix") => { working = 0; mixing = { a, b, who: "me", more: [], how }; mixDone(); return S.journal[0] && S.journal[0].x; }, wildOf, tagsOf, cond: COND, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 10 * 60; i++) minute(t0 + i * MIN, true, {}); return { food: Math.round(100 - S.hunger), clean: Math.max(0, 100 - S.trash.length * 15), energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, pickPart: id => pickPart(id), ghost: () => ghost, gmove: m => { ghost.mv = { m, at: performance.now() }; }, items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
