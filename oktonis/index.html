@@ -124,6 +124,7 @@
   .bar b { text-align: right; font-weight: 600; }
   .sub { color: var(--muted); font-size: 13px; margin: 10px 0; }
   .journal { list-style: none; margin: 0; padding: 0; }
+  .journal li.done { opacity: .6; } .journal li s { text-decoration-thickness: 2px; }
   .journal li { padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.12); font-size: 14px; }
   .journal li time { color: var(--muted); font-size: 12px; margin-right: 6px; }
 
@@ -1361,6 +1362,7 @@ const CUR = "перлинги";
 const money = n => `◉ ${n} ${n === 1 ? "перлинг" : CUR}`;
 const FLOOR = { junk: GEN.JUNK, other: GEN.OTHER };          // по-честите се повтарят повече пъти
 // книги за купуване: всяка подсказва няколко рецепти
+const BOOK_PLAN = {};                            // книга → изобретение с чертеж (в новата система)
 const SHOP = [
   { id: "b_tin", n: "Чудеса от консерви", p: 15, hints: ["tinguitar", "canphone", "drum", "megaphone"] , a: "Рачо Тенекиев", d: "Как една обикновена консерва става телефон, барабан или високоговорител. Учи го да не изхвърля нищо, преди да помисли.", q: ["Всяка празна консерва чака своята втора песен.", "Ако чукаш по нещо достатъчно дълго, то става барабан.", "Не казвай „боклук“. Казвай „още неизобретено“."], ch: ["Глава 1. Консервата има душа", "Глава 2. Как се чука правилно", "Глава 3. Консервена симфония"]},
   { id: "b_light", n: "Светлина под водата", p: 20, hints: ["seasun", "lamp", "glowcoral", "nightlight", "lighthouse"] , a: "Светла Фенерова", d: "Как светлината пътува под водата и как да си направи лампа, когато слънцето не стига до дъното.", q: ["Тъмното е просто светлина, която още не е дошла.", "Една малка лампа стига, за да не те е страх.", "Коралите светят, защото някой им е повярвал."], ch: ["Глава 1. Къде отива слънцето вечер", "Глава 2. Крушки и батерии: приятели завинаги", "Глава 3. Корали, които светят"]},
@@ -1712,6 +1714,34 @@ function ideaText(id) {
   if (id.src) return `Сетих се нещо от „${id.src}“… Ако съчетая ${ab}? Да пробвам ли?`;
   return id.ask ? `Хм… ако се смеси ${ab}? Ще го смесиш ли ти за мен?` : `Хм… ако съчетая ${ab}? Да пробвам ли?`;
 }
+// понякога иска да направите по-сложно изобретение (само такова, за което всичко е в сандъка)
+const WISH = [
+  "Иска ми се да направя {x}! Трябват ми {l}. Ще ми го направиш ли?",
+  "Знаеш ли какво ми липсва? {X}! От {l} става. Ще пробваш ли?",
+  "Ех, да имах {x}… А в сандъка има {l}! Хайде да го направим!",
+  "Имам идея за голямо изобретение: {x}! Сложи {l} на масата, моля.",
+  "Цял ден мисля за {x}. Само {l} ми трябват. Моля те!",
+  "Ако ми направиш {x}, ще ти подредя целия сандък! Трябват {l}.",
+  "Чувствам, че днес е ден за {x}. {L} чакат в сандъка!",
+  "Сънувах {x}… И имаме всичко: {l}. Направи ми го!",
+  "Мечтая си за {x}. Ще смесиш ли {l} за мен?",
+  "Пссст… Ако съчетаем {l}, ще стане {x}! Искаш ли?",
+];
+function proposeWish() {
+  if (!S.hatched || S.q || S.naming || S.task || stageIdx() < 2) return false;
+  const lvl = S.stage === "kid" ? 2 : 4;
+  const all = [...REC.map(([a, b, c]) => [[a, b], c]), ...REC3].filter(([l, c]) => EL[c] && EL[c][2] >= 1 && EL[c][2] <= lvl && !SECRET.includes(c) && !LIVING.has(c)
+    && haveAll(l) && !(S.nope || []).includes(l.slice().sort().join("+")));
+  const big = all.filter(([l, c]) => EL[c][2] >= 2 || l.length >= 3), opts = big.length ? big : all.filter(([, c]) => !S.found.includes(c));   // по-сложните, ако може
+  if (!opts.length) return false;
+  const fresh = opts.filter(([, c]) => !S.found.includes(c)), [l, c] = pick(fresh.length && Math.random() < 0.8 ? fresh : opts);
+  const names = [...new Set(l)].map(k => { const n = l.filter(x => x === k).length; return elN(k).toLowerCase() + (n > 1 ? ` (${n} бр.)` : ""); }), li = names.length > 1 ? names.slice(0, -1).join(", ") + " и " + names[names.length - 1] : names[0];
+  S.task = { a: l[0], b: l[1], more: l.slice(2), c }; dirty = true; save();
+  const x = elN(c).toLowerCase(), cap = t => t[0].toUpperCase() + t.slice(1);
+  oSays(pick(WISH).replace("{x}", x).replace("{X}", cap(x)).replace("{l}", li).replace("{L}", cap(li)));
+  if (!S.desk) setTimeout(() => say("", "Донеси ми масата от менюто ми и сложи нещата в полетата.", 6000), 9000);
+  return true;
+}
 function proposeIdea() {
   if (!S.hatched || S.q || S.naming || stageIdx() < 2) return;
   // идеите от прочетените книги идват след часове, не веднага
@@ -1719,8 +1749,8 @@ function proposeIdea() {
   let id = null;
   if (due) {
     S.bookIdeas = S.bookIdeas.filter(b => b !== due);
-    const [a, b, ...more] = ingOf(due.c);
-    if (!S.found.includes(due.c)) {
+    const [a, b, ...more] = ingOf(due.c) || [];
+    if (a && !S.found.includes(due.c)) {
       S.hints = [...new Set([...(S.hints || []), due.c])];
       if (haveAll([a, b, ...more])) id = { a, b, more, t: S.t, src: due.src };
       else { if (!S.future.some(f => recKey(f.a, f.b) === recKey(a, b))) S.future = [...S.future, { a, b, more, src: due.src }].slice(-30);
@@ -1803,14 +1833,17 @@ function mix(a, b, who, more = [], how = "mix") {
   setTimeout(mixDone, WORK_MS - d0);
 }
 function mixDone() {
-  working = 0;
+  working = 0; deskUsed = performance.now();
   const { a, b, who, more, how } = mixing; mixing = null; if (table && !S.desk) table.until = performance.now() + 2500;
   const all = [a, b, ...(more || [])].filter(Boolean), key = all.slice().sort().join("+");
   let c = RECIPE[key], wild = null, hid = null;
   const now = Date.now(), name = all.map(elN).join(" + ");
   S.energy = clamp(S.energy - 6); S.lastCare = now; dirty = true;
   if (how && how !== "mix") return methodDone(how, all, key, who);
-  if (S.task && recKey(S.task.a, S.task.b) === recKey(a, b)) S.task = null;
+  if (S.task && [S.task.a, S.task.b, ...(S.task.more || [])].sort().join("+") === [a, b, ...(more || [])].filter(Boolean).sort().join("+")) {
+    if (S.task.c) { S.mood = clamp(S.mood + 8); setTimeout(() => say("", pick(["Ураа! Точно това исках! Благодаря ти!", "Направи го за мен! Ти си най-добрият помощник.", "Мечтата ми стана! Е, почти. Ако е станало."]), 6000), 8000); }
+    S.task = null;
+  }
   if (!c && all.length === 2) {
     hid = HIDDEN.find(h => recKey(h[0], h[1]) === key);
     if (hid && !COND[hid[3]]()) {                 // скрита рецепта, но не е моментът: не се записва като провал
@@ -1826,17 +1859,16 @@ function mixDone() {
     log(`📓 ${name}: не работи. Записано.`); gotPop(null, `${name}: нищо не стана.`);
     const what = all.map(k => elN(k).toLowerCase()).join(" и ");
     say("", pick([`${what[0].toUpperCase() + what.slice(1)}: нищо. Абсолютно нищо. Записвам го.`, `Пуф! ${what[0].toUpperCase() + what.slice(1)} не стават заедно. Поне знаем.`, `Пробвах ${what}. Не работи. Записах го, няма да го пробвам пак.`]), 6000);
-    if (Math.random() < 0.15) { S.hurt = 1; S.hurtAt = Date.now(); S.health = clamp(S.health - 5); fx.hurt = performance.now(); }
+    if (Math.random() < (S.stage === "kid" ? 0.05 : 0.1)) { S.hurt = 1; S.hurtAt = Date.now(); S.hurtMin = 0; S.health = clamp(S.health - 5); fx.hurt = performance.now(); }
     return save();
   }
   const p = clamp(0.55 + (S.mood - 50) / 200 + (S.energy - 50) / 400 + Math.min(0.2, (S.smarts || 0) * 0.02) + (has("perfect") ? 0.1 : 0)
-    + (S.stage === "teen" ? -0.1 : S.stage === "aging" || S.stage === "old" ? 0.1 : 0) + (S.found.includes(c) ? 0.25 : 0), 0.2, 0.95);
+    + (S.stage === "kid" ? 0.1 : S.stage === "teen" ? -0.1 : S.stage === "aging" || S.stage === "old" ? 0.1 : 0) + (S.found.includes(c) ? 0.25 : 0), 0.2, 0.95);
   all.forEach(x => takeMat(x)); if (KEEP[key]) addMat(KEEP[key]);
   if (Math.random() < p) {
     addMat(c); const first = !S.found.includes(c);
     gotPop(c, `${first ? "🎉 Ново! " : ""}${elN(c)}. Отиде в сандъка${EDIBLE[c] ? " и в „Рецепти“" : " и в шкафа"}.`);
     if (first) S.found.push(c);
-    S.future = (S.future || []).filter(f => RECIPE[recKey(f.a, f.b)] !== c);
     S.mood = clamp(S.mood + (first ? 18 : 5)); if (first) fx.party = performance.now();
     log(first ? `🎉 Откри ${elFull(c)}! (${name})` : `🔁 Направи пак ${elFull(c)}.`);
     if (who === "me") { td("mix"); if (first) note("mixwin", [`Днес двамата открихме ${elN(c).toLowerCase()}! Той смесваше, аз държах. Отбор сме.`, `${elN(c)}! Измислихме го заедно. Записвам го с големи букви.`]); }
@@ -1852,10 +1884,12 @@ function mixDone() {
     }
     if (hid && first) say("", `Ооо! ${elN(c)}! Мисля, че стана само защото ${COND_SAY[hid[3]]}. Записвам го с големи букви.`, 8000);
   } else {
-    S.hurt = 1; S.hurtAt = Date.now(); S.health = clamp(S.health - rnd(6, 14) * (has("healthy") ? 0.5 : 1)); S.mood = clamp(S.mood - 6); fx.hurt = performance.now();
-    log(`🤕 ${name}: почти стана, но се развали. ${who === "him" ? "Удари се." : ""}`);
-    gotPop(null, `🤕 ${name}: почти стана, но се развали.`);
-    say("", pick(["Почти! Но се развали в ръцете ми. Ох, пипалото ми.", "Бзззт! Беше на косъм. Ще опитам пак някой път.", "Знам, че е вярно! Просто не ми провървя."]), 7000);
+    const ouch = Math.random() < (S.stage === "kid" ? 0.15 : 0.3);      // не всеки път се удря
+    if (ouch) { S.hurt = 1; S.hurtAt = Date.now(); S.hurtMin = 0; S.health = clamp(S.health - rnd(4, 10) * (has("healthy") ? 0.5 : 1)); fx.hurt = performance.now(); }
+    S.mood = clamp(S.mood - 4);
+    log(`${ouch ? "🤕" : "💨"} ${name}: почти стана, но се развали.${ouch ? " Удари се." : ""}`);
+    gotPop(null, `${ouch ? "🤕" : "💨"} ${name}: почти стана, но се развали.`);
+    say("", ouch ? pick(["Почти! Но се развали в ръцете ми. Ох, пипалото ми.", "Бзззт! Удари ме по пипалото. Ох."]) : pick(["Бзззт! Беше на косъм. Ще опитам пак някой път.", "Знам, че е вярно! Просто не ми провървя.", "Почти! Рецептата е вярна, ръцете ми не бяха."]), 7000);
   }
   save(); render();
 }
@@ -2534,8 +2568,9 @@ function minute(t, offline, ev) {
     if (S.goodMin > 45) { S.sick = 0; S.badMin = 0; S.sickMin = 0; S.doctorAt = 0; log("💪 Оздравя! Чисто е и е сит.", t); if (!offline) sickSay = "well"; }
   }
   if (S.hunger >= 95) S.health = clamp(S.health - 0.1);
-  else if (S.hunger < 70) S.health = clamp(S.health + (S.hurt ? 0.03 * (S.plaster ? 3 : 1) * (S.asleep ? 2 : 1) * (active("medkit") ? 1.5 : 1) : 0.1));
-  if (S.hurt && S.health >= 95) { S.hurt = 0; if (S.plaster) { S.plaster = 0; log("🩹 Махна пластира. Мина му."); } }
+  else if (S.hunger < 70) S.health = clamp(S.health + (S.hurt ? 0.06 : 0.1));
+  if (S.hurt) S.hurtMin = (S.hurtMin || 0) + (S.plaster ? 3 : 1) * (S.asleep ? 2 : 1) * (active("medkit") ? 1.5 : 1) * f;   // контузията минава с времето
+  if (S.hurt && (S.health >= 95 || S.hurtMin >= (S.stage === "kid" ? 20 : 40))) { S.hurt = 0; if (S.plaster) { S.plaster = 0; log("🩹 Махна пластира. Мина му."); } }
   spawnFloor(t, f, offline);
   gadgetMinute(t);
   spoil(t);
@@ -2709,7 +2744,9 @@ function readBook() {
   if (own) {
     title = own.n; S.libRead = [...(S.libRead || []), own.id];
     let at = Date.now();
-    for (const c of own.hints.filter(c => !S.found.includes(c))) { at += rnd(3, 20) * 60 * MIN; S.bookIdeas = [...(S.bookIdeas || []), { c, at, src: own.n }]; }
+    for (const c of own.hints.filter(c => !S.found.includes(c) && c !== BOOK_PLAN[own.id])) { at += rnd(3, 20) * 60 * MIN; S.bookIdeas = [...(S.bookIdeas || []), { c, at, src: own.n }]; }
+    const pl = BOOK_PLAN[own.id], pi = pl && ingOf(pl);      // чертежът отива веднага в тетрадката
+    if (pi && !S.found.includes(pl)) S.future = [...(S.future || []), { a: pi[0], b: pi[1], more: pi.slice(2), src: own.n }].slice(-30);
     line = own.q ? `„${pick(own.q)}“ Така пише ${own.a}. Хм. Много вярно.` : pick(["Интересно… Много интересно. Ще си помисля.", "Хм. Тази книга ме кара да мисля.", "Подчертах си някои неща. С линийка."]);
   }
   reading = performance.now(); closeRing(); S.lastRead = Date.now();
@@ -2721,6 +2758,14 @@ function readBook() {
     say("", S.books === 3 && !S.glasses ? "Три книги! Само дето буквите ми се размазват… Май ми трябват очила." : pick(["Готово! Станах по-умен. Измерих го.", "Прочетох я. Два пъти. За всеки случай."]));
     save(); render();
   }, 20000);
+}
+{ // книгите подсказват и чертаят само неща, които наистина се правят
+  const cand = Object.keys(EL).filter(k => GEN.items[k] && EL[k][3] === "made" && EL[k][2] >= 2 && ingOf(k) && !HIDDEN.some(h => h[2] === k) && !SECRET.includes(k)), used = new Set();
+  SHOP.forEach((b, i) => {
+    b.hints = (b.hints || []).filter(c => GEN.items[c] && ingOf(c));
+    for (let j = i * 7, n = 0; b.hints.length < 3 && n < cand.length * 2; j += 5, n++) { const c = cand[j % cand.length]; if (!used.has(c) && !b.hints.includes(c)) { used.add(c); b.hints.push(c); } }
+    if (b.hints.length) BOOK_PLAN[b.id] = b.hints[0];
+  });
 }
 // ---------- Сутрешен подарък от рибата-пощальон ----------
 const HATS = { beanie: ["🧶", "Шапка с помпон"], straw: ["👒", "Сламена шапка"], pirate: ["🏴‍☠️", "Пиратска шапка"], captain: ["⚓", "Капитанска шапка"], party: ["🥳", "Парти шапка"], shellcrown: ["👑", "Коронка от миди"] };
@@ -3014,7 +3059,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 44;
+const PAGE_V = 45;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -3124,9 +3169,13 @@ function fillSheet(kind) {
       const sp = S.seen.filter(k => EL[k] && EL[k][3] === "spoiled");
       if (sp.length) h += `<div class="sub grp">Развалени, но полезни</div><div class="made">${sp.map(k => `<div><span>${elE(k)}</span><b>${esc(elN(k))}</b></div>`).join("")}</div>`;
     } else if (libTab === "notes") {
-      if (S.task) h += `<div class="idea"><div class="ie" style="font-size:30px;white-space:nowrap">${elI(S.task.a)}${elI(S.task.b)}</div><div><b>Задача за теб</b><div class="sub" style="margin:2px 0">Смеси ${esc(elN(S.task.a).toLowerCase())} и ${esc(elN(S.task.b).toLowerCase())} в сандъка.</div></div></div>`;
-      const fut = (S.future || []).filter(f => !S.found.includes(RECIPE[recKey(f.a, f.b)]));
-      h += `<div class="sub grp">💡 Бъдещи идеи</div>` + (fut.length ? `<ul class="journal">${fut.map(f => `<li>${[f.a, f.b, ...(f.more || [])].map(k => elI(k) + " " + esc(elN(k))).join(" + ")} = ?${f.src && f.src !== "моя идея" ? ` <small>(от „${esc(f.src)}“)</small>` : ""}</li>`).join("")}</ul>` : `<div class="sub">Празно.</div>`);
+      if (S.task) { const tl = [S.task.a, S.task.b, ...(S.task.more || [])];
+        h += `<div class="idea"><div class="ie" style="font-size:30px;white-space:nowrap">${tl.map(elI).join("")}</div><div><b>${S.task.c ? "Иска: " + esc(elN(S.task.c)) : "Задача за теб"}</b><div class="sub" style="margin:2px 0">Смеси ${esc([...new Set(tl)].map(k => { const n = tl.filter(x => x === k).length; return elN(k).toLowerCase() + (n > 1 ? ` (${n} бр.)` : ""); }).join(", ").replace(/, ([^,]*)$/, " и $1"))} на масата.</div></div></div>`; }
+      const fut = (S.future || []).filter(f => f && f.a && f.b), fk = f => [f.a, f.b, ...(f.more || [])].sort().join("+");
+      const fres = f => { const c = RECIPE[fk(f)]; return c && S.found.includes(c) ? c : (S.nope || []).includes(fk(f)) ? false : null; };   // изобретено / не стана / още не е пробвано
+      const fl = fut.slice().sort((x, y) => (fres(x) === null ? 0 : 1) - (fres(y) === null ? 0 : 1));
+      h += `<div class="sub grp">💡 Бъдещи идеи</div>` + (fl.length ? `<ul class="journal">${fl.map(f => { const r = fres(f), body = [f.a, f.b, ...(f.more || [])].map(k => elI(k) + " " + esc(elN(k))).join(" + ");
+        return `<li class="${r === null ? "" : "done"}">${r === null ? body + " = ?" : `<s>${body}</s> ${r ? `= ${elI(r)} ${esc(elN(r))} ✓` : "✗ не стана"}`}${f.src && f.src !== "моя идея" ? ` <small>(от „${esc(f.src)}“)</small>` : ""}</li>`; }).join("")}</ul>` : `<div class="sub">Празно.</div>`);
       const nope = S.nope || [];
       h += `<div class="sub grp">✗ Не работи</div>` + (nope.length ? `<ul class="journal">${nope.slice(-40).reverse().map(x => { const [m, r] = x.includes(":") ? x.split(":") : ["", x]; return `<li>${m && HOW[m] ? HOW[m].i + " " : ""}${r.split("+").map(k => elI(k) + " " + esc(elN(k))).join(" + ")}: нищо</li>`; }).join("")}</ul>` : `<div class="sub">Още нищо не се е провалило. Подозрително.</div>`);
     } else if (libTab === "shelf") {
@@ -3144,7 +3193,7 @@ function fillSheet(kind) {
       if (pb) { const mine = (S.lib || []).includes(pb.id), read = (S.libRead || []).includes(pb.id);
         h += `<div class="pick"><span class="ii">${mine ? "📕" : "📗"}</span><span class="in">${esc(pb.n)}<small>${pb.a ? esc(pb.a) + " · " : ""}${mine ? (read ? "прочетена ✓" : "още не е прочетена. Чети от менюто около него.") : money(pb.p)}</small></span>
           <span class="btns">${!mine && role === "keeper" ? `<button class="sell buy" data-b="${pb.id}" ${S.pearls < pb.p ? "disabled" : ""}>Купи</button>` : ""}</span></div>`;
-        if (pb.d) h += `<div class="bookd">${esc(pb.d)}${pb.ch ? `<ul class="bch">${pb.ch.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${read && BOOK_INV_OF[pb.id] ? `<div class="bin">${S.found.includes(BOOK_INV_OF[pb.id]) ? `Чертеж: ${elE(BOOK_INV_OF[pb.id])} ${esc(elN(BOOK_INV_OF[pb.id]))}` : "В книгата има чертеж на изобретение…"}</div>` : ""}${read && pb.q && pb.id === "b_tin" ? `<div class="bq">${pb.q.map(x => `<p>„${esc(x)}“</p>`).join("")}</div>` : ""}</div>`; }
+        if (pb.d) h += `<div class="bookd">${esc(pb.d)}${pb.ch ? `<ul class="bch">${pb.ch.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${BOOK_PLAN[pb.id] ? `<div class="bin">${read ? `📐 Чертеж: ${elI(BOOK_PLAN[pb.id])} <b>${esc(elN(BOOK_PLAN[pb.id]))}</b> = ${recLine(BOOK_PLAN[pb.id])}${S.found.includes(BOOK_PLAN[pb.id]) ? " ✓" : ""}` : "📐 В книгата има чертеж на изобретение… Прочети я, за да го видиш."}</div>` : ""}${read && pb.q && pb.id === "b_tin" ? `<div class="bq">${pb.q.map(x => `<p>„${esc(x)}“</p>`).join("")}</div>` : ""}</div>`; }
     } else {
       if (role !== "viewer") h += `<div class="lock">🔒<div>Личният дневник е заключен.<br><small>Пази го под пипалото си.</small></div></div>`;
       else h += `<div class="sub">👀 Само ти като наблюдател го виждаш. Той не знае.</div>` + `<div class="sub grp">Какво мисля за теб</div><ul class="journal">${myThoughts().map(x => `<li>${esc(x)}</li>`).join("")}</ul>` +
@@ -3172,7 +3221,7 @@ function fillSheet(kind) {
     let h = head("🧰 Сандък", `<b class="cash">${money(S.pearls)}</b> `);
     h += `<div class="inv">${Array.from({ length: total }, (_, i) => { const st2 = stacks[i]; if (!st2) return `<span class="cell"></span>`;
       const [k, n] = st2, f = fresh(k), dot = f == null ? "" : `<i class="fr ${f < 60 ? "r" : f < 180 ? "y" : "g"}"></i>`;
-      return `<span style="--tc:${tierOf(k)[1]}" class="cell full${invPick === k ? " sel" : ""}${S.task && (S.task.a === k || S.task.b === k) ? " want" : ""}" data-k="${k}" data-n="${n}">${dot}${isFinal(k) ? `<i class="fin" title="Краен предмет">★</i>` : ""}${elI(k)}${n > 1 ? `<b>${n}</b>` : ""}</span>`; }).join("")}</div>`;
+      return `<span style="--tc:${tierOf(k)[1]}" class="cell full${invPick === k ? " sel" : ""}${S.task && [S.task.a, S.task.b, ...(S.task.more || [])].includes(k) ? " want" : ""}" data-k="${k}" data-n="${n}">${dot}${isFinal(k) ? `<i class="fin" title="Краен предмет">★</i>` : ""}${elI(k)}${n > 1 ? `<b>${n}</b>` : ""}</span>`; }).join("")}</div>`;
     if (invPick && cnt(invPick)) {
       const k = invPick, f = fresh(k), yuck = YUCK.includes(k);
       h += `<div class="pick"><span class="ii" style="--tc:${tierOf(k)[1]}">${elI(k)}</span><span class="in">${esc(elN(k))}${isFinal(k) ? ` <span class="finl">★ краен</span>` : ""}<small>${cnt(k)} бр.${yuck ? "" : " · " + money(EL[k][4])}${f == null ? "" : f < 60 ? " · разваля се!" : " · свежо ~" + Math.round(f / 60) + " ч"}</small><small class="tier" style="color:${tierOf(k)[1]}">● ${tierOf(k)[0]}</small>${descOf(k) ? `<small class="ds">${esc(descOf(k))}</small>` : ""}${originOf(k) ? `<small class="og">${esc(originOf(k))}</small>` : ""}</span>
@@ -3410,7 +3459,7 @@ function playHide() {                      // криеница
   say("", pick(["Крия се! Брой до десет!", "Криеница! Намери ме!", "Не гледай! Крия се!"]));
   setTimeout(() => { hideUntil = performance.now() + 25000; }, 1200);
 }
-let deskMove = null;                           // { on, t0 }: отива за масата или я отнася
+let deskMove = null, deskUsed = performance.now();                           // { on, t0 }: отива за масата или я отнася
 function toggleDesk() {                       // работната маса: стои до него, докато не я махнеш
   if (working || deskMove) return toast("🛠️ Сега работи. После.");
   if (S.asleep) return say("", "Шшш… спи.");
@@ -3421,7 +3470,7 @@ function toggleDesk() {                       // работната маса: с
   renderMix(); save();
 }
 function deskDone() {
-  const on = deskMove && deskMove.on; deskMove = null;
+  const on = deskMove && deskMove.on; deskMove = null; deskUsed = performance.now();
   if (on) say("", pick(["Масата е тук! Сега майсторя без да тичам.", "Донесох работната маса. Готов съм!"]));
   else { table = null; say("", pick(["Прибрах масата. Има повече място.", "Масата е прибрана."])); }
   renderMix();
@@ -3531,7 +3580,7 @@ let lastCellTap = null;
 function addToMix(k) {
   if (mixSel.length >= 5) return say("", "Пет неща стигат! Повече не се събират.");
   if (mixSel.filter(x => x === k).length >= cnt(k)) return say("", "Нямам повече от това.");
-  mixSel.push(k); renderMix();
+  mixSel.push(k); deskUsed = performance.now(); renderMix();
 }
 // ---------- Сандъкът на дъното ----------
 const flyers = [];
@@ -5557,9 +5606,11 @@ setInterval(() => {
     chatter();
     if (S.hatched && !S.asleep && !working && !reading && !S.q && !S.naming && !S.task && now > nextIdeaAt && now - Math.max(lastAsked(), S.qDone || 0) > 8 * MIN && performance.now() - ptr.t < 120000 && !hidden()) {
       nextIdeaAt = now + rnd(has("hermit") ? 12 : 20, has("hermit") ? 25 : 40) * MIN;
-      if (stageIdx() >= 4 && Math.random() < 0.5) selfT = -1e9, selfWork(p); else proposeIdea();
+      if (Math.random() < 0.3 && proposeWish()) {}
+      else if (stageIdx() >= 4 && Math.random() < 0.5) selfT = -1e9, selfWork(p); else proposeIdea();
     }
     selfWork(p);
+    if (S.desk && !deskMove && !working && !S.asleep && !sheetKind && !ringOpen && !mixSel.length && p - deskUsed > 2 * 60000) { toggleDesk(); say("", pick(["Никой не ползва масата. Прибирам я.", "Масата скучае. Отнасям я, ще я донеса пак, като трябва."]), 4000); }
     if (S.hatched && !S.asleep && !working && !deskMove && !hidden() && p > nextHide && !ringOpen && !sheetKind) {   // понякога се крие (Дева е малко срамежлив)
       const baby = S.stage === "baby";
       nextHide = p + (baby ? rnd(3, 6) : rnd(12, 25)) * 60000;      // по-рядко (по желание на потребителя)
@@ -5617,7 +5668,7 @@ async function logout() {
   show("loginView");
   if (!DEMO) await fb.A.signOut(fb.auth);
 }
-if (DEMO) window.__okt = { get S() { return S; }, fh: () => floorHits, rb: () => rockBox, toMix: k => addToMix(k), mx: (a, b, how = "mix") => { working = 0; mixing = { a, b, who: "me", more: [], how }; mixDone(); return S.journal[0] && S.journal[0].x; }, wildOf, tagsOf, cond: COND, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 10 * 60; i++) minute(t0 + i * MIN, true, {}); return { food: Math.round(100 - S.hunger), clean: Math.max(0, 100 - S.trash.length * 15), energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, pickPart: id => pickPart(id), ghost: () => ghost, gmove: m => { ghost.mv = { m, at: performance.now() }; }, items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
+if (DEMO) window.__okt = { get S() { return S; }, wish: () => proposeWish(), plan: BOOK_PLAN, deskOld: () => { deskUsed = -1e9; }, fh: () => floorHits, rb: () => rockBox, toMix: k => addToMix(k), mx: (a, b, how = "mix") => { working = 0; mixing = { a, b, who: "me", more: [], how }; mixDone(); return S.journal[0] && S.journal[0].x; }, wildOf, tagsOf, cond: COND, get ph() { return placedHits; }, sleepNow: () => { S.asleep = true; S.energy = 20; }, letter: () => { S.letterDay = null; S.letter = null; morningLetter(); },  get scared() { return [scared, hidden(), S.asleep, stageIdx()]; }, guest: () => { nextGuest = 0; ptr.t = performance.now(); guestTick(performance.now()); }, angler: () => { angler = { at: performance.now(), y: H * 0.35, dir: 1 }; }, ask: id => { const q = Q.find(x => x.id === id); S.q = { id, path: [], t: Date.now(), tries: 0, text: qText(q) }; oSays(S.q.text); }, react: k => react(k), dbg: () => ({ hits: floorHits.map(h => h.id), lastNotice, bubbleUntil, now: performance.now(), hid: hidden(), working, reading }), grow: n => { for (let i = 0; i < n; i++) { S.t += MIN; minute(S.t, false, {}); } render(); }, get traits() { return traitsOf(); }, oct, fx, idea: () => proposeIdea(), mix: (a, b) => mix(a, b, "me"), add: (k, n = 1) => { for (let i = 0; i < n; i++) addMat(k); render(); }, spoil: () => spoil(S.t), self: () => { selfT = -1e9; selfWork(performance.now()); }, hide: () => { hideUntil = performance.now() + 20000; }, liveSnap: () => liveSnap(), sulk: () => startSulk(3, "Сърдя ти се!"), moody: () => { S.moody = Date.now() + 20 * MIN; }, care: e => careAct(e), feed: k => feed(k), drag: () => { drag = { id: 1, moved: true }; startDrag(); const d = drag; drag = null; endDrag(d); }, sea: id => { vis = null; nextVis = 0; ptr.t = performance.now(); seaForce = id; }, get vis() { return vis; }, gift: () => { S.giftDay = "x"; S.gift = null; ptr.t = performance.now(); dailyGift(performance.now()); }, openGift: () => openGift(), hat: h => { S.hat = h; }, sleeptalk: () => { sleepTalking = true; say("", pick(SLEEPTALK), 5000); sleepTalking = false; }, hurt: () => { S.hurt = 1; S.hurtAt = Date.now(); S.health = 60; }, sick: () => { S.sick = S.t; S.sickMin = 25; S.goodMin = 0; S.doctorAt = 0; ptr.t = performance.now(); }, doctor: () => doctorTick(performance.now()), place: k => { addMat(k); S.placed = [...(S.placed || []), k]; S.active = [...(S.active || []), k]; }, krill: st => { kr().st = st; kr().next = 0; kr().th = 3; ptr.t = performance.now(); vis = null; guest = null; krillTick(performance.now()); }, krillPhoto: () => krillPhoto(), night: () => { const d = new Date(); d.setHours(22, 0, 0, 0); const t0 = d.getTime(); S.trash = []; S.parts = []; S.asleep = true; S.energy = 40; S.hunger = 20; S.mood = 80; for (let i = 0; i < 10 * 60; i++) minute(t0 + i * MIN, true, {}); return { food: Math.round(100 - S.hunger), clean: Math.max(0, 100 - S.trash.length * 15), energy: Math.round(S.energy), hunger: Math.round(S.hunger), mood: Math.round(S.mood), health: Math.round(S.health), trash: S.trash.length, parts: S.parts.length, asleep: S.asleep }; }, pickPart: id => pickPart(id), ghost: () => ghost, gmove: m => { ghost.mv = { m, at: performance.now() }; }, items: () => Object.keys(EL).map(k => [k, itemImg(k), EL[k][1], EL[k][3], !!EDIBLE[k], ["wreck", "robokt", "fondue", "penicillin"].includes(k)]), thumbs: () => Object.keys(SEA).map(id => [id, thumb(id), pct(seaChance(id))]), snap: id => snapId(id), minute: n => { for (let i = 0; i < n; i++) minute(Date.now(), false, {}); } };   // за проби
 if (DEMO) startAs(new URLSearchParams(location.search).get("demo") || KEEPER);
 else fb.A.onAuthStateChanged(fb.auth, user => {
   if (user) startAs(user.email.split("@")[0]);
