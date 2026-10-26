@@ -259,7 +259,7 @@
   #gpop button { text-align: left; background: rgba(240,253,255,.96); color: #10233a; border: 3px solid #2b6c80; border-radius: 16px 16px 16px 4px; padding: 8px 12px; font-size: 15px; font-weight: 600; line-height: 1.3; box-shadow: 0 0 12px rgba(185,246,255,.6); }
   #gpop button:active { transform: scale(.97); }
   #gring .rb { background: rgba(225,248,255,.95); box-shadow: 0 0 14px rgba(185,246,255,.7); } #gring .rb.sent { outline: 3px solid #b9f6ff; }
-  #gring .rb img.ei { width: 34px; height: 34px; }
+  #gring .rb img.ei { width: 34px; height: 34px; } #gring .rb .gn { position: absolute; right: 2px; bottom: 0; font-style: normal; font-size: 12px; font-weight: 800; color: #10233a; }
   #chatBtn { position: fixed; left: 14px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 4px); width: 58px; height: 58px; border-radius: 50%;
     background: rgba(255,250,242,.95); border: 3px solid var(--ink); box-shadow: 0 4px 0 rgba(0,0,0,.28); font-size: 27px; padding: 0; z-index: 4; cursor: pointer; }
   #chatBtn i { position: absolute; top: -3px; right: -3px; width: 18px; height: 18px; border-radius: 50%; background: #ff5a5f; border: 3px solid var(--ink); display: none; }
@@ -305,6 +305,7 @@
   .gbub button { position: relative; max-width: 88%; text-align: left; background: #fffaf2; color: #2a1730; border: 3px solid var(--ink); border-radius: 16px 16px 16px 4px; padding: 8px 12px; font-size: 15px; line-height: 1.3; font-weight: 600; box-shadow: 0 3px 0 rgba(0,0,0,.25), 0 0 14px rgba(185,246,255,.25); }
   .gbub button:nth-child(even) { align-self: flex-end; border-radius: 16px 16px 4px 16px; }
   .gbub button:active { transform: scale(.97); background: #dff9ff; }
+  .gq.drop button { position: relative; } .gq.drop .gn { position: absolute; right: 3px; bottom: 1px; font-style: normal; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; }
   .gq.drop button { padding: 4px; width: 44px; height: 44px; display: grid; place-items: center; } .gq.drop img.ei { width: 32px; height: 32px; } .gq button.sent { outline: 3px solid #b9f6ff; }
   .gq.snd button { background: rgba(255,120,120,.18); border-color: rgba(255,150,150,.5); }
   .gform { display: flex; gap: 6px; } .gform input { flex: 1; padding: 10px 12px; border-radius: 12px; border: 2px solid rgba(0,0,0,.2); font-size: 16px; } .gform button { padding: 10px 14px; border-radius: 12px; font-weight: 700; }
@@ -3129,7 +3130,7 @@ function afterLoad() {
 }
 
 // ---------- Изглед ----------
-const PAGE_V = 49;
+const PAGE_V = 50;
 document.getElementById("ver").textContent = "v" + PAGE_V + (window.Octo && Octo.V === PAGE_V ? "" : " ⚠️");
 const $ = id => document.getElementById(id);
 const AGE = "adult";
@@ -3297,12 +3298,14 @@ function fillSheet(kind) {
     if (invPick && cnt(invPick)) {
       const k = invPick, f = fresh(k), yuck = YUCK.includes(k);
       h += `<div class="pick"><span class="ii" style="--tc:${tierOf(k)[1]}">${elI(k)}</span><span class="in">${esc(elN(k))}${isFinal(k) ? ` <span class="finl">★ краен</span>` : ""}<small>${cnt(k)} бр.${yuck ? "" : " · " + money(EL[k][4])}${f == null ? "" : f < 60 ? " · разваля се!" : " · свежо ~" + Math.round(f / 60) + " ч"}</small><small class="tier" style="color:${tierOf(k)[1]}">● ${tierOf(k)[0]}</small>${descOf(k) ? `<small class="ds">${esc(descOf(k))}</small>` : ""}${originOf(k) ? `<small class="og">${esc(originOf(k))}</small>` : ""}</span>
-        <span class="btns">${role === "keeper" && (EDIBLE[k] || YUCK.includes(k)) ? `<button class="eat" data-k="${k}">Дай</button>` : ""}${canMixNow() ? `<button class="add" data-k="${k}">⊕</button>` : ""}</span></div>`;
+        <span class="btns">${role === "viewer" ? `<button class="steal" data-k="${k}" title="Вземи с духа">👻 Вземи</button>` : ""}${role === "keeper" && ghost.on ? `<button class="togh" data-k="${k}" title="Дай на духа">👻 Дай</button>` : ""}${role === "keeper" && (EDIBLE[k] || YUCK.includes(k)) ? `<button class="eat" data-k="${k}">Дай</button>` : ""}${canMixNow() ? `<button class="add" data-k="${k}">⊕</button>` : ""}</span></div>`;
     }
     if (role === "keeper") h += `<div class="zones"><span id="binZone">🗑️ Кофа</span><span id="sellZone">◉ Продай</span></div>`;
     sh.innerHTML = h;
     sh.querySelectorAll(".add").forEach(b => b.onclick = () => addToMix(b.dataset.k));
     sh.querySelectorAll(".eat").forEach(b => b.onclick = () => feed(b.dataset.k));
+    sh.querySelectorAll(".steal").forEach(b => b.onclick = () => ghostSteal(b.dataset.k));
+    sh.querySelectorAll(".togh").forEach(b => b.onclick = () => { const k = b.dataset.k; if (!cnt(k)) return; takeMat(k); dirty = true; save(); ghostSend({ t: "give", k }); ghost.last = { x: pick(["Благодаря… ще го пазя… в отвъдното…", "О… подарък за мен? Никой не ми е давал нищо от сто години…"]), at: performance.now() }; fillSheet("bag"); });
     sh.querySelectorAll(".cell.full").forEach(c => {
       c.onpointerdown = ev => { invDrag = { k: c.dataset.k, n: +c.dataset.n, sx: ev.clientX, sy: ev.clientY, moved: false, pid: ev.pointerId };
         try { c.setPointerCapture(ev.pointerId); } catch {} };
@@ -3414,10 +3417,10 @@ function fillSheet(kind) {
     sh.innerHTML = ghostHtml(head);
     if (keepTxt) $("ghIn").value = keepTxt; if (hadFocus) $("ghIn").focus();
     const lg = sh.querySelector(".glog"); if (lg) lg.scrollTop = lg.scrollHeight;
-    if ($("ghOn")) $("ghOn").onclick = () => { if (!ghost.on && !S.asleep) return; ghostSend({ t: ghost.on ? "off" : "on" }); fillSheet("ghost"); };
+    if ($("ghOn")) $("ghOn").onclick = () => { if (!ghost.on && !S.asleep && liveOn()) return; ghostSend({ t: ghost.on ? "off" : "on" }); fillSheet("ghost"); };
     sh.querySelectorAll("[data-gl]").forEach(b => b.onclick = () => { ghostSend({ t: "msg", x: GHOST_LINES[+b.dataset.gl] }); fillSheet("ghost"); });
     sh.querySelectorAll("[data-gs]").forEach(b => b.onclick = () => { ghostSend({ t: "sound", k: b.dataset.gs }); });
-    sh.querySelectorAll("[data-gd]").forEach(b => b.onclick = () => { ghostSend({ t: "drop", k: b.dataset.gd }); b.classList.add("sent"); setTimeout(() => b.classList.remove("sent"), 800); });
+    sh.querySelectorAll("[data-gd]").forEach(b => b.onclick = () => { ghostDrop(b.dataset.gd); b.classList.add("sent"); setTimeout(() => { b.classList.remove("sent"); if (b.dataset.bag) fillSheet("ghost"); }, 600); });
     if ($("ghForm")) $("ghForm").onsubmit = ev => { ev.preventDefault(); const x = $("ghIn").value.trim(); if (!x) return; if (role === "viewer" && !ghost.on) return;
       ghostSend({ t: role === "viewer" ? "msg" : "reply", x }); $("ghIn").value = ""; fillSheet("ghost"); setTimeout(() => $("ghIn")?.focus(), 50); };
   } else if (kind === "ransom" || kind === "krill") {
@@ -4275,7 +4278,7 @@ function drawFloor(t, s, behind) {
   else drawChest(t, s);
   const now = performance.now(), sandY = H * 0.88 + 4, sz = Math.max(26, 64 * s);
   g.textAlign = "center"; g.textBaseline = "middle";
-  const list = [...S.trash.map(x => ({ ...x, kind: "trash", e: elE(x.k) })), ...S.parts.map(x => ({ ...x, kind: "part", e: elE(x.k) })),
+  const list = [...S.trash.map(x => ({ ...x, kind: "trash", e: elE(x.k) })), ...S.parts.map(x => ({ ...x, kind: "part", e: elE(x.k) })), ...(role === "viewer" ? ghostPendList() : []),
     ...(S.parcel && !behind ? [{ id: "parcel", x: S.parcel.x, e: "📦", kind: "parcel" }] : []),
     ...(S.letter && !behind ? [{ id: "letter", x: S.letter.x, e: "🍾", kind: "letter" }] : []),
     ...(S.gift && !behind ? [{ id: "gift" + S.gift.t, x: S.gift.x, e: "🎁", kind: "gift" }] : [])];
@@ -5086,15 +5089,54 @@ function albumHtml(head) {
 const ghost = { bub: [], mv: null, on: false, msgs: [], last: "", x: 0, y: 0, at: -1e9, poll: 0, seen: new Set(), boot: 0 };
 const ghostTopic = () => S && S.wid ? "okt-ghost-" + String(S.wid).replace(/[^\w-]/g, "") : null;
 function ghostSend(o) {
-  const tp = ghostTopic(); if (!tp) return;
-  if (role === "viewer" && !liveOn() && o.t !== "off" && o.t !== "drop") return;          // духът е само докато toshik е в играта (подаръците могат и без него)
-  fetch(`https://ntfy.sh/${tp}`, { method: "POST", body: JSON.stringify({ ...o, by: role, at: Date.now() }) }).catch(() => {});
+  const tp = ghostTopic(); if (!tp) return Promise.resolve(null);
   ghostApply({ ...o, by: role, at: Date.now(), local: true });     // при мен веднага
+  return fetch(`https://ntfy.sh/${tp}`, { method: "POST", body: JSON.stringify({ ...o, by: role, at: Date.now() }) }).then(r => r.json()).then(j => j && j.id).catch(() => null);
+}
+// ---------- торбата на духа (при vasko): каквото е взел или получил, може да го пусне пак ----------
+const GKEY = () => "okt_g_" + (S && S.wid || "x");
+const gload = () => { try { return JSON.parse(localStorage.getItem(GKEY())) || {}; } catch { return {}; } };
+let GS = null;                                       // { bag: {k: n}, pend: [{id, k, x, at}], seen: [ids] }
+function gstate() { if (!GS || GS.w !== GKEY()) { GS = Object.assign({ bag: {}, pend: [], seen: [] }, gload(), { w: GKEY() }); } return GS; }
+function gsave() { try { localStorage.setItem(GKEY(), JSON.stringify({ bag: GS.bag, pend: GS.pend, seen: GS.seen })); } catch {} }
+function gbagAdd(k, n = 1) { const G = gstate(); G.bag[k] = Math.max(0, (G.bag[k] || 0) + n); if (!G.bag[k]) delete G.bag[k]; gsave(); }
+function ghostDrop(k) {                              // vasko пуска подарък (от торбата на духа или от готовите)
+  const G = gstate(); if (G.bag[k]) gbagAdd(k, -1); else if (!GHOST_DROPS.includes(k)) return;
+  const x = clamp((ghost.on ? ghost.x / W : rnd(0.2, 0.8)) + rnd(-0.08, 0.08), 0.1, 0.85), at = Date.now();
+  const tmp = { id: "tmp" + at, k, x, at }; G.pend.push(tmp); gsave();
+  ghostSend({ t: "drop", k, x }).then(id => { if (id) { tmp.id = id; gsave(); } });
+}
+function ghostUndrop(it) {                           // vasko прибира обратно плуващ подарък
+  const G = gstate(), ref = it.pend || it.gid;
+  G.pend = G.pend.filter(p => p.id !== it.pend); if (it.gid) S.parts = S.parts.filter(x => x.gid !== it.gid);
+  gbagAdd(it.k, 1); gsave();
+  if (ref && !String(ref).startsWith("tmp")) ghostSend({ t: "undrop", ref });
+  toast("👻 Прибра " + elN(it.k).toLowerCase() + " в торбата на духа.");
+}
+function ghostSteal(k) {                             // vasko взима с духа нещо от сандъка на toshik
+  if (!cnt(k)) return; S.mat[k]--; gbagAdd(k, 1); ghostSend({ t: "steal", k });
+  toast("👻 Духът взе " + elN(k).toLowerCase() + ". Отиде в торбата на духа."); if (sheetKind === "bag") fillSheet("bag");
 }
 function ghostApply(m) {
-  if (!m.local && m.at && Date.now() - m.at > (m.t === "drop" ? 12 * 3600000 : 60000)) return;   // старо съобщение не се показва; само подаръкът чака до 12 ч
+  const KEEPS = ["drop", "undrop", "steal", "give"];          // тези чакат до 12 ч (другото е само на живо)
+  if (!m.local && m.at && Date.now() - m.at > (KEEPS.includes(m.t) ? 12 * 3600000 : 60000)) return;
+  if (!m.local && m._id && KEEPS.includes(m.t)) {                // не се повтаря при повторно влизане
+    if (role === "keeper") { if ((S.ghostGot || []).includes(m._id)) return; if (m.t !== "drop") S.ghostGot = [...(S.ghostGot || []), m._id].slice(-60); }
+    else { const G = gstate(); if (G.seen.includes(m._id)) return; G.seen = [...G.seen, m._id].slice(-80); gsave(); }
+  }
+  if (m.t === "undrop" && role === "keeper") {                   // духът си прибра подаръка
+    const n = S.parts.length; S.parts = S.parts.filter(x => x.gid !== m.ref); S.ghostGot = [...(S.ghostGot || []), m.ref].slice(-60);
+    if (S.parts.length !== n) { dirty = true; save(); } return;
+  }
+  if (m.t === "steal" && role === "keeper") {                    // духът взе нещо от сандъка
+    if (cnt(m.k)) { takeMat(m.k); S.ghostStole = [...(S.ghostStole || []), m.k].slice(-5); dirty = true; save(); } return;
+  }
+  if (m.t === "give" && role === "viewer" && !m.local) {         // toshik даде нещо на духа
+    if (EL[m.k]) { gbagAdd(m.k, 1); toast("👻 Тошик даде на духа " + elN(m.k).toLowerCase() + "!"); if (sheetKind === "ghost") fillSheet("ghost"); } return;
+  }
+  if (m.t === "give" && role === "keeper" && m.local) return;
   if (role === "keeper" && !m.local && ["msg", "move", "drop", "rock", "sound"].includes(m.t)) ghost.talked = (ghost.talked || 0) + 1;
-  if (m.t === "on" && !ghost.on && S && S.asleep) {              // идва само докато спи
+  if (m.t === "on" && !ghost.on && S && (S.asleep || (role === "viewer" && m.local && !liveOn()))) {              // идва само докато спи
     if (role === "keeper") ghost.msgs = [];                      // при toshik всеки път е нов разговор
     ghost.on = true; ghost.at = performance.now(); ghost.x = W * 0.2; ghost.y = H * 0.35;
     if (role === "keeper" && S.hatched) setTimeout(() => { sleepTalking = true; say("", pick(["Хрр… риба… светеща риба… хрр…", "Мм… кой е там… прозрачен… хрр…"]), 5000); sleepTalking = false; }, 900);
@@ -5113,10 +5155,7 @@ function ghostApply(m) {
   }
   if (m.t === "drop" && EL[m.k]) {                               // духът пуска подарък: плува във водата, докато toshik го намери
     if (role === "keeper" && m._id && (S.ghostGot || []).includes(m._id)) return;
-    if (role === "keeper" && S.parts.length < 10) { S.parts.push({ id: uid(), k: m.k, x: clamp((ghost.on ? ghost.x / W : rnd(0.2, 0.8)) + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true }); if (m._id) S.ghostGot = [...(S.ghostGot || []), m._id].slice(-40); dirty = true; save(); }
-    if (role === "viewer" && S.parts.length < 8) {             // при vasko се вижда веднага (после идва истинското от toshik)
-      S.parts.push({ id: "gv" + Date.now(), k: m.k, x: clamp(ghost.x / W + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true });
-    }
+    if (role === "keeper" && S.parts.length < 10) { S.parts.push({ id: uid(), k: m.k, x: m.x || clamp((ghost.on ? ghost.x / W : rnd(0.2, 0.8)) + rnd(-0.08, 0.08), 0.1, 0.85), t: S.t, ghost: true, gid: m._id }); if (m._id) S.ghostGot = [...(S.ghostGot || []), m._id].slice(-60); dirty = true; save(); }
     if (ghost.on) ghost.last = { x: pick(["Подарък… от отвъдното…", "Вземи го… ако смееш…", "Това е за теб… бууу…"]), at: performance.now() };
     return;
   }
@@ -5140,7 +5179,7 @@ function ghostApply(m) {
 async function ghostPoll() {
   const tp = ghostTopic(); if (!tp || !inGame) return;
   if (!ghost.boot && role === "viewer") try { ghost.msgs = JSON.parse(localStorage.getItem("okt_ghost_" + tp)) || []; } catch {}
-  const since = ghost.boot ? ghost.lastId || "30s" : role === "keeper" ? "12h" : "15m";      // при влизане toshik взима и подаръците, пуснати докато го е нямало
+  const since = ghost.boot ? ghost.lastId || "30s" : "12h";      // при влизане: и подаръците/взетото, докато го е нямало      // при влизане toshik взима и подаръците, пуснати докато го е нямало
   try {
     const txt = await (await fetch(`https://ntfy.sh/${tp}/json?poll=1&since=${since}`, { cache: "no-store" })).text();
     for (const line of txt.split("\n")) { if (!line.trim()) continue;
@@ -5162,10 +5201,9 @@ function renderGhostBtn(ping) {
   renderGhostChat();
 }
 function drawGhost(t, s) {
-  if (role === "viewer" && ghost.on && !liveOn()) { ghost.on = false; ghost.mv = null; closeGhostMenu(); renderGhostBtn(); }   // toshik излезе: духът изчезва
   if (role === "viewer" && !!ghost.on !== !$("ghChat").classList.contains("hidden")) renderGhostChat();
   if (role === "viewer" && (p0 => p0 - (drawGhost.ck || 0) > 2000 && (drawGhost.ck = p0))(performance.now())) renderGhostBtn();
-  if (ghost.on && S && !S.asleep) {                              // събуди се: духът изчезва
+  if (ghost.on && S && !S.asleep && !(role === "viewer" && !liveOn())) {      // събуди се: духът изчезва (при vasko без toshik духът си стои)
     ghost.on = false;
     if (role === "keeper") { ghostSend({ t: "off" }); ghostSuspect(); }
     renderGhostBtn(); if (sheetKind === "ghost") fillSheet("ghost");
@@ -5193,14 +5231,24 @@ function drawGhost(t, s) {
   g.globalAlpha = Math.max(0, 0.55 * a + Math.sin(t * 2) * 0.08); g.shadowColor = "#b9f6ff"; g.shadowBlur = 30;
   g.translate(ghost.x, ghost.y); if (oct.x < ghost.x) g.scale(-1, 1);
   g.lineWidth = Math.max(2, z * 0.035); g.strokeStyle = "#d9fbff";
+  if (mv && mv.m === "octo") { if (!mv.said && role === "keeper" && S.hatched) { mv.said = 1; setTimeout(() => { sleepTalking = true; say("", pick(["Хрр… там има… друг октопод… прозрачен… хрр…", "Мм… огледало ли е това… хрр…"]), 5000); sleepTalking = false; }, 2000); } drawGhostOcto(z, t); g.restore(); ghost.hit = { x: ghost.x, y: ghost.y, r: Math.max(70, z * 0.8) }; return; }
   fishBody(g, { l: 1.1, h: 0.55, c: "#e8fdff", b: "#bdf1ff", tail: "round", fin: "tall" }, z, t * 0.6, "#9fe6f5");
   g.globalAlpha = 0.35 * a; g.fillStyle = "#e8fdff"; for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(-z * (0.55 + i * 0.18), Math.sin(t * 3 + i) * 6, z * (0.1 - i * 0.02), 0, 7); g.fill(); }   // опашка от мъгла
   g.restore();
   if (ghost.last && p - ghost.last.at < 9000 && !(mv && mv.m === "jump" && e < 3.2)) talkBubble(Math.max(60, Math.min(W - 60, ghost.x)), ghost.y - z * 0.45, ghost.last.x);
   ghost.hit = { x: ghost.x, y: ghost.y, r: Math.max(60, z * 0.6) };
 }
-const GHOST_MV = { circle: 12000, close: 8000, jump: 6000, rock: 14000, bubbles: 9000, chest: 9000 };
-const GHOST_MOVES = [["circle", "🌀 Обикаля около него"], ["close", "👀 Приближава се"], ["jump", "😱 Изчезва и изскача"], ["rock", "🪨 Крие се зад камъка"], ["bubbles", "🫧 Сияйни мехурчета"], ["chest", "🧰 Отваря сандъка"]];
+const GHOST_MV = { circle: 12000, close: 8000, jump: 6000, rock: 14000, bubbles: 9000, chest: 9000, octo: 20000 };
+let ghostOctoCv = null;
+function drawGhostOcto(z, t) {                      // духът се превръща в октопод (син, прозрачен)
+  const S2 = Math.ceil(z * 3.4); if (!ghostOctoCv) ghostOctoCv = document.createElement("canvas");
+  const c = ghostOctoCv; if (c.width !== S2) { c.width = S2; c.height = S2; }
+  const x = c.getContext("2d"); x.globalCompositeOperation = "source-over"; x.clearRect(0, 0, S2, S2);
+  Octo.draw(x, { x: S2 / 2, y: S2 * 0.6, s: z / 200, age: "adult", mode: "idle", t, st: {}, style: STYLE === "sketch" ? "goggles" : STYLE, dir: 1 });
+  x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(180,242,255,.8)"; x.fillRect(0, 0, S2, S2);
+  g.drawImage(c, -S2 / 2, -S2 * 0.6);
+}
+const GHOST_MOVES = [["circle", "🌀 Обикаля около него"], ["close", "👀 Приближава се"], ["jump", "😱 Изчезва и изскача"], ["rock", "🪨 Крие се зад камъка"], ["bubbles", "🫧 Сияйни мехурчета"], ["chest", "🧰 Отваря сандъка"], ["octo", "🐙 Превърни се в октопод"]];
 // ---------- Менюто на камъка ----------
 function rockMenu() {
   closeRockMenu(); if (!rockBox) return;
@@ -5304,6 +5352,12 @@ const GHOST_SUSPECT = ["Имам чувството, че тази нощ си �
 const GHOST_PD = ["Нощес някой говореше до мен. Не беше Тошик. Или беше Тошик и някой друг? Записвам, за да не забравя.", "Подозирам, че нощем идва нещо прозрачно. И Тошик го познава. Защо никой не ми казва?",
   "Събудих се със странно чувство. Като че ли някой ме е гледал. Ще сложа камъче пред възглавницата, да видя дали ще се мести.", "Чух шепот за пипала и луна. Не беше моят глас. Започвам разследване.",
   "Хипотеза: в рифа има дух. Доказателства: студена вода, светлинки, шепот. Липсва ми само снимка."];
+function ghostMissing() {                          // забелязва, че нещо липсва от сандъка
+  if (!(S.ghostStole || []).length || S.asleep || !S.hatched) return;
+  const k = S.ghostStole[0]; S.ghostStole = S.ghostStole.slice(1); dirty = true;
+  say("", pick([`Чакай… Къде ми е ${elN(k).toLowerCase()}? Беше в сандъка! Броих го!`, `Някой е бъркал в сандъка ми. Липсва ${elN(k).toLowerCase()}. И капакът е студен.`, `${elN(k)} изчезна. Просто изчезна. Не съм го продавал, не съм го смесвал. Странно…`]), 7000);
+  note("ghoststole", ["Липсват неща от сандъка. Нищо не казвам на Тошик. Още. Но записвам всичко.", "Някой взима неща от сандъка ми, докато не гледам. Ще сложа капан от водорасли."]);
+}
 function ghostSuspect() {
   const n = ghost.talked || 0; ghost.talked = 0;
   if (n < 2 || !S.hatched || Math.random() > 0.5 || Date.now() - (S.lastSuspect || 0) < 20 * 3600000) return;
@@ -5314,7 +5368,7 @@ function ghostSuspect() {
 function ghostMenu(x, y, page = "main") {           // при vasko: докосваш духа и около него излизат движения и предмети (като кръга с храната)
   closeGhostMenu(); closeGhostPop();
   const box = document.createElement("div"); box.id = "gring"; document.body.appendChild(box);
-  const items = page === "items" ? [["back", "↩️", "Назад"], ...GHOST_DROPS.map(k => ["d:" + k, elI(k), elN(k)]), ["take", "🫳", "Прибери"]]
+  const items = page === "items" ? [["back", "↩️", "Назад"], ...Object.entries(gstate().bag).filter(([k, n]) => n > 0 && EL[k]).map(([k, n]) => ["d:" + k, elI(k) + `<i class="gn">${n}</i>`, elN(k)]), ...GHOST_DROPS.map(k => ["d:" + k, elI(k), elN(k)])].slice(0, 22).concat([["take", "🫳", "Прибери"]])
     : [...GHOST_MOVES.map(([k, n]) => ["m:" + k, n.split(" ")[0], GHOST_SHORT[k] || n.split(" ").slice(1).join(" ")]), ["m:stop", "✋", "Спри"], ["items", "🎁", "Предмети"]];
   const R0 = Math.min(innerWidth, innerHeight) * (items.length > 9 ? 0.4 : 0.32);      // кръгът винаги се побира на екрана
   const cx = Math.max(R0 + 36, Math.min(innerWidth - R0 - 36, ghost.hit ? ghost.hit.x : x)), cy = Math.max(R0 + 60, Math.min(innerHeight - R0 - 90, ghost.hit ? ghost.hit.y : y));
@@ -5326,15 +5380,15 @@ function ghostMenu(x, y, page = "main") {           // при vasko: докос�
     b.onclick = ev => { ev.stopPropagation();
       if (id === "items") return ghostMenu(x, y, "items");
       if (id === "back") return ghostMenu(x, y, "main");
-      if (id === "take") { ghostSend({ t: "take" }); return closeGhostMenu(); }
+      if (id === "take") { for (const it of ghostFloatList()) ghostUndrop(it); ghostSend({ t: "take" }); return closeGhostMenu(); }
       if (id.startsWith("m:")) { ghostSend({ t: "move", m: id.slice(2) }); return closeGhostMenu(); }
-      if (id.startsWith("d:")) { ghostSend({ t: "drop", k: id.slice(2) }); b.classList.add("sent"); setTimeout(() => b.classList.remove("sent"), 700); }
+      if (id.startsWith("d:")) { ghostDrop(id.slice(2)); b.classList.add("sent"); setTimeout(() => b.classList.remove("sent"), 700); }
     };
     box.appendChild(b); setTimeout(() => b.classList.add("open"), 20 + i * 25);
   });
 }
 function closeGhostMenu() { $("gring")?.remove(); $("gmenu")?.remove(); }
-const GHOST_SHORT = { circle: "Обикаля", close: "Приближи", jump: "Изскочи", rock: "Зад камъка", bubbles: "Мехурчета", chest: "Сандъка" };
+const GHOST_SHORT = { octo: "Октопод", circle: "Обикаля", close: "Приближи", jump: "Изскочи", rock: "Зад камъка", bubbles: "Мехурчета", chest: "Сандъка" };
 // бутонът долу вляво при vasko: готовите реплики излизат нагоре като балончета
 function renderGhostChat() {
   const b = $("ghChat"); if (!b) return;
@@ -5390,12 +5444,21 @@ function ghostSound(k) {                        // страшни звуци (с
   if (k === "bell") for (let i = 0; i < 3; i++) { osc("sine", 330, t0 + i * 1.1, 1.6, 0.5); osc("sine", 660 * 1.01, t0 + i * 1.1, 1.0, 0.2); }
   if (k === "laugh") for (let i = 0; i < 6; i++) { const o = osc("square", 180 - i * 8, t0 + i * 0.22, 0.16, 0.18); o.frequency.linearRampToValueAtTime(120 - i * 8, t0 + i * 0.22 + 0.16); }
 }
+function ghostPendList() {                          // пуснатите подаръци, които toshik още не е получил (до 12 ч)
+  const G = gstate(), now = Date.now(); G.pend = G.pend.filter(p => now - p.at < 12 * 3600000 && !(S.ghostGot || []).includes(p.id));
+  return G.pend.map(p => ({ id: "gp" + p.id, k: p.k, x: p.x, t: p.at, kind: "part", ghost: true, pend: p.id }));
+}
+const ghostFloatList = () => [...ghostPendList(), ...S.parts.filter(x => x.ghost && x.gid).map(x => ({ ...x, kind: "part" }))];
+function gbagHtml() {                                // торбата на духа: неща, взети от сандъка или дадени от Тошик
+  const b = Object.entries(gstate().bag).filter(([k, n]) => n > 0 && EL[k]);
+  return b.length ? `<div class="sub">👻 Торбата на духа</div><div class="gq drop">${b.map(([k, n]) => `<button data-gd="${k}" data-bag="1" title="${esc(elN(k))}">${elI(k)}<i class="gn">${n}</i></button>`).join("")}</div>` : "";
+}
 function ghostHtml(head) {
   const log = ghost.msgs.map(m => `<div class="gm ${m.who}"><b>${m.who === "g" ? "👻" : "🐙"}</b> ${esc(m.x)}</div>`).join("") || `<div class="sub">${role === "viewer" ? "Пусни рибата-дух и пиши. Toshik ще вижда съобщенията ти над нея." : "Рибата-дух още мълчи…"}</div>`;
-  const awake = !S.asleep && !ghost.on, away = role === "viewer" && !liveOn() && !ghost.on;
-  return head("👻 Рибата-дух") + (role === "viewer" ? `<div class="row2"><button class="ans ${ghost.on ? "" : "yes"}" id="ghOn" ${awake || away ? "disabled" : ""}>${ghost.on ? "Скрий рибата-дух" : "Покажи рибата-дух"}</button></div>` +
-    (away ? `<div class="sub">Тошик не е в играта. Рибата-дух идва само докато е там.</div>` : awake ? `<div class="sub">Рибата-дух идва само докато Октонис спи. Сега е буден.</div>` : "") +
-    (!ghost.on ? `<div class="sub">🎁 Пусни подарък: ще плува във водата, докато Тошик го намери.</div><div class="gq drop">${GHOST_DROPS.map(k => `<button data-gd="${k}" title="${esc(elN(k))}">${elI(k)}</button>`).join("")}</div>` : "") : "") +
+  const away = role === "viewer" && !liveOn(), awake = !S.asleep && !ghost.on && !away;
+  return head("👻 Рибата-дух") + (role === "viewer" ? `<div class="row2"><button class="ans ${ghost.on ? "" : "yes"}" id="ghOn" ${awake ? "disabled" : ""}>${ghost.on ? "Скрий рибата-дух" : "Покажи рибата-дух"}</button></div>` +
+    (away ? `<div class="sub">Тошик не е в играта: духът е само при теб. Подаръците ще ги намери, като влезе.</div>` : awake ? `<div class="sub">Рибата-дух идва само докато Октонис спи. Сега е буден.</div>` : "") +
+    (!ghost.on ? `<div class="sub">🎁 Пусни подарък: ще плува във водата, докато Тошик го намери.</div>${gbagHtml()}<div class="gq drop">${GHOST_DROPS.map(k => `<button data-gd="${k}" title="${esc(elN(k))}">${elI(k)}</button>`).join("")}</div>` : "") : "") +
     `<div class="glog">${log}</div>` + (role === "viewer" && ghost.on ? `<div class="sub">👆 Докосни рибата-дух на екрана за реплики, движения и предмети.</div>` : "") +
     (role === "viewer" && !ghost.on ? `<div class="sub">Пиши, след като покажеш рибата-дух.</div>` : `<form id="ghForm" class="gform"><input id="ghIn" maxlength="200" autocomplete="off" placeholder="${role === "viewer" ? "Напиши като рибата-дух…" : "Отговори на рибата-дух…"}"><button>Прати</button></form>`);
 }
@@ -5668,6 +5731,10 @@ const onRock = (x, y) => rockBox && ((x - rockBox.x) / rockBox.rx) ** 2 + ((y - 
 let drag = null, noHover = false;
 cv.addEventListener("pointerdown", ev => {
   closeRockMenu();
+  if (inGame && S && role === "viewer" && !sheetKind) {            // vasko прибира плуващ подарък на духа
+    const h = floorHits.find(h => Math.hypot(h.x - ev.clientX, h.y - ev.clientY) < h.r), it = h && ghostFloatList().find(x => ("gp" + x.pend) === h.id || x.id === h.id);
+    if (it) return ghostUndrop(it);
+  }
   if (inGame && S && role === "viewer" && ghost.on && ghost.hit && Math.hypot(ev.clientX - ghost.hit.x, ev.clientY - ghost.hit.y) < ghost.hit.r) return ghostMenu(ev.clientX, ev.clientY);
   if (inGame && S && role === "viewer" && ghost.on && onRock(ev.clientX, ev.clientY)) return rockMenu();
   if (!inGame || !S || sheetKind || role !== "keeper") return;
@@ -5838,6 +5905,7 @@ setInterval(() => {
       else if (stageIdx() >= 4 && Math.random() < 0.5) selfT = -1e9, selfWork(p); else proposeIdea();
     }
     selfWork(p);
+    if (role === "keeper" && (S.ghostStole || []).length && !ghost.on && Math.random() < 0.02) ghostMissing();
     if (S.desk && !deskMove && !working && !S.asleep && !sheetKind && !ringOpen && !mixSel.length && p - deskUsed > 2 * 60000) { toggleDesk(); say("", pick(["Никой не ползва масата. Прибирам я.", "Масата скучае. Отнасям я, ще я донеса пак, като трябва."]), 4000); }
     if (S.hatched && !S.asleep && !working && !deskMove && !hidden() && p > nextHide && !ringOpen && !sheetKind) {   // понякога се крие (Дева е малко срамежлив)
       const baby = S.stage === "baby";
